@@ -1,0 +1,11 @@
+"0","# The CEL files were downloaded from GEO. From here, I am processing the CEL files.
+basedir = ""/home/scampit/Data/Expression/RNASeq/Keshamouni/raw/CEL""
+AffyObj = ReadAffy(celfile.path=basedir)
+expressionSet = rma(ab)
+"
+"1","Background correcting
+"
+"1","Normalizing
+"
+"1","Calculating Expression
+"
