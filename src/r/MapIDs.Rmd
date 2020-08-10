@@ -1,0 +1,232 @@
+---
+title: "GSE17518 RNASeq Mapping and DE"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+This script performs several preprocessing steps for the GSE17518 EMT dataset, including differential gene expression analysis, mapping probes to appropriate identifiers, etc.
+
+## Load and install necessary libraries
+The following codeblock installs the requisite libraries used for querying and mapping datasets.
+
+```{r, warning=FALSE, message=FALSE}
+install.packages("BiocManager")
+library(BiocManager)
+
+lst = c("Biobase", "GEOquery", "limma", "affy", "BiocManager")
+BiocManager::install(lst, version="devel", quietly=TRUE, clean=TRUE)
+
+library(Biobase)
+library(GEOquery)
+library(limma)
+library(affy)
+
+BiocManager::install(c("hgu133plus2.db", "org.Hs.eg.db"))
+library(hgu133plus2.db)
+library(org.Hs.eg.db)
+
+# Data processing
+install.packages(c('data.table', 'openxlsx', 'readxl'))
+library(data.table)
+library(openxlsx)
+library(readxl)
+
+```
+
+## Map RNASeq datasets
+The following forloop will map two RNASeq datasets: GSE17708 and GSE17518. The steps are outlined below:
+  1. Get the GEO object using the GSE ID
+  2. Extract the expression set
+  3. Map the probe IDs to Entrez and Gene Symbols
+  4. Take the average of the biological replicates
+  5. Map by the probe IDs and save the data as an Excel file.
+
+```{r}
+gse_ids = c("GSE17708", "GSE17518")
+col_ids = list(
+  c('0', '0', '0', 
+    '0.5', '0.5', '0.5',
+    '1', '1', '1',
+    '2', '2', 
+    '4', '4', '4', 
+    '8', '8', '8', 
+    '16', '16', '16', 
+    '24', '24', '24', 
+    '72', '72', '72'),
+  
+  c('C', 'C', 'C',
+    'T', 'T', 'T')
+)
+filename = c("/home/scampit/Data/Expression/RNASeq/GSE17518/GSE17518_processed.xlsx",
+             "/home/scampit/Data/Expression/RNASeq/GSE17708/processed/GSE17708_processed.xlsx")
+for(i in 1:length(gse_ids)) {
+  gse = getGEO(gse_ids[i], GSEMatrix=TRUE)
+  
+  # Get index of expression set
+  if (length(gse) > 1) {
+    idx = grep("GPL96", attr(gse, "names"))
+  } else { 
+    idx = 1
+  }
+  
+  # Get expression set
+  gse = gse[[idx]]
+  
+  eset = exprs(gse)
+  
+  # Make into dataframe
+  df = data.frame(eset)
+  probes = rownames(df)
+  df = setDT(df, keep.rownames=TRUE)
+  
+  # Create a map of the probes to Entrez and gene symbols
+  map = select(hgu133plus2.db, 
+               keys=probes, 
+               columns = c('PROBEID', 
+                           'ENTREZID', 
+                           'SYMBOL')
+               )
+  
+  # Map the data
+  mapped_lst = merge(map, df, by.x="PROBEID", by.y="rn")
+  data = subset(mapped_lst, select=-c(PROBEID, ENTREZID, SYMBOL))
+  data = setNames(data, unlist(col_ids[i]))
+  
+  # Take average of biological replicates
+  avg_df = as.data.frame(
+    sapply(
+      unique(names(data)), function(col) rowMeans(data[, names(data)==col])
+    )
+  )
+  
+  # Get final dataframe with map
+  final_df = cbind(map, avg_df)
+  write.xlsx(final_df, filename[i])
+
+}
+```
+
+## Map Proteomics datasets
+The following code blocks will map two proteomics datasets: the Keshamouni et al and Garcia et al datasets. The steps are outlined below:
+  1. Read in the Excel file containing the data and associated identifiers
+  3. Map the probe IDs to Entrez and Gene Symbols
+  4. Take the average of the biological replicates
+  5. Map by the probe IDs and save the data as an Excel file.
+  
+### Keshmouni proteomics data
+This dataset has two time points: $t_{0 hrs}$ and $t_{72 hrs}$. The first column has probe IDs that are similar to the RNASeq data. I will use the same mapping procedure above to get these IDs.
+
+```{r}
+
+# Read in data
+filepath = '/home/scampit/Data/Expression/Proteomics/Keshamouni/GSE17518.xls'
+data = read_excel(filepath)
+
+data = data.frame(data, row.names='ID_REF')
+probes = rownames(data)
+data = setDT(data, keep.rownames=TRUE)
+
+# Create a map of the probes to Entrez and gene symbols
+map = select(hgu133plus2.db, 
+             keys=probes, 
+             columns = c('PROBEID', 
+                         'ENTREZID', 
+                         'SYMBOL')
+)
+
+# Map the data
+mapped_lst = merge(map, df, by.x="PROBEID", by.y="rn")
+data = subset(mapped_lst, select=-c(PROBEID, ENTREZID, SYMBOL))
+data = setNames(data, c('C', 'C', 'C', 
+                        'T', 'T', 'T')
+                )
+
+# Take average of biological replicates
+avg_df = as.data.frame(
+  sapply(
+    unique(names(data)), function(col) rowMeans(data[, names(data)==col])
+  )
+)
+
+# Get final dataframe with map
+final_df = cbind(map, avg_df)
+filename = "~/Data/Expression/Proteomics/Keshamouni/processed_keshamouni.xlsx"
+write.xlsx(final_df, filename)
+```
+
+### Garcia proteomics data
+This dataset has 4 time points. The first column has UNIPROT IDs. I will use the same mapping procedure above to get these IDs.
+
+```{r}
+
+# Read in data
+filepath = '/home/scampit/Data/Expression/Proteomics/Garcia/raw/time-course-EMT.xlsx'
+sheet_name = 'TS_Proteomics'
+data = read_excel(filepath, sheet=sheet_name, 
+                  col_names=TRUE, col_types='text')
+
+colnames(data) = c("Symbol", 
+                   "0A", "0A", "0A", 
+                   "0B", "0B", "0B", 
+                   "5min", "5min", "5min", 
+                   "1hr", "1hr", "1hr", 
+                   "24hr", "24hr", "24hr", 
+                   "48hr", "48hr", "48hr")
+
+# Turn mouse ID to ID that resembles human gene symbols
+data = apply(data, 2, toupper)
+
+# Remove rows with NaN
+data = na.omit(data)
+
+# Remove duplicate rows
+tmp = unique(data, by='Symbol')
+
+data = data.frame(tmp)
+
+data = data[!data$Symbol == "TMPO", ]
+data = data[!data$Symbol == "TOR1AIP2", ]
+
+row.names(data) = data$Symbol
+
+data = subset(data, select=-c(Symbol))
+
+probes = rownames(data)
+data = setDT(data, keep.rownames=TRUE)
+
+# Create a map of the probes to Entrez and gene symbols
+map = mapIds(org.Hs.eg.db, probes, 'ENTREZID', 'SYMBOL')
+map = as.data.frame(map)
+
+# Map the data
+mapped_lst = merge(map, data, by.x="row.names", by.y="rn")
+tmp = subset(mapped_lst, select=-c(Row.names, map))
+
+library(dplyr)
+library(magrittr)
+tmp %<>% mutate_if(is.character,as.numeric)
+
+tmp = setNames(tmp, c("0.1", "0.1", "0.1", 
+                   "0.2", "0.2", "0.2", 
+                   "5", "5", "5", 
+                   "1", "1", "1", 
+                   "24", "24", "24", 
+                   "48", "48", "48")
+)
+
+avg_df = as.data.frame(
+  sapply(
+    unique(names(tmp)), function(col) rowMeans(tmp[, names(tmp)==col])
+  )
+)
+
+# Get final dataframe with map
+final_df = cbind(map, avg_df)
+final_df = cbind(rownames(map), final_df)
+filename = "~/Data/Expression/Proteomics/Garcia/processed/processed_garcia.xlsx"
+write.xlsx(final_df, filename)
+```
