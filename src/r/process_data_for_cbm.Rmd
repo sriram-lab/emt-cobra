@@ -1,0 +1,88 @@
+---
+title: "Processing GSE147405 scRNASeq data for integration with COBRA"
+author: "Scott Campit"
+output: html_notebook
+---
+
+# Summary
+This notebook processes scRNASeq time course data. Note that this code was adapted from Cook.
+
+# Download all dependencies
+
+First, we'll download several dependencies.
+
+```{r}
+
+packageurl <- "https://cran.r-project.org/src/contrib/Archive/tidyr/tidyr_1.1.0.tar.gz"
+install.packages(packageurl, repos=NULL, type="source")
+install.packages("Seurat")
+pkgLst = c("Seurat", "dplyr", "viridis", "matrixStats", "UpSetR", "mgcv")
+install.packages(pkgLst)
+
+library(mgcv)
+library(splines)
+library(Seurat)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(matrixStats)
+library(UpSetR)
+```
+
+# Load scRNASeq datasets
+
+Next, we'll load the A549, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the tgfb1 sample, since this was the way EMT was induced in many bulk experiments.
+
+```{r}
+a549 = readRDS("~/Data/Expression/GSE147405/A549_TGFB1.rds")
+```
+
+# Differential expression
+
+They performed a GAM with loess on the time covariate for differential expression. Below is the modified function that takes in the Seurat object to get the result.
+
+```{r}
+diffExp = function(seurat_object){
+  cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in% c("8h_rm", "1d_rm", "3d_rm"))]
+  subset_seurat = subset(seurat_object, cells=cells_keep)
+  subset_seurat$Timepoint = as.numeric(gsub("[^0-9.-]", "", subset_seurat$Time))
+  subset_seurat$Timepoint[subset_seurat$Timepoint==8] = 0.33 #8hrs converted to fraction of a day
+  
+  exp = as.matrix(GetAssayData(subset_seurat, slot="data")) 
+  gam = apply(exp, 1, function(x){
+    data = data.frame(exp=x, timepoint=subset_seurat$Timepoint)
+    temp = gam(exp ~ ns(timepoint, df=3), data=data)
+    res = data.frame(Intercept=temp$coefficients[1],
+                      Spline_1=temp$coefficients[2],
+                      Spline_2=temp$coefficients[3],
+                      Spline_3=temp$coefficients[4],
+                      pval=summary(temp)$p.table[,4])
+  })
+  results <- do.call("rbind", gam)
+  results$qval <- p.adjust(results$pval, method="fdr")
+  results$Gene <- rownames(results)
+  return(results)
+}
+```
+
+Compute DGE for A549 TGF treatment and save it to a csv file.
+```{r}
+# Perform DEA
+a549_tgfb1_dge = diffExp(a549)
+
+# Write to file
+filepath = "~/Data/Expression/GSE147405/dge_a549_tgfb1.csv"
+write.csv(a549_tgfb1_dge, file=filepath, quote=F)
+
+```
+
+Let's now get a list of significant genes
+
+```{r}
+a549_tgfb1_sig <- filter(a549_tgfb1_dge, qval <= 0.05)
+
+# Write to file
+filepath = "~/Data/Expression/GSE147405/a549_tgfb1_sig.csv"
+write.csv(a549_tgfb1_sig, file=filepath, quote=F)
+
+```
