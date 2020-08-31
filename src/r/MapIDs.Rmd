@@ -17,9 +17,6 @@ The following codeblock installs the requisite libraries used for querying and m
 install.packages("BiocManager")
 library(BiocManager)
 
-packageurl <- "https://cran.r-project.org/src/contrib/Archive/tidyr/tidyr_1.1.0.tar.gz"
-install.packages(packageurl, repos=NULL, type="source")
-
 lst = c("Biobase", "GEOquery", "limma", "affy", "BiocManager")
 BiocManager::install(version = '3.12')
 BiocManager::install(lst, version="devel", quietly=TRUE, clean=TRUE)
@@ -234,14 +231,16 @@ final_df = cbind(rownames(map), final_df)
 filename = "~/Data/Expression/Proteomics/Garcia/processed/processed_garcia.xlsx"
 write.xlsx(final_df, filename)
 ```
+
 ### scRNASeq data
 ```{r}
 # Read in data
-filepath = '/home/scampit/Data/Expression/GSE147405/a549_tgfb1_sig.csv'
+filepath = '/home/scampit/Data/scRNASeq/GSE147405/a549_tgfb1_sig.csv'
 data = read.csv(filepath, header=TRUE)
 
 data = subset(data, select=-c(X, Intercept, pval, qval))
 
+data$Gene = sub("\\.\\d+$", "", data$Gene)
 data$Gene = sub("\\.\\d+$", "", data$Gene)
 
 library(dplyr)
@@ -249,19 +248,21 @@ data = distinct(data)
 
 colnames(data) = c("8hr", "1day", "3day", "Symbol")
 
-# Turn mouse ID to ID that resembles human gene symbols
-data = apply(data, 2, toupper)
-
 # Remove rows with NaN
 data = na.omit(data)
 
 data = data.frame(data)
 
-row.names(data) = data$Gene
+data = data[!duplicated(data$Symbol), ]
 
+row.names(data) = data$Symbol
+
+
+probes = data$Symbol
 data = subset(data, select=-c(Symbol))
 
-probes = rownames(data)
+
+library(data.table)
 data = setDT(data, keep.rownames=TRUE)
 
 # Create a map of the probes to Entrez and gene symbols
@@ -276,23 +277,11 @@ library(dplyr)
 library(magrittr)
 tmp %<>% mutate_if(is.character,as.numeric)
 
-tmp = setNames(tmp, c("0.1", "0.1", "0.1", 
-                   "0.2", "0.2", "0.2", 
-                   "5", "5", "5", 
-                   "1", "1", "1", 
-                   "24", "24", "24", 
-                   "48", "48", "48")
-)
-
-avg_df = as.data.frame(
-  sapply(
-    unique(names(tmp)), function(col) rowMeans(tmp[, names(tmp)==col])
-  )
-)
+tmp = setNames(tmp, c("8hr", "1day", "3day"))
 
 # Get final dataframe with map
-final_df = cbind(map, avg_df)
+final_df = cbind(map, tmp)
 final_df = cbind(rownames(map), final_df)
-filename = "~/Data/Expression/Proteomics/Garcia/processed/processed_garcia.xlsx"
+filename = "~/Data/scRNASeq/GSE147405/mappedGSE147405.xlsx"
 write.xlsx(final_df, filename)
 ```
