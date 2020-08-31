@@ -5,18 +5,16 @@ output: html_notebook
 ---
 
 # Summary
-This notebook processes scRNASeq time course data. Note that this code was adapted from Cook.
+This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
 
 # Download all dependencies
 
-First, we'll download several dependencies.
+First, we'll download several dependencies for data processing and data visualization.
 
-```{r}
-
-packageurl <- "https://cran.r-project.org/src/contrib/Archive/tidyr/tidyr_1.1.0.tar.gz"
-install.packages(packageurl, repos=NULL, type="source")
-install.packages("Seurat")
-pkgLst = c("Seurat", "dplyr", "viridis", "matrixStats", "UpSetR", "mgcv")
+```{r, include=FALSE}
+pkgLst = c("Seurat", "dplyr", "viridis", 
+           "matrixStats", "UpSetR", 
+           "mgcv", "tidyverse", "reshape2", "ggplot2")
 install.packages(pkgLst)
 
 library(mgcv)
@@ -27,28 +25,36 @@ library(tidyr)
 library(viridis)
 library(matrixStats)
 library(UpSetR)
+library(reshape2)
+library(ggplot2)
 ```
 
 # Load scRNASeq datasets
 
-Next, we'll load the A549, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the tgfb1 sample, since this was the way EMT was induced in many bulk experiments.
+Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the $TGF \beta 1$ sample, since this was the way EMT was induced in many bulk experiments.
 
-```{r}
-a549 = readRDS("~/Data/Expression/GSE147405/A549_TGFB1.rds")
+```{r, include=FALSE}
+a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
 ```
 
 # Differential expression
 
-They performed a GAM with loess on the time covariate for differential expression. Below is the modified function that takes in the Seurat object to get the result.
+This code block gets differentially expressed genes from the preprocessed Seurat object.
+
+## Bulk scRNASeq across time points
+
+Cook et al performed a GAM with loess on the time covariate for differential expression. Below is the modified `diffExp` function that takes in the Seurat object to get the result.
 
 ```{r}
 diffExp = function(seurat_object){
-  cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in% c("8h_rm", "1d_rm", "3d_rm"))]
+  cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in%                                        c("8h_rm", "1d_rm", "3d_rm"))]
   subset_seurat = subset(seurat_object, cells=cells_keep)
-  subset_seurat$Timepoint = as.numeric(gsub("[^0-9.-]", "", subset_seurat$Time))
-  subset_seurat$Timepoint[subset_seurat$Timepoint==8] = 0.33 #8hrs converted to fraction of a day
+  subset_seurat$Timepoint = as.numeric(gsub("[^0-9.-]", "",                                                       subset_seurat$Time))
+  subset_seurat$Timepoint[subset_seurat$Timepoint==8] = 0.33 
   
   exp = as.matrix(GetAssayData(subset_seurat, slot="data")) 
+  
+  # Fit natural splines to the dataset
   gam = apply(exp, 1, function(x){
     data = data.frame(exp=x, timepoint=subset_seurat$Timepoint)
     temp = gam(exp ~ ns(timepoint, df=3), data=data)
@@ -58,6 +64,8 @@ diffExp = function(seurat_object){
                       Spline_3=temp$coefficients[4],
                       pval=summary(temp)$p.table[,4])
   })
+  
+  # Compute adjusted P-value using FDR
   results <- do.call("rbind", gam)
   results$qval <- p.adjust(results$pval, method="fdr")
   results$Gene <- rownames(results)
@@ -85,4 +93,55 @@ a549_tgfb1_sig <- filter(a549_tgfb1_dge, qval <= 0.05)
 filepath = "~/Data/Expression/GSE147405/a549_tgfb1_sig.csv"
 write.csv(a549_tgfb1_sig, file=filepath, quote=F)
 
+```
+
+
+```{r}
+exp = as.matrix(GetAssayData(a549, slot="data")) 
+
+```
+## Pseudotime analysis
+
+```{r}
+plot_data <- a549@meta.data
+plot_data$UMAP1 <- Embeddings(a549, "umap_pseudo")[,1]
+plot_data$UMAP2 <- Embeddinginstall.packages(c("reshape2", "ggplot2"))
+plot_data$UMAP2 <- Embeddings(a549, "umap_pseudo")[,2]
+
+```
+
+```{r}
+PRGn <- rev(RColorBrewer::brewer.pal(11, "PRGn"))
+color_ramp <- c(PRGn[1], PRGn[2], PRGn[3], PRGn[4], "grey50", PRGn[7], PRGn[8], PRGn[9])
+```
+
+
+```{r}
+# Actual time points
+timepoint_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
+  geom_point(size=2, alpha=0.75, aes(color=Sample),
+             shape=16) +
+  scale_color_manual(values=color_ramp) +
+  theme_void() +
+  theme(legend.position="none")
+
+# Pseudotime
+pseudo_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
+  geom_point(size=2, alpha=0.75, aes(color=Pseudotime),
+             shape=16) +
+  scale_color_viridis(option="D") +
+  theme_void() +
+  theme(legend.title=element_blank(),
+        legend.text=element_blank())
+```
+
+```{r}
+timepoint_plot
+pseudo_plot
+```
+
+```{r}
+mlt <- melt(exp)
+ggplot(data = mlt, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile()
 ```
