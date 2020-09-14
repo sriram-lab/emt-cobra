@@ -1,0 +1,54 @@
+---
+title: "Processing GSE147405 scRNASeq data for integration with COBRA"
+author: "Scott Campit"
+output: html_notebook
+---
+  
+# Summary
+This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
+
+# Pseudotime analysis
+
+```{r, include=FALSE}
+plot_data <- a549@meta.data
+plot_data$UMAP1 <- Embeddings(a549, "umap_pseudo")[,1]
+plot_data$UMAP2 <- Embeddinginstall.packages(c("reshape2", "ggplot2"))
+plot_data$UMAP2 <- Embeddings(a549, "umap_pseudo")[,2]
+
+```
+
+```{r, include=FALSE}
+PRGn <- rev(RColorBrewer::brewer.pal(11, "PRGn"))
+color_ramp <- c(PRGn[1], PRGn[2], PRGn[3], PRGn[4], "grey50", PRGn[7], PRGn[8], PRGn[9])
+```
+
+
+```{r, include=FALSE}
+# Actual time points
+timepoint_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
+  geom_point(size=2, alpha=0.75, aes(color=Sample),
+             shape=16) +
+  scale_color_manual(values=color_ramp) +
+  theme_void() +
+  theme(legend.position="none")
+
+# Pseudotime
+pseudo_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
+  geom_point(size=2, alpha=0.75, aes(color=Pseudotime),
+             shape=16) +
+  scale_color_viridis(option="D") +
+  theme_void() +
+  theme(legend.title=element_blank(),
+        legend.text=element_blank())
+```
+
+```{r, include=FALSE}
+timepoint_plot
+pseudo_plot
+```
+
+```{r, include=FALSE
+mlt <- melt(exp)
+ggplot(data = mlt, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile()
+```

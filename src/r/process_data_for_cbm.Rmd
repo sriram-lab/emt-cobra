@@ -37,15 +37,14 @@ Next, we'll load the A549 dataset, which is the lung cancer cell line investigat
 a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
 ```
 
-# Differential expression
-
+# Differential expression across all time points
 This code block gets differentially expressed genes from the preprocessed Seurat object.
 
 ## Bulk scRNASeq across time points
 
 Cook et al performed a GAM with loess on the time covariate for differential expression. Below is the modified `diffExp` function that takes in the Seurat object to get the result.
 
-```{r}
+```{r, include=FALSE}
 diffExp = function(seurat_object){
   cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in%                                        c("8h_rm", "1d_rm", "3d_rm"))]
   subset_seurat = subset(seurat_object, cells=cells_keep)
@@ -74,74 +73,99 @@ diffExp = function(seurat_object){
 ```
 
 Compute DGE for A549 TGF treatment and save it to a csv file.
-```{r}
+```{r, include=FALSE}
 # Perform DEA
 a549_tgfb1_dge = diffExp(a549)
 
 # Write to file
 filepath = "~/Data/Expression/GSE147405/dge_a549_tgfb1.csv"
 write.csv(a549_tgfb1_dge, file=filepath, quote=F)
-
 ```
 
-Let's now get a list of significant genes
-
-```{r}
-a549_tgfb1_sig <- filter(a549_tgfb1_dge, qval <= 0.05)
+Let's now get a list of significant genes with a FDR-corrected p-value less than or equal to 0.01. This will be saved to the file a549_tgfb1_sig.csv.
+```{r, include=FALSE}
+a549_tgfb1_sig = filter(a549_tgfb1_dge, qval <= 0.01)
 
 # Write to file
 filepath = "~/Data/Expression/GSE147405/a549_tgfb1_sig.csv"
 write.csv(a549_tgfb1_sig, file=filepath, quote=F)
-
 ```
 
 
-```{r}
-exp = as.matrix(GetAssayData(a549, slot="data")) 
+## Individual Cell RNASeq
+This section computes individual RNASeq profiles for each cell to get differentially expressed genes. To perform this analysis, I will try using the scNorm method, proposed in Bacher et al., 2017
 
-```
-## Pseudotime analysis
+Get the expression datasets and apply some typical normalization procedures. I found that the distribution is still biased/heteroscedastic.
+```{r, include=FALSE}
 
-```{r}
-plot_data <- a549@meta.data
-plot_data$UMAP1 <- Embeddings(a549, "umap_pseudo")[,1]
-plot_data$UMAP2 <- Embeddinginstall.packages(c("reshape2", "ggplot2"))
-plot_data$UMAP2 <- Embeddings(a549, "umap_pseudo")[,2]
+# There is something up with the distribution still after performing some Log normalization in Seurat
+exp_norm = as.matrix(GetAssayData(a549, slot="scale.data")) 
+hist(exp_norm, 100)
+quantile(exp_norm)
 
-```
+# The distribution is skewed, as expected
+exp = as.matrix(GetAssayData(a549, slot="data"))
+exp[exp == 0] = NaN
+hist(exp, 100)
 
-```{r}
-PRGn <- rev(RColorBrewer::brewer.pal(11, "PRGn"))
-color_ramp <- c(PRGn[1], PRGn[2], PRGn[3], PRGn[4], "grey50", PRGn[7], PRGn[8], PRGn[9])
-```
+# Even when applying a log operator, the distribution is still skewed
+log_exp = log(exp)
+hist(log_exp, 100)
 
+# Z-score normalization isn't much better
+mu = mean(exp, na.rm=T)
+sigma = sd(exp, na.rm=T)
 
-```{r}
-# Actual time points
-timepoint_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
-  geom_point(size=2, alpha=0.75, aes(color=Sample),
-             shape=16) +
-  scale_color_manual(values=color_ramp) +
-  theme_void() +
-  theme(legend.position="none")
+z_exp = exp - mu / sigma
+hist(z_exp, 100)
 
-# Pseudotime
-pseudo_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
-  geom_point(size=2, alpha=0.75, aes(color=Pseudotime),
-             shape=16) +
-  scale_color_viridis(option="D") +
-  theme_void() +
-  theme(legend.title=element_blank(),
-        legend.text=element_blank())
+# Quantile normalization results in a bimodal distribution
+library(preprocessCore)
+quan_exp = normalize.quantiles.robust(log2(exp+1), 
+                                      remove.extreme='both', 
+                                      use.median=T,
+                                      use.log2=T)
+quan_exp[quan_exp == 0] = NaN
+hist(quan_exp, 100)
 ```
 
-```{r}
-timepoint_plot
-pseudo_plot
+Because many simple data preprocessing methods don't seem to work, I need to use more sophisticated approaches. 
+
+### scran workflow
+
+```{r, include=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("scran")
+
+library(scran)
+
+# Data clustering and normalization
+clusters <- quickCluster(exp)
+scran_exp <- computeSumFactors(a549, clusters=clusters)
+summary(sizeFactors(scran_exp))
+scran_exp <- logNormCounts(scran_exp)
+
+hist(scran_exp, 100)
+
+# Variance modeling
+dec <- modelGeneVar(sce)
+plot(dec$mean, dec$total, xlab="Mean log-expression", ylab="Variance")
+curve(metadata(dec)$trend(x), col="blue", add=TRUE)
 ```
 
 ```{r}
-mlt <- melt(exp)
-ggplot(data = mlt, aes(x=Var1, y=Var2, fill=value)) + 
-  geom_tile()
+seurat_exp <- NormalizeData(a549, 
+                     normalization.method="LogNormalize",
+                     scale.factor=10000)
+all.genes <- rownames(seurat_exp)
+seurat_exp <- ScaleData(seurat_exp, features = all.genes)
+hist(as.matrix(GetAssayData(seurat_exp, slot="scale.data")), 100)
+ElbowPlot(seurat_exp)
+DimHeatmap(seurat_exp, dims = 1:15, cells = 1000, balanced = TRUE)
+
+install.packages("sctransform")
+library(sctransform)
+seurat_exp <- SCTransform(object=seurat_exp, assay='RNA', verbose = TRUE)
 ```
