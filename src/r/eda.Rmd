@@ -7,12 +7,33 @@ output: html_notebook
 # Summary
 This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
 
+# Download all dependencies
+
+First, we'll download several dependencies for data processing and data visualization.
+
+```{r, include=FALSE}
+pkgLst = c("Seurat", "dplyr", "viridis", 
+           "matrixStats", "UpSetR", 
+           "mgcv", "tidyverse", "reshape2", "ggplot2")
+install.packages(pkgLst)
+
+library(mgcv)
+library(splines)
+library(Seurat)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(matrixStats)
+library(UpSetR)
+library(reshape2)
+library(ggplot2)
+```
+
 # Pseudotime analysis
 
 ```{r, include=FALSE}
 plot_data <- a549@meta.data
 plot_data$UMAP1 <- Embeddings(a549, "umap_pseudo")[,1]
-plot_data$UMAP2 <- Embeddinginstall.packages(c("reshape2", "ggplot2"))
 plot_data$UMAP2 <- Embeddings(a549, "umap_pseudo")[,2]
 
 ```
@@ -43,11 +64,9 @@ pseudo_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
 ```
 
 ```{r, include=FALSE}
-timepoint_plot
-pseudo_plot
-```
+timepoint_plS
 
-```{r, include=FALSE
+```{r, include=FALSE}
 mlt <- melt(exp)
 ggplot(data = mlt, aes(x=Var1, y=Var2, fill=value)) + 
   geom_tile()
