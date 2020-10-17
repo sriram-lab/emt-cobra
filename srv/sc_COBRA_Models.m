@@ -9,8 +9,8 @@
 
 % Initialize metabolic modeling components
 clear all;
-load ~/Analysis/EMT/scDE.mat
-load ~/Data/Reconstructions/RECON1/recon1.mat
+load /nfs/turbo/umms-csriram/scampit/Analysis/EMT/scDE.mat
+load /nfs/turbo/umms-csriram/scampit/Data/Reconstructions/RECON1/recon1.mat
 
 initCobraToolbox; changeCobraSolver('gurobi', 'all');
 %% 2. Set up metabolic model constraints and hyperparameters
@@ -44,7 +44,7 @@ hyperparams.hscore = false;
 % We can set the number of CPUs to use for our calculations.
 
 %workers = 4;
-parpool("local", workers);
+parpool;
 %% 
 % Set file name for bulk RNASeq knockouts
 % 
@@ -83,11 +83,12 @@ parpool("local", workers);
 % end
 %% 4. Load individual scRNASeq Data and preprocess
 
-load /home/scampit/Analysis/EMT/scDE_indvidual.mat
+load /nfs/turbo/umms-csriram/scampit/Analysis/EMT/scDE_indvidual.mat
 %% 
 % Read in the labels
 
-timepoints = readcell('~/Analysis/EMT/timepoints.txt');
+%timepoints = readcell('/nfs/turbo/umms-csriram/scampit/Analysis/EMT/timepoints.txt');
+timepoints = textread('/nfs/turbo/umms-csriram/scampit/Analysis/EMT/timepoints.txt', '%s');
 timepoints = string(timepoints);
 %% 
 % Find the cells to remove
@@ -96,7 +97,6 @@ rm_cells = find(contains(timepoints, 'rm'));
 timepoints(rm_cells) = [];
 %% 
 % Remove the expression data in the scDE
-
 for i = 1:length(rm_cells)
     scDE{rm_cells(i)} = [];
 end
@@ -113,7 +113,7 @@ sub_timepoints = timepoints(idx);
 
 scRxnKO = zeros([length(model.rxns), length(scDE)]);
 scRxnFx = zeros([length(model.rxns), length(scDE)]);
-filename = "~/Analysis/EMT/scRNASeq_indv_profiles.mat";
+filename = "/nfs/turbo/umms-csriram/scampit/Analysis/EMT/scRNASeq_indv_profiles.mat";
 save(filename, 'scRxnKO', 'scRxnFx', 'rm_cells', 'sub_timepoints');
 %% 
 % Then, let's compute it all.
