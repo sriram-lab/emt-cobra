@@ -35,7 +35,7 @@ library(reshape2)
 library(ggplot2)
 ```
 
-# 2. Data distributions for several EMT datasets
+# 2. Explore the effect of different inducers
 The following code block loads the data from Cook and Vanderhyden, 2020 
 and plots the data distribution for all genes across all samples. In their
 dataset alone, there are 4 cancer cell lines and 3 different inducers:
@@ -57,19 +57,20 @@ Due to memory constraints, we're going to have to perform this analysis cancer
 cell line by cancer cell line. First, let's specify some functions to help us.
 
 ## Define plotting functions
+
+### Histograms
 Next, let's create a function that plots the distribution of the data onto a histogram for each dataset.
 ```{r, include=TRUE}
-plot_histograms = function(data, labels, slot){
-  plts = list()
+plot_histograms = function(data, labels, slot, colors){
+  hist_plts = list()
   exp_data = list()
-  colors = c("red", "blue", "green")
-  
+
   for (i in 1:length(labels)){
     
     # Extract data
     exp = as.matrix(GetAssayData(data[[i]], slot=slot)) 
     tmp = melt(exp)
-    plts[[i]] = ggplot(tmp, aes(x=value)) + 
+    hist_plts[[i]] = ggplot(tmp, aes(x=value)) + 
         
         # Histogram
         geom_histogram(fill=colors[i], bins=100) +
@@ -81,11 +82,91 @@ plot_histograms = function(data, labels, slot){
         xlab("Counts") + ylab("Frequency") + 
         ggtitle(paste(labels[[i]], "UMAP data distribution", sep=" "))
   }
-  return(plts)
+  return(hist_plts)
 }
 ```
 
-## Cell Line Analysis
+### Ridge plots
+This function will create Ridge plots for each condition.
+```{r, include=TRUE}
+plot_ridge = function(data, labels, genes){
+  rdgplts = list()
+  for (i in 1:length(labels)){
+    rdgplts[[i]] = RidgePlot(object=ovca420_tgfb, 
+                          features=genes, 
+                          ncol=2)
+  }
+  return(rdgplts)
+}
+```
+
+### Violin plots
+This function will create violin plots for each condition.
+```{r, include=TRUE}
+plot_violin = function(data, labels, genes){
+  vlplt = list()
+  for (i in 1:length(labels)){
+    vlplt[[i]] = VlnPlot(object=data[[i]], 
+                          features=genes)
+  }
+  return(vlplt)
+}
+```
+
+### Dot plots
+This function will create dot plots for each condition.
+```{r, include=TRUE}
+plot_dot = function(data, labels, genes){
+  dtplt = list()
+  for (i in 1:length(labels)){
+    dtplt[[i]] = DotPlot(object=data[[i]], 
+                          features=genes)
+  }
+  return(dtplt)
+}
+```
+
+### UMAP plots
+This function will create UMAP scatter plots for each condition.
+```{r, include=TRUE}
+plot_umap = function(data, labels, genes){
+  umpplt = list()
+  for (i in 1:length(labels)){
+    umpplt[[i]] = FeaturePlot(object=data[[i]], 
+                          features=genes)
+  }
+  return(umpplt)
+}
+```
+
+### Scree plots
+```{r, include=TRUE}
+plot_scree = function(obj){
+  eigs = obj@reductions$pca@stdev**2
+  props = eigs / sum(eigs)
+  plot(props, 
+       ylab="Proportion of variance", 
+       xlab="Principal Component")
+}
+```
+
+### Heatmaps
+This function will create heatmaps for each condition.
+```{r, include=TRUE}
+plot_hm = function(data, labels, genes){
+  hmplt = list()
+  for (i in 1:length(labels)){
+    hmplt[[i]] = DoHeatmap(object=data[[i]], 
+                          features=genes)
+  }
+  return(hmplt)
+}
+```
+
+## Inducer Treatment Analysis
+For this analysis, I'm trying to see the effects of different inducers on the
+data. Let's use the top 20 genes with the highest variance.
+
 ### A549
 ```{r, include=TRUE}
 # Linux
@@ -100,29 +181,179 @@ a549_tnf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
 
 a549_labels = c("A549_EGF", "A549_TGFB1", "A549_TNF")
 a549_data = c(a549_egf, a549_tgfb, a549_tnf)
+
 ```
 
-#### Plot of the scRNASeq counts
-Create data objects containing histograms.
+#### Plots of the A549 scRNASeq counts
+
+##### Linear Dimension reduction
+First, let's see what the top 20 genes that have the most variance look like. Those will be analyzed downstream.
+
+```{r, include=TRUE}
+a549_egf_markers = FindAllMarkers(object=a549_egf,
+                         only.pos=TRUE,
+                         min.pct=0.25,
+                         thresh.use=0.25)
+a549_egf_markers = a549_egf_markers[a549_egf_markers$p_val_adj < 0.01, ]
+
+# Get the top 10 for data visualization
+a549_egf_markers = a549_egf_markers[1:10, ]
+
+# Run PCA
+a549_egf = RunPCA(a549_egf,
+              features=VariableFeatures(object=a549_egf))
+
+# Make a Scree Plot
+plot_scree(a549_egf)
+
+# View a loadings plot for multiple PCs
+VizDimLoadings(a549_egf, 
+               dims=1:3, 
+               reduction="pca")
+
+# Visualize the scatter plot (2D support only)
+DimPlot(a549_egf,
+        reduction="pca")
+
+# Visualize the heatmaps
+DimHeatmap(a549_egf, 
+           dims=1:3, 
+           cells=500,
+           balanced=TRUE)
+
+```
+Then we'll do A549 TGF-B
+```{r, include=TRUE}
+a549_tgfb_markers = FindAllMarkers(object=a549_tgfb,
+                         only.pos=TRUE,
+                         min.pct=0.25,
+                         thresh.use=0.25)
+a549_tgfb_markers = a549_tgfb_markers[a549_tgfb_markers$p_val_adj < 0.01, ]
+
+# Get the top 10
+a549_tgfb_markers = a549_tgfb_markers[1:10, ]
+
+# Run PCA
+a549_tgfb = RunPCA(a549_tgfb,
+                  features=VariableFeatures(object=a549_tgfb))
+
+# Make a Scree Plot
+plot_scree(a549_tgfb)
+
+# View a loadings plot for multiple PCs
+VizDimLoadings(a549_tgfb, 
+               dims=1:3, 
+               reduction="pca")
+
+# Visualize the scatter plot (2D support only)
+DimPlot(a549_tgfb,
+        reduction="pca")
+
+# Visualize the heatmaps
+DimHeatmap(a549_tgfb, 
+           dims=1:3, 
+           cells=500,
+           balanced=TRUE)
+
+# Cluster using PCA scores
+a549_tgfb = FindClusters(a549_tgfb,
+                        reduction.type="pca",
+                        dim.use=1:3,
+                        resolution=1.2,
+                        print.output=0)
+```
+
+Finally we'll do A549 TNF
+```{r, include=TRUE}
+a549_tnf_markers = FindAllMarkers(object=a549_tgfb,
+                         only.pos=TRUE,
+                         min.pct=0.25,
+                         thresh.use=0.25)
+a549_tnf_markers = a549_tnf_markers[a549_tnf_markers$p_val_adj < 0.01, ]
+
+# Get the top 10
+a549_tnf_markers = a549_tnf_markers[1:10, ]
+
+# Run PCA
+a549_tnf = RunPCA(a549_tnf,
+              features=VariableFeatures(object=a549_tnf))
+
+# Make a Scree Plot
+plot_scree(a549_tnf)
+
+# View a loadings plot for multiple PCs
+VizDimLoadings(a549_tnf, 
+               dims=1:3, 
+               reduction="pca")
+
+# Visualize the scatter plot (2D support only)
+DimPlot(a549_tnf,
+        reduction="pca")
+
+# Visualize the heatmaps
+DimHeatmap(a549_tnf, 
+           dims=1:3, 
+           cells=500,
+           balanced=TRUE)
+
+# Cluster using PCA scores
+a549_tnf = FindClusters(a549_tnf,
+                        reduction.type="pca",
+                        dim.use=1:3,
+                        resolution=1.2,
+                        print.output=0)
+```
+We'll create the data structure 
+Create data objects containing histograms with raw data.
 ```{r, include=TRUE}
 a549_plt = plot_histograms(a549_data, a549_labels, "data")
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
 ```
-
-Now plot it in a for loop.
+Create data objects containing histograms with scaled data.
 ```{r, include=TRUE}
+a549_plt = plot_histograms(a549_data, a549_labels, "scale.data")
 for (i in 1:length(a549_labels)){
   print(a549_plt[[i]])
 }
 ```
 
-#### Plot of the scRNASeq scaled data
-Create data objects containing histograms.
+Create data objects containing ridge plots.
 ```{r, include=TRUE}
-a549_plt = plot_histograms(a549_data, a549_labels, "scale.data")
+a549_plt = plot_ridge(a549_data, a549_labels, a549_egf_markers[, 1])
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
 ```
 
-Now plot it in a for loop.
+Create data objects containing violin plots.
 ```{r, include=TRUE}
+a549_plt = plot_violin(a549_data, a549_labels, a549_egf_markers[, 1])
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
+```
+
+Create data objects containing UMAP plots.
+```{r, include=TRUE}
+a549_plt = plot_umap(a549_data, a549_labels, genes)
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
+```
+
+Create data objects containing dot plots.
+```{r, include=TRUE}
+a549_plt = plot_dot(a549_data, a549_labels, genes)
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
+```
+
+Create data objects containing heatmaps.
+```{r, include=TRUE}
+a549_plt = plot_hm(a549_data, a549_labels, genes)
 for (i in 1:length(a549_labels)){
   print(a549_plt[[i]])
 }
@@ -144,27 +375,174 @@ du145_labels = c("DU145_EGF", "DU145_TGFB1", "DU145_TNF")
 du145_data = c(du145_egf, du145_tgfb, du145_tnf)
 ```
 
-#### Plot of the scRNASeq counts
-Create data objects containing histograms.
+##### Linear Dimension reduction
+First, let's see what the top 10 genes that have the most variance look like. Those will be analyzed downstream.
+
 ```{r, include=TRUE}
-du145_plt = plot_histograms(du145_data, du145_labels, "data")
+du145_egf_markers = FindAllMarkers(object=du145_egf,
+                         only.pos=TRUE,
+                         min.pct=0.25,
+                         thresh.use=0.25)
+du145_egf_markers = du145_egf_markers[du145_egf_markers$p_val_adj < 0.01, ]
+
+# Get the top 10 for data visualization
+du145_egf_markers = du145_egf_markers[1:10, ]
+
+# Run PCA
+du145_egf = RunPCA(du145_egf,
+              features=VariableFeatures(object=du145_egf))
+
+# Make a Scree Plot
+plot_scree(du145_egfdu145_egf)
+
+# View a loadings plot for multiple PCs
+VizDimLoadings(du145_egf, 
+               dims=1:3, 
+               reduction="pca")
+
+# Visualize the scatter plot (2D support only)
+DimPlot(du145_egfdu145_egf,
+        reduction="pca")
+
+# Visualize the heatmaps
+DimHeatmap(du145_egfdu145_egf, 
+           dims=1:3, 
+           cells=500,
+           balanced=TRUE)
+
+```
+Then we'll do DU145_egf TGF-B
+```{r, include=TRUE}
+du145_tgfb_markers = FindAllMarkers(object=du145_tgfb,
+                         only.pos=TRUE,
+                         min.pct=0.25,
+                         thresh.use=0.25)
+du145_tgfb_markers = du145_tgfb_markers[du145_tgfb_markers$p_val_adj < 0.01, ]
+
+# Get the top 10
+du145_tgfb_markers = du145_tgfb_markers[1:10, ]
+
+# Run PCA
+du145_tgfb = RunPCA(du145_tgfb,
+              features=VariableFeatures(object=du145_tgfb))
+
+# Make a Scree Plot
+plot_scree(du145_tgfb)
+
+# View a loadings plot for multiple PCs
+VizDimLoadings(du145_tgfb, 
+               dims=1:3, 
+               reduction="pca")
+
+# Visualize the scatter plot (2D support only)
+DimPlot(du145_tgfb,
+        reduction="pca")
+
+# Visualize the heatmaps
+DimHeatmap(du145_tgfb, 
+           dims=1:3, 
+           cells=500,
+           balanced=TRUE)
+
+# Cluster using PCA scores
+du145_tgfb = FindClusters(du145_tgfb,
+                        reduction.type="pca",
+                        dim.use=1:3,
+                        resolution=1.2,
+                        print.output=0)
 ```
 
-Now plot it in a for loop.
+Finally we'll do DU145 TNF
 ```{r, include=TRUE}
+du145_tnf_markers = FindAllMarkers(object=du145_tgfb,
+                         only.pos=TRUE,
+                         min.pct=0.25,
+                         thresh.use=0.25)
+du145_tnf_markers = du145_tnf_markers[du145_tnf_markers$p_val_adj < 0.01, ]
+
+# Get the top 10
+du145_tnf_markers = du145_tnf_markers[1:10, ]
+
+# Run PCA
+du145_tnf = RunPCA(du145_tnf,
+              features=VariableFeatures(object=du145_tnf))
+
+# Make a Scree Plot
+plot_scree(du145_tnf)
+
+# View a loadings plot for multiple PCs
+VizDimLoadings(du145_tnf, 
+               dims=1:3, 
+               reduction="pca")
+
+# Visualize the scatter plot (2D support only)
+DimPlot(du145_tnf,
+        reduction="pca")
+
+# Visualize the heatmaps
+DimHeatmap(du145_tnf, 
+           dims=1:3, 
+           cells=500,
+           balanced=TRUE)
+
+# Cluster using PCA scores
+du145_tnf = FindClusters(du145_tnf,
+                        reduction.type="pca",
+                        dim.use=1:3,
+                        resolution=1.2,
+                        print.output=0)
+```
+
+Create data objects containing histograms with raw data.
+```{r, include=TRUE}
+du145_plt = plot_histograms(du145_data, du145_labels, "data")
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
+```
+Create data objects containing histograms with scaled data.
+```{r, include=TRUE}
+du145_plt = plot_histograms(du145_data, du145_labels, "scale.data")
 for (i in 1:length(du145_labels)){
   print(du145_plt[[i]])
 }
 ```
 
-#### Plot of the scRNASeq scaled data
-Create data objects containing histograms.
+Create data objects containing ridge plots.
 ```{r, include=TRUE}
-du145_plt = plot_histograms(du145_data, du145_labels, "scale.data")
+du145_plt = plot_ridge(du145_data, du145_labels, genes)
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
 ```
 
-Now plot it in a for loop.
+Create data objects containing violin plots.
 ```{r, include=TRUE}
+du145_plt = plot_violin(du145_data, du145_labels, genes)
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
+```
+
+Create data objects containing UMAP plots.
+```{r, include=TRUE}
+du145_plt = plot_umap(du145_data, du145_labels, genes)
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
+```
+
+Create data objects containing dot plots.
+```{r, include=TRUE}
+du145_plt = plot_dot(du145_data, du145_labels, genes)
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
+```
+
+Create data objects containing heatmaps.
+```{r, include=TRUE}
+du145_plt = plot_hm(du145_data, du145_labels, genes)
 for (i in 1:length(du145_labels)){
   print(du145_plt[[i]])
 }
@@ -186,33 +564,69 @@ mcf7_labels = c("MCF7_EGF", "MCF7_TGFB1", "MCF7_TNF")
 mcf7_data = c(mcf7_egf, mcf7_tgfb, mcf7_tnf)
 ```
 
-#### Plot of the scRNASeq counts
-Create data objects containing histograms.
+#### Plots of the MCF7 scRNASeq counts
+
 ```{r, include=TRUE}
-mcf7_plt = plot_histograms(mcf7_data, mcf7_labels, "data")
+genes = c("SAMD11", "PLEKHN1")
 ```
 
-Now plot it in a for loop.
+Create data objects containing histograms with raw data.
 ```{r, include=TRUE}
+mcf7_plt = plot_histograms(mcf7_data, mcf7_labels, "data")
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
+```
+Create data objects containing histograms with scaled data.
+```{r, include=TRUE}
+mcf7_plt = plot_histograms(mcf7_data, mcf7_labels, "scale.data")
 for (i in 1:length(mcf7_labels)){
   print(mcf7_plt[[i]])
 }
 ```
 
-#### Plot of the scRNASeq scaled data
-Create data objects containing histograms.
+Create data objects containing ridge plots.
 ```{r, include=TRUE}
-mcf7_plt = plot_histograms(mcf7_data, mcf7_labels, "scale.data")
+mcf7_plt = plot_ridge(mcf7_data, mcf7_labels, genes)
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
 ```
 
-Now plot it in a for loop.
+Create data objects containing violin plots.
 ```{r, include=TRUE}
+mcf7_plt = plot_violin(mcf7_data, mcf7_labels, genes)
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
+```
+
+Create data objects containing UMAP plots.
+```{r, include=TRUE}
+mcf7_plt = plot_umap(mcf7_data, mcf7_labels, genes)
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
+```
+
+Create data objects containing dot plots.
+```{r, include=TRUE}
+mcf7_plt = plot_dot(mcf7_data, mcf7_labels, genes)
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
+```
+
+Create data objects containing heatmaps.
+```{r, include=TRUE}
+mcf7_plt = plot_hm(mcf7_data, mcf7_labels, genes)
 for (i in 1:length(mcf7_labels)){
   print(mcf7_plt[[i]])
 }
 ```
 
 ### OVCA420
+Load the dataset
 ```{r, include=TRUE}
 # Linux
 #ovca420_egf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_EGF.rds")
@@ -228,80 +642,64 @@ ovca420_labels = c("OVCA420_EGF", "OVCA420_TGFB1", "OVCA420_TNF")
 ovca420_data = c(ovca420_egf, ovca420_tgfb, ovca420_tnf)
 ```
 
-#### Plot of the scRNASeq counts
-Create data objects containing histograms.
+#### Plots of the OVCA420 scRNASeq counts
+
+```{r, include=TRUE}
+genes = c("SAMD11", "PLEKHN1")
+```
+
+Create data objects containing histograms with raw data.
 ```{r, include=TRUE}
 ovca420_plt = plot_histograms(ovca420_data, ovca420_labels, "data")
-```
-
-Now plot it in a for loop.
-```{r, include=TRUE}
 for (i in 1:length(ovca420_labels)){
   print(ovca420_plt[[i]])
 }
 ```
-
-```{r, include=TRUE}
-features = c("SAMD11", "PLEKHN1")
-RidgePlot(object=ovca420_tgfb, features=features, ncol=2)
-VlnPlot(object=ovca420_tgfb, features=features)
-DotPlot(object=ovca420_tgfb, genes=features, legend=TRUE)
-FeaturePlot(object=ovca420_tgfb, features = features)
-#DoHeatmap(object = SubsetData(object=ovca420_tgfb, max.cells.per.ident = 100), genes.use= features, slim.col.label=TRUE, group.label.rot=TRUE)
-```
-
-#### Plot of the scRNASeq scaled data
-Create data objects containing histograms.
+Create data objects containing histograms with scaled data.
 ```{r, include=TRUE}
 ovca420_plt = plot_histograms(ovca420_data, ovca420_labels, "scale.data")
-```
-
-Now plot it in a for loop.
-```{r, include=TRUE}
 for (i in 1:length(ovca420_labels)){
   print(ovca420_plt[[i]])
 }
 ```
 
-# Pseudotime analysis
-
-```{r, include=FALSE}
-plot_data <- a549@meta.data
-plot_data$UMAP1 <- Embeddings(a549, "umap_pseudo")[,1]
-plot_data$UMAP2 <- Embeddings(a549, "umap_pseudo")[,2]
-
+Create data objects containing ridge plots.
+```{r, include=TRUE}
+ovca420_plt = plot_ridge(ovca420_data, ovca420_labels, genes)
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
 ```
 
-```{r, include=FALSE}
-PRGn <- rev(RColorBrewer::brewer.pal(11, "PRGn"))
-color_ramp <- c(PRGn[1], PRGn[2], PRGn[3], PRGn[4], "grey50", PRGn[7], PRGn[8], PRGn[9])
+Create data objects containing violin plots.
+```{r, include=TRUE}
+ovca420_plt = plot_violin(ovca420_data, ovca420_labels, genes)
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
 ```
 
-
-```{r, include=FALSE}
-# Actual time points
-timepoint_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
-  geom_point(size=2, alpha=0.75, aes(color=Sample),
-             shape=16) +
-  scale_color_manual(values=color_ramp) +
-  theme_void() +
-  theme(legend.position="none")
-
-# Pseudotime
-pseudo_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
-  geom_point(size=2, alpha=0.75, aes(color=Pseudotime),
-             shape=16) +
-  scale_color_viridis(option="D") +
-  theme_void() +
-  theme(legend.title=element_blank(),
-        legend.text=element_blank())
+Create data objects containing UMAP plots.
+```{r, include=TRUE}
+ovca420_plt = plot_umap(ovca420_data, ovca420_labels, genes)
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
 ```
 
-```{r, include=FALSE}
-timepoint_plS
-
-```{r, include=FALSE}
-mlt <- melt(exp)
-ggplot(data = mlt, aes(x=Var1, y=Var2, fill=value)) + 
-  geom_tile()
+Create data objects containing dot plots.
+```{r, include=TRUE}
+ovca420_plt = plot_dot(ovca420_data, ovca420_labels, genes)
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
 ```
+
+Create data objects containing heatmaps.
+```{r, include=TRUE}
+ovca420_plt = plot_hm(ovca420_data, ovca420_labels, genes)
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
+```
+
