@@ -57,9 +57,9 @@ Due to memory constraints, we're going to have to perform this analysis cancer
 cell line by cancer cell line. First, let's specify some functions to help us.
 
 ## Define plotting functions
-Next, let's plot the distributions for each dataset.
+Next, let's create a function that plots the distribution of the data onto a histogram for each dataset.
 ```{r, include=TRUE}
-plot_histograms = function(data, labels){
+plot_histograms = function(data, labels, slot){
   plts = list()
   exp_data = list()
   colors = c("red", "blue", "green")
@@ -67,7 +67,7 @@ plot_histograms = function(data, labels){
   for (i in 1:length(labels)){
     
     # Extract data
-    exp = as.matrix(GetAssayData(data[[i]], slot="scale.data")) 
+    exp = as.matrix(GetAssayData(data[[i]], slot=slot)) 
     tmp = melt(exp)
     plts[[i]] = ggplot(tmp, aes(x=value)) + 
         
@@ -88,18 +88,37 @@ plot_histograms = function(data, labels){
 ## Cell Line Analysis
 ### A549
 ```{r, include=TRUE}
-# A549
-a549_egf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
-a549_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
-a549_tnf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
+# Linux
+#a549_egf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
+#a549_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
+#a549_tnf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
+
+# Windows
+a549_egf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
+a549_tgfb    = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
+a549_tnf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
 
 a549_labels = c("A549_EGF", "A549_TGFB1", "A549_TNF")
 a549_data = c(a549_egf, a549_tgfb, a549_tnf)
 ```
 
+#### Plot of the scRNASeq counts
 Create data objects containing histograms.
 ```{r, include=TRUE}
-a549_plt = plot_histograms(a549_data, a549_labels)
+a549_plt = plot_histograms(a549_data, a549_labels, "data")
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
+```
+
+#### Plot of the scRNASeq scaled data
+Create data objects containing histograms.
+```{r, include=TRUE}
+a549_plt = plot_histograms(a549_data, a549_labels, "scale.data")
 ```
 
 Now plot it in a for loop.
@@ -111,38 +130,138 @@ for (i in 1:length(a549_labels)){
 
 ### DU145
 ```{r, include=TRUE}
-# DU145
-du145_egf    = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_EGF.rds")
-du145_tgfb   = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_TGFB1.rds")
-du145_tnf    = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_TNF.rds")
+# Linux
+#du145_egf    = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_EGF.rds")
+#du145_tgfb   = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_TGFB1.rds")
+#du145_tnf    = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_TNF.rds")
 
-all_labels = c("DU145_EGF", "DU145_TGFB1", "DU145_TNF")
-all_data = c(du145_egf, du145_tgfb, du145_tnf)
+# Windows
+du145_egf    = readRDS("D:/Data/scRNASeq/GSE147405/DU145/DU145_EGF.rds")
+du145_tgfb   = readRDS("D:/Data/scRNASeq/GSE147405/DU145/DU145_TGFB1.rds")
+du145_tnf    = readRDS("D:/Data/scRNASeq/GSE147405/DU145/DU145_TNF.rds")
+
+du145_labels = c("DU145_EGF", "DU145_TGFB1", "DU145_TNF")
+du145_data = c(du145_egf, du145_tgfb, du145_tnf)
+```
+
+#### Plot of the scRNASeq counts
+Create data objects containing histograms.
+```{r, include=TRUE}
+du145_plt = plot_histograms(du145_data, du145_labels, "data")
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
+```
+
+#### Plot of the scRNASeq scaled data
+Create data objects containing histograms.
+```{r, include=TRUE}
+du145_plt = plot_histograms(du145_data, du145_labels, "scale.data")
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(du145_labels)){
+  print(du145_plt[[i]])
+}
 ```
 
 ### MCF7
 ```{r, include=TRUE}
-# MCF7
-mcf7_egf     = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_EGF.rds")
-mcf7_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_TGFB1.rds")
-mcf7_tnf     = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_TNF.rds")
+# Linux
+#mcf7_egf     = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_EGF.rds")
+#mcf7_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_TGFB1.rds")
+#mcf7_tnf     = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_TNF.rds")
 
-all_labels = c("MCF7_EGF", "MCF7_TGFB1", "MCF7_TNF")
-all_data = c(mcf7_egf, mcf7_tgfb, mcf7_tnf)
+# Windows
+mcf7_egf     = readRDS("D:/Data/scRNASeq/GSE147405/MCF7/MCF7_EGF.rds")
+mcf7_tgfb    = readRDS("D:/Data/scRNASeq/GSE147405/MCF7/MCF7_TGFB1.rds")
+mcf7_tnf     = readRDS("D:/Data/scRNASeq/GSE147405/MCF7/MCF7_TNF.rds")
+
+mcf7_labels = c("MCF7_EGF", "MCF7_TGFB1", "MCF7_TNF")
+mcf7_data = c(mcf7_egf, mcf7_tgfb, mcf7_tnf)
+```
+
+#### Plot of the scRNASeq counts
+Create data objects containing histograms.
+```{r, include=TRUE}
+mcf7_plt = plot_histograms(mcf7_data, mcf7_labels, "data")
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
+```
+
+#### Plot of the scRNASeq scaled data
+Create data objects containing histograms.
+```{r, include=TRUE}
+mcf7_plt = plot_histograms(mcf7_data, mcf7_labels, "scale.data")
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(mcf7_labels)){
+  print(mcf7_plt[[i]])
+}
 ```
 
 ### OVCA420
 ```{r, include=TRUE}
-# OVCA420
-ovca420_egf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_EGF.rds")
-ovca420_tgfb = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TGFB1.rds")
-ovca420_tnf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TNF.rds")
+# Linux
+#ovca420_egf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_EGF.rds")
+#ovca420_tgfb = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TGFB1.rds")
+#ovca420_tnf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TNF.rds")
 
-all_labels = c("OVCA420_EGF", "OVCA420_TGFB1", "OVCA420_TNF")
-all_data = c(ovca420_egf, ovca420_tgfb, ovca420_tnf)
+# Windows
+ovca420_egf  = readRDS("D:/Data/scRNASeq/GSE147405/OVCA420/OVCA420_EGF.rds")
+ovca420_tgfb = readRDS("D:/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TGFB1.rds")
+ovca420_tnf  = readRDS("D:/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TNF.rds")
+
+ovca420_labels = c("OVCA420_EGF", "OVCA420_TGFB1", "OVCA420_TNF")
+ovca420_data = c(ovca420_egf, ovca420_tgfb, ovca420_tnf)
 ```
 
+#### Plot of the scRNASeq counts
+Create data objects containing histograms.
+```{r, include=TRUE}
+ovca420_plt = plot_histograms(ovca420_data, ovca420_labels, "data")
+```
 
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
+```
+
+```{r, include=TRUE}
+features = c("SAMD11", "PLEKHN1")
+RidgePlot(object=ovca420_tgfb, features=features, ncol=2)
+VlnPlot(object=ovca420_tgfb, features=features)
+DotPlot(object=ovca420_tgfb, genes=features, legend=TRUE)
+FeaturePlot(object=ovca420_tgfb, features = features)
+#DoHeatmap(object = SubsetData(object=ovca420_tgfb, max.cells.per.ident = 100), genes.use= features, slim.col.label=TRUE, group.label.rot=TRUE)
+```
+
+#### Plot of the scRNASeq scaled data
+Create data objects containing histograms.
+```{r, include=TRUE}
+ovca420_plt = plot_histograms(ovca420_data, ovca420_labels, "scale.data")
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(ovca420_labels)){
+  print(ovca420_plt[[i]])
+}
+```
 
 # Pseudotime analysis
 
