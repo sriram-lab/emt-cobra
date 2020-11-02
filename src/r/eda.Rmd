@@ -1,21 +1,27 @@
 ---
 title: "Processing GSE147405 scRNASeq data for integration with COBRA"
 author: "Scott Campit"
-output: html_notebook
+output: 
+  html_notebook:
+    toc: yes
+    theme: united
 ---
   
 # Summary
-This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
+This notebook performs simple exploratory data analysis for single-cell EMT data. 
+Some of the code was adapted from various sources.
 
-# Download all dependencies
+# 1. Download all libraries and librarydependencies
+First, we'll download several libraries and library dependencies for single-cell
+data processing and data visualization.
 
-First, we'll download several dependencies for data processing and data visualization.
-
-```{r, include=FALSE}
-pkgLst = c("Seurat", "dplyr", "viridis", 
-           "matrixStats", "UpSetR", 
-           "mgcv", "tidyverse", "reshape2", "ggplot2")
-install.packages(pkgLst)
+Note that the following codeblock takes awhile to run. Only do it if you do not
+have the libraries pre-installed in your R environment.
+```{r, include=TRUE}
+#pkgLst = c("Seurat", "dplyr", "viridis", 
+#           "matrixStats", "UpSetR", 
+#           "mgcv", "tidyverse", "reshape2", "ggplot2")
+#install.packages(pkgLst)
 
 library(mgcv)
 library(splines)
@@ -28,6 +34,115 @@ library(UpSetR)
 library(reshape2)
 library(ggplot2)
 ```
+
+# 2. Data distributions for several EMT datasets
+The following code block loads the data from Cook and Vanderhyden, 2020 
+and plots the data distribution for all genes across all samples. In their
+dataset alone, there are 4 cancer cell lines and 3 different inducers:
+
+**Table of cancer cell lines in Cook & Vanderhyden, 2020.**
+|CCL             |Tissue       |
+|----------------|-------------|
+|A549            |Lung         |
+|DU145           |Prostate     | 
+|MCF7            |Mammary gland|
+|OVCA420         |Ovary        |
+
+**EMT Inducers:**
+  * $TGF\beta$-1
+  * EGF
+  * TNF
+
+Due to memory constraints, we're going to have to perform this analysis cancer 
+cell line by cancer cell line. First, let's specify some functions to help us.
+
+## Define plotting functions
+Next, let's plot the distributions for each dataset.
+```{r, include=TRUE}
+plot_histograms = function(data, labels){
+  plts = list()
+  exp_data = list()
+  colors = c("red", "blue", "green")
+  
+  for (i in 1:length(labels)){
+    
+    # Extract data
+    exp = as.matrix(GetAssayData(data[[i]], slot="scale.data")) 
+    tmp = melt(exp)
+    plts[[i]] = ggplot(tmp, aes(x=value)) + 
+        
+        # Histogram
+        geom_histogram(fill=colors[i], bins=100) +
+        
+        # Density plots
+        geom_density(fill=colors[i]) +
+        
+        # Plot attributes
+        xlab("Counts") + ylab("Frequency") + 
+        ggtitle(paste(labels[[i]], "UMAP data distribution", sep=" "))
+  }
+  return(plts)
+}
+```
+
+## Cell Line Analysis
+### A549
+```{r, include=TRUE}
+# A549
+a549_egf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
+a549_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
+a549_tnf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
+
+a549_labels = c("A549_EGF", "A549_TGFB1", "A549_TNF")
+a549_data = c(a549_egf, a549_tgfb, a549_tnf)
+```
+
+Create data objects containing histograms.
+```{r, include=TRUE}
+a549_plt = plot_histograms(a549_data, a549_labels)
+```
+
+Now plot it in a for loop.
+```{r, include=TRUE}
+for (i in 1:length(a549_labels)){
+  print(a549_plt[[i]])
+}
+```
+
+### DU145
+```{r, include=TRUE}
+# DU145
+du145_egf    = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_EGF.rds")
+du145_tgfb   = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_TGFB1.rds")
+du145_tnf    = readRDS("~/Data/scRNASeq/GSE147405/DU145/DU145_TNF.rds")
+
+all_labels = c("DU145_EGF", "DU145_TGFB1", "DU145_TNF")
+all_data = c(du145_egf, du145_tgfb, du145_tnf)
+```
+
+### MCF7
+```{r, include=TRUE}
+# MCF7
+mcf7_egf     = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_EGF.rds")
+mcf7_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_TGFB1.rds")
+mcf7_tnf     = readRDS("~/Data/scRNASeq/GSE147405/MCF7/MCF7_TNF.rds")
+
+all_labels = c("MCF7_EGF", "MCF7_TGFB1", "MCF7_TNF")
+all_data = c(mcf7_egf, mcf7_tgfb, mcf7_tnf)
+```
+
+### OVCA420
+```{r, include=TRUE}
+# OVCA420
+ovca420_egf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_EGF.rds")
+ovca420_tgfb = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TGFB1.rds")
+ovca420_tnf  = readRDS("~/Data/scRNASeq/GSE147405/OVCA420/OVCA420_TNF.rds")
+
+all_labels = c("OVCA420_EGF", "OVCA420_TGFB1", "OVCA420_TNF")
+all_data = c(ovca420_egf, ovca420_tgfb, ovca420_tnf)
+```
+
+
 
 # Pseudotime analysis
 
