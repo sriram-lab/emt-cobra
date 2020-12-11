@@ -11,17 +11,17 @@ output:
 This notebook performs simple exploratory data analysis for single-cell EMT data. 
 Some of the code was adapted from various sources.
 
-# 1. Download all libraries and librarydependencies
+# 1. Download all libraries and library dependencies
 First, we'll download several libraries and library dependencies for single-cell
 data processing and data visualization.
 
 Note that the following codeblock takes awhile to run. Only do it if you do not
 have the libraries pre-installed in your R environment.
 ```{r, include=TRUE}
-#pkgLst = c("Seurat", "dplyr", "viridis", 
-#           "matrixStats", "UpSetR", 
-#           "mgcv", "tidyverse", "reshape2", "ggplot2")
-#install.packages(pkgLst)
+pkgLst = c("Seurat", "dplyr", "viridis", 
+           "matrixStats", "UpSetR", 
+           "mgcv", "tidyverse", "reshape2", "ggplot2")
+install.packages(pkgLst)
 
 library(mgcv)
 library(splines)
@@ -168,21 +168,74 @@ For this analysis, I'm trying to see the effects of different inducers on the
 data. Let's use the top 20 genes with the highest variance.
 
 ### A549
+First, let's load up the data from A549.
 ```{r, include=TRUE}
 # Linux
 #a549_egf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
 #a549_tgfb    = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
 #a549_tnf     = readRDS("~/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
 
-# Windows
-a549_egf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
-a549_tgfb    = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
-a549_tnf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
+# Dell
+#a549_egf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
+#a549_tgfb    = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
+#a549_tnf     = readRDS("D:/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
+
+# ACLX
+a549_egf     = readRDS("C:/Users/scott/Data/scRNASeq/GSE147405/A549/A549_EGF.rds")
+a549_tgfb    = readRDS("C:/Users/scott/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds")
+a549_tnf     = readRDS("C:/Users/scott/Data/scRNASeq/GSE147405/A549/A549_TNF.rds")
 
 a549_labels = c("A549_EGF", "A549_TGFB1", "A549_TNF")
 a549_data = c(a549_egf, a549_tgfb, a549_tnf)
-
 ```
+
+Note that the data is currently mapped onto HGNC gene symbols rather than Entrez IDs. I need to do that now.
+```{r}
+#BiocManager::install("biomaRt")
+library(biomaRt)
+ensembl=useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+```
+
+This function will perform the data mapping and median aggregation.
+```{r}
+map_hgnc_to_entrez = function(seurat_obj, mart){
+  tmp = seurat_obj@assays$RNA@counts
+  genes = getBM(
+    attributes=c("hgnc_symbol", "entrezgene_id"),
+    values=rownames(tmp),
+    mart=mart
+  )
+  
+  # Map rows
+  mapped_data  = merge(genes, tmp, by.x="hgnc_symbol", by.y=0)
+  
+  # Remove data points without entrez IDs
+  remove_genes = is.na(mapped_data[, "entrezgene_id"])
+  mapped_data  = mapped_data[!remove_genes,]
+  mapped_data  = mapped_data[, -1]
+  
+  # Perform median aggregation -> this step takes awhile
+  agg_data = aggregate(mapped_data[, -1], 
+                       by=list(mapped_data[, 1]), 
+                       FUN=median)
+  
+  # Construct the Assay object to replace in the Seurat obj
+  colnames(agg_data)[1] = "entrezgene_id"
+  rownames(agg_data) = agg_data[, 1]
+  agg_data = agg_data[, -1]
+  tmp = CreateAssayObject(counts=agg_data)
+  seurat_obj@assays$RNA@counts = tmp@counts
+  
+  return(seurat_obj)
+}
+
+a549_egf = map_hgnc_to_entrez(a549_egf, ensembl)
+a549_tgfb = map_hgnc_to_entrez(a549_tgfb, ensembl)
+a549_tnf = map_hgnc_to_entrez(a549_tnf, ensembl)
+```
+
+Now let's map to the human metabolic reconstruction RECON1
+
 
 #### Plots of the A549 scRNASeq counts
 
