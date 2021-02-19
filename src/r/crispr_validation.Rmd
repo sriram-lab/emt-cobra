@@ -1,0 +1,67 @@
+---
+title: "CRISPR-Cas9 Validation"
+author: "Scott Campit"
+output: html_notebook
+---
+
+# Summary
+This notebook does the following analysis:
+  1. Separate out lung cancer cell lines
+  2. Compute differentially expressed CS
+  3. Compare it to current iteration of metabolic reactions and genes predicted by COBRA
+
+# 1. Load libraries
+```{r}
+library(tidyr)
+library(readr)
+```
+
+# 2. Read in data
+```{r}
+datapath = '~/Data/CRISPR/Achilles_gene_effect.csv'
+data = readr::read_csv(datapath)
+```
+
+# 3. Map data
+The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
+
+What we need to do is map it to the following:
+
+  * Cancer Cell Line
+  * Cancer Cell Line Tissue Lineage
+  * Entrez ID
+
+First, we'll get relevant meta data
+```{r}
+# All data
+metapath = "~/Data/CRISPR/sample_info.csv"
+meta_data = read_csv(metapath)
+meta_data = meta_data[, c("DepMap_ID", 
+                        "stripped_cell_line_name", 
+                        "primary_or_metastasis",
+                        "lineage",
+                        "lineage_subtype")]
+```
+
+Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
+```{r}
+# Lung data needs to be NSCLC and we need to know whether it's from the primary site or if it is metastatic
+lung_meta_data = meta_data[meta_data["lineage"]=="lung",]
+lung_meta_data = lung_meta_data[lung_meta_data["lineage_subtype"]=="NSCLC",]
+lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]
+``` 
+
+We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.
+```{r}
+orig_colnames = colnames(data)
+all_symbol = sapply(strsplit(orig_colnames, " "), '[', 1)
+all_entrez = sapply(strsplit(orig_colnames, " "), '[', -1)
+```
+
+Finally, we can map back to the dataset of interest
+```{r}
+```
+
+# 4. Extract lung cancer cell line data only
+```{r}
+```
