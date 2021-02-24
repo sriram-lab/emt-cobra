@@ -14,15 +14,66 @@ This notebook does the following analysis:
 ```{r}
 library(tidyr)
 library(readr)
+library(stringr)
+library(ggplot2)
+library(reticulate)
 ```
 
 # 2. Read in data
 ```{r}
-datapath = '~/Data/CRISPR/Achilles_gene_effect.csv'
+rm(list=ls())
+
+# Dell
+datapath = 'D:/Data/CRISPR/Achilles/Achilles_gene_effect.csv'
+
+# Linux
+#datapath = '~/Data/CRISPR/Achilles_gene_effect.csv'
+
+# Read in data
 data = readr::read_csv(datapath)
 ```
 
-# 3. Map data
+# 3. Compute Z-scores from CERES data
+First, we'll compute a left-sided p-value
+```{r}
+ceres = data[, 2:ncol(data)]
+ceres = as.matrix(ceres)
+is.na(ceres) = 0
+pvals = pnorm(as.numeric(ceres), mean=0, lower.tail=TRUE)
+summary(pvals)
+```
+
+Now let's plot the data distribution.
+```{r}
+library(ggplot2)
+library(reshape2)
+tmp = data.frame(pvals)
+tmp$col = as.factor(tmp$pvals < 0.05)
+mlt_ceres = reshape2::melt(ceres)
+tmp$ceres = mlt_ceres$value
+```
+
+```{r}
+# Plot p-value distribution
+ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="CERES p-value distribution (all)", 
+       x="P-values (left-sided)", 
+       y="Frequency") +
+  theme(legend.position="none")
+
+# Plot CERES distribution
+ggplot(tmp, aes(x=ceres, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="CERES distribution (all)", 
+       x="CERES", 
+       y="Frequency") +
+  theme(legend.position="none")
+```
+
+# 3. Map lung data to CRISPR
 The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
 
 What we need to do is map it to the following:
@@ -33,8 +84,13 @@ What we need to do is map it to the following:
 
 First, we'll get relevant meta data
 ```{r}
-# All data
-metapath = "~/Data/CRISPR/sample_info.csv"
+# Linux
+#metapath = "~/Data/CRISPR/sample_info.csv"
+
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
 meta_data = read_csv(metapath)
 meta_data = meta_data[, c("DepMap_ID", 
                         "stripped_cell_line_name", 
@@ -53,15 +109,105 @@ lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]
 
 We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.
 ```{r}
+# Save gene symbols
 orig_colnames = colnames(data)
-all_symbol = sapply(strsplit(orig_colnames, " "), '[', 1)
-all_entrez = sapply(strsplit(orig_colnames, " "), '[', -1)
+all_symbol = as.character(sapply(strsplit(orig_colnames, " "), '[', 1))
+#all_symbol = all_symbol[-1]
+
+# Save Entrez ID 
+all_entrez = as.character(sapply(strsplit(orig_colnames, " "), '[', -1))
+all_entrez = str_remove(all_entrez, "[( )]")
+all_entrez = str_remove(all_entrez, "[( )]")
+all_entrez[1] = all_symbol[1]
 ```
 
-Finally, we can map back to the dataset of interest
+Combine all the identifiers into a single dataframe.
 ```{r}
+# All identifiers
+all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
+all_ids = all_ids[-1, ]
+```
+
+Map it back to 
+```{r}
+recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
+recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
+recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
+```
+
+```{r}
+# Create dataset with gene symbols as ID
+data_entrez = data
+colnames(data_entrez) = all_entrez
+data_entrez = data_entrez[, unique(recon1_match$entrez)]
+data_entrez$DepMap_ID = data$DepMap_ID
+
+# Create pvalue dataframe
+pvals = as.matrix(pvals)
+data_dims = dim(data[, 2:ncol(data)])
+pvalue_entrez = matrix(pvals, 
+                   nrow=data_dims[1], 
+                   ncol=data_dims[2])
+pvalue_entrez = data.frame(pvalue_entrez)
+colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
+pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
+pvalue_entrez$DepMap_ID = data$DepMap_ID
 ```
 
 # 4. Extract lung cancer cell line data only
+Finally, we can the NSCLC data back to RECON1 genes.
+```{r}
+merged_lung = merge(lung_meta_data, data_entrez, by='DepMap_ID')
+merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID')
+```
+
+Now let's plot the data distribution.
+```{r}
+tmp = merged_pval[, 6:ncol(merged_pval)]
+tmp = reshape2::melt(data.frame(tmp))
+tmp$col = as.factor(tmp$value < 0.05)
+lung_ceres = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
+tmp$ceres = lung_ceres$value
+```
+
+```{r}
+# Plot p-value distribution
+ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="CERES p-value distribution (all)", 
+       x="P-values (left-sided)", 
+       y="Frequency") +
+  theme(legend.position="none")
+
+# Plot CERES distribution
+ggplot(tmp, aes(x=ceres, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="CERES distribution (all)", 
+       x="CERES", 
+       y="Frequency") +
+  theme(legend.position="none")
+```
+# 5. Get differentially expressed genes for A549
+```{r}
+a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
+a549_ceres[2, ] = merged_pval[merged_pval$stripped_cell_line_name=="A549",]
+a549_ceres = a549_ceres[, 6:ncol(a549_ceres)]
+a549_ceres = t(a549_ceres)
+a549_ceres = data.frame(a549_ceres)
+colnames(a549_ceres) = c("CERES", "PValue")
+
+xname = data.frame(entrez=rownames(a549_ceres))
+tmp = merge(xname, recon1_match, by='entrez')
+tmp[, 3:4] = NULL
+tmp = unique(tmp)
+a549_ceres$Symbol = tmp$symbol
+
+sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
+write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
+```
+
+# 6. Get differentially expressed genes for all metastatic cell lines
 ```{r}
 ```
