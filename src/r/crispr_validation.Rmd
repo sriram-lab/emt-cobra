@@ -17,6 +17,13 @@ library(readr)
 library(stringr)
 library(ggplot2)
 library(reticulate)
+library(limma)
+library(Glimma)
+library(edgeR)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+
 ```
 
 # 2. Read in data
@@ -45,8 +52,6 @@ summary(pvals)
 
 Now let's plot the data distribution.
 ```{r}
-library(ggplot2)
-library(reshape2)
 tmp = data.frame(pvals)
 tmp$col = as.factor(tmp$pvals < 0.05)
 mlt_ceres = reshape2::melt(ceres)
@@ -128,19 +133,11 @@ all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
 all_ids = all_ids[-1, ]
 ```
 
-Map it back to 
-```{r}
-recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
-recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
-recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
-```
-
+Map everything to Entrez IDs
 ```{r}
 # Create dataset with gene symbols as ID
 data_entrez = data
 colnames(data_entrez) = all_entrez
-data_entrez = data_entrez[, unique(recon1_match$entrez)]
-data_entrez$DepMap_ID = data$DepMap_ID
 
 # Create pvalue dataframe
 pvals = as.matrix(pvals)
@@ -150,6 +147,37 @@ pvalue_entrez = matrix(pvals,
                    ncol=data_dims[2])
 pvalue_entrez = data.frame(pvalue_entrez)
 colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
+```
+
+
+Map everything to Gene Symbols
+```{r}
+# Create dataset with gene symbols as ID
+data_symbol = data
+colnames(data_symbol) = all_symbol
+
+# Create pvalue dataframe
+pvals = as.matrix(pvals)
+data_dims = dim(data[, 2:ncol(data)])
+pvalue_symbol = matrix(pvals, 
+                   nrow=data_dims[1], 
+                   ncol=data_dims[2])
+pvalue_symbol = data.frame(pvalue_symbol)
+colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
+pvalue_symbol$DepMap_ID = data$DepMap_ID
+
+```
+
+## Get metabolic genes only
+Map it back to the human metabolic reconstruction.
+```{r}
+recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
+recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
+recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
+
+data_entrez = data_entrez[, unique(recon1_match$entrez)]
+data_entrez$DepMap_ID = data$DepMap_ID
+
 pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
 pvalue_entrez$DepMap_ID = data$DepMap_ID
 ```
@@ -157,8 +185,14 @@ pvalue_entrez$DepMap_ID = data$DepMap_ID
 # 4. Extract lung cancer cell line data only
 Finally, we can the NSCLC data back to RECON1 genes.
 ```{r}
+# Entrez IDs
 merged_lung = merge(lung_meta_data, data_entrez, by='DepMap_ID')
 merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID')
+
+# Gene Symbols
+merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
+merged_pval = merge(lung_meta_data, pvalue_symbol, by='DepMap_ID')
+
 ```
 
 Now let's plot the data distribution.
@@ -170,12 +204,13 @@ lung_ceres = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
 tmp$ceres = lung_ceres$value
 ```
 
+## Visualize the NSCLC CRISPR-Cas9 data
 ```{r}
 # Plot p-value distribution
 ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
   geom_histogram(bins=100) +
   scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES p-value distribution (all)", 
+  labs(title="CERES NSCLC p-value distribution", 
        x="P-values (left-sided)", 
        y="Frequency") +
   theme(legend.position="none")
@@ -184,11 +219,50 @@ ggplot(data.frame(tmp), aes(x=value, fill=col)) +
 ggplot(tmp, aes(x=ceres, fill=col)) +  
   geom_histogram(bins=100) +
   scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES distribution (all)", 
+  labs(title="CERES NSCLC distribution", 
        x="CERES", 
        y="Frequency") +
   theme(legend.position="none")
 ```
+
+## Get differentially expressed CERES score by comparing metastatic / primary site
+
+Format the dataset
+```{r}
+sample_info = merged_lung[, 1:5]
+data = merged_lung[, -c(1:5)]
+rownames(data) = sample_info[, 2]
+data = t(data)
+sample_info = sample_info %>% dplyr::select(2:3)
+```
+
+Now we'll floor positive CERES Scores to 0, and take the absolute value for the CERES Scores
+```{r}
+data[data > 0] = 0
+data = abs(data)
+data[is.na(data)] = 0
+```
+
+Now let's preprocess the data
+```{r}
+d0 = DGEList(data)
+d0 = calcNormFactors(d0)
+
+cutoff = 1
+drop = which(apply(cpm(d0), 1, max) < cutoff)
+d = d0[-drop,] 
+dim(d) # number of genes left
+
+group = as.factor(sample_info$primary_or_metastasis)
+design = model.matrix(~0+group)
+v = voom(d, design, plot=TRUE)
+fit = lmFit(v, design)
+result = eBayes(fit)
+top.table = topTable(result)
+head(top.table, 20)
+write.table(top.table, "clipboard", sep="\t", col.names=TRUE)
+```
+
 # 5. Get differentially expressed genes for A549
 ```{r}
 a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
@@ -208,6 +282,9 @@ sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
 write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-# 6. Get differentially expressed genes for all metastatic cell lines
+# 6. Get differentially expressed genes across all NSCLC cell lines
 ```{r}
+tmp = merged_pval[, -c(1:5)]
+tmp2 = merged_lung[, -c(1:5)]
+
 ```
