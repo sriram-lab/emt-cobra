@@ -23,70 +23,19 @@ library(edgeR)
 library(tidyverse)
 library(dplyr)
 library(reshape2)
-
+library(readxl)
+library(ggVennDiagram)
+library(rrcov)
 ```
 
 # 2. Read in data
 ```{r}
 rm(list=ls())
-
-# Dell
-datapath = 'D:/Data/CRISPR/Achilles/Achilles_gene_effect.csv'
-
-# Linux
-#datapath = '~/Data/CRISPR/Achilles_gene_effect.csv'
-
-# Read in data
-data = readr::read_csv(datapath)
+robpca_data = "D:/Analysis/EMT/ceres_robpca.RData"
+load(robpca_data)
 ```
 
-# 3. Compute Z-scores from CERES data
-First, we'll compute a left-sided p-value
-```{r}
-ceres = data[, 2:ncol(data)]
-ceres = as.matrix(ceres)
-is.na(ceres) = 0
-pvals = pnorm(as.numeric(ceres), mean=0, lower.tail=TRUE)
-summary(pvals)
-```
-
-Now let's plot the data distribution.
-```{r}
-tmp = data.frame(pvals)
-tmp$col = as.factor(tmp$pvals < 0.05)
-mlt_ceres = reshape2::melt(ceres)
-tmp$ceres = mlt_ceres$value
-```
-
-```{r}
-# Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES p-value distribution (all)", 
-       x="P-values (left-sided)", 
-       y="Frequency") +
-  theme(legend.position="none")
-
-# Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES distribution (all)", 
-       x="CERES", 
-       y="Frequency") +
-  theme(legend.position="none")
-```
-
-# 3. Map lung data to CRISPR
-The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
-
-What we need to do is map it to the following:
-
-  * Cancer Cell Line
-  * Cancer Cell Line Tissue Lineage
-  * Entrez ID
-
+## Grab CCLE meta data
 First, we'll get relevant meta data
 ```{r}
 # Linux
@@ -104,6 +53,70 @@ meta_data = meta_data[, c("DepMap_ID",
                         "lineage_subtype")]
 ```
 
+# 4. Compute P-values from CERES Score
+
+## Global p-value
+Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
+```{r}
+mu = mean(ceres, na.rm=TRUE)
+stdev = sd(as.matrix(ceres), na.rm=TRUE)
+global_pvals = pnorm(as.numeric(ceres), 
+                     mean=mu, 
+                     sd=stdev,
+                     lower.tail=TRUE)
+pvals = global_pvals
+pvals = data.matrix(pvals)
+```
+
+Because we are testing several hypotheses, we should control using the FDR.
+```{r}
+# Perform FDR Adjustment
+adjusted_pval = p.adjust(pvals, method="fdr")
+pvals = adjusted_pval
+rm(list=c("adjusted_pval", "global_pvals"))
+```
+
+## Plot the data distribution
+
+Preprocess data
+```{r}
+tmp = data.frame(pvals)
+tmp$col = as.factor(tmp$pvals < 0.05)
+mlt_ceres = reshape2::melt(ceres)
+tmp$ceres = mlt_ceres$value
+```
+
+Now let's plot the data distribution.
+```{r}
+# Plot p-value distribution
+ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="CERES FDR distribution (all)", 
+       x="FDR Adjusted P-values (left-sided)", 
+       y="Frequency") +
+  theme(legend.position="none")
+
+# Plot CERES distribution
+ggplot(tmp, aes(x=ceres, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="CERES distribution (all)", 
+       x="CERES", 
+       y="Frequency") +
+  theme(legend.position="none")
+```
+
+# 5. Map the CERES scores back to CCLE
+The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
+
+What we need to do is map it to the following:
+
+  * Cancer Cell Line
+  * Cancer Cell Line Tissue Lineage
+  * Entrez ID
+
+## Filter the data to get only NSCLC
 Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
 ```{r}
 # Lung data needs to be NSCLC and we need to know whether it's from the primary site or if it is metastatic
@@ -112,10 +125,11 @@ lung_meta_data = lung_meta_data[lung_meta_data["lineage_subtype"]=="NSCLC",]
 lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]
 ``` 
 
+## Separate entrez and gene symbol identifiers
 We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.
 ```{r}
 # Save gene symbols
-orig_colnames = colnames(data)
+orig_colnames = colnames(ceres)
 all_symbol = as.character(sapply(strsplit(orig_colnames, " "), '[', 1))
 #all_symbol = all_symbol[-1]
 
@@ -133,15 +147,16 @@ all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
 all_ids = all_ids[-1, ]
 ```
 
+### Map dataset to Entrez IDs
 Map everything to Entrez IDs
 ```{r}
 # Create dataset with gene symbols as ID
-data_entrez = data
+data_entrez = ceres
 colnames(data_entrez) = all_entrez
 
 # Create pvalue dataframe
 pvals = as.matrix(pvals)
-data_dims = dim(data[, 2:ncol(data)])
+data_dims = dim(ceres)
 pvalue_entrez = matrix(pvals, 
                    nrow=data_dims[1], 
                    ncol=data_dims[2])
@@ -149,26 +164,25 @@ pvalue_entrez = data.frame(pvalue_entrez)
 colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
 ```
 
-
+### Map dataset to Gene Symbols
 Map everything to Gene Symbols
 ```{r}
 # Create dataset with gene symbols as ID
-data_symbol = data
+data_symbol = ceres
 colnames(data_symbol) = all_symbol
 
 # Create pvalue dataframe
 pvals = as.matrix(pvals)
-data_dims = dim(data[, 2:ncol(data)])
+data_dims = dim(ceres)
 pvalue_symbol = matrix(pvals, 
                    nrow=data_dims[1], 
                    ncol=data_dims[2])
 pvalue_symbol = data.frame(pvalue_symbol)
 colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
-pvalue_symbol$DepMap_ID = data$DepMap_ID
-
+pvalue_symbol$DepMap_ID = ids
 ```
 
-## Get metabolic genes only
+## Filter metabolic genes only
 Map it back to the human metabolic reconstruction.
 ```{r}
 recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
@@ -176,13 +190,13 @@ recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
 recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
 
 data_entrez = data_entrez[, unique(recon1_match$entrez)]
-data_entrez$DepMap_ID = data$DepMap_ID
+data_entrez$DepMap_ID = ids
 
 pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-pvalue_entrez$DepMap_ID = data$DepMap_ID
+pvalue_entrez$DepMap_ID = ids
 ```
 
-# 4. Extract lung cancer cell line data only
+# 6. Merge metadata to metabolic p-values and CERES scores
 Finally, we can the NSCLC data back to RECON1 genes.
 ```{r}
 # Entrez IDs
@@ -194,8 +208,8 @@ merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
 merged_pval = merge(lung_meta_data, pvalue_symbol, by='DepMap_ID')
 
 ```
-
-Now let's plot the data distribution.
+## Visualize the NSCLC CRISPR-Cas9 metabolism data mapped to RECON1
+Let's construct the data object used for the visualization.
 ```{r}
 tmp = merged_pval[, 6:ncol(merged_pval)]
 tmp = reshape2::melt(data.frame(tmp))
@@ -204,7 +218,7 @@ lung_ceres = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
 tmp$ceres = lung_ceres$value
 ```
 
-## Visualize the NSCLC CRISPR-Cas9 data
+Now actually plot the p-values and CERES scores.
 ```{r}
 # Plot p-value distribution
 ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
@@ -225,8 +239,9 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
   theme(legend.position="none")
 ```
 
-## Get differentially expressed CERES score by comparing metastatic / primary site
+# 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
+## Data preprocessing
 Format the dataset
 ```{r}
 sample_info = merged_lung[, 1:5]
@@ -243,27 +258,54 @@ data = abs(data)
 data[is.na(data)] = 0
 ```
 
+## Preparing limma-voom data 
 Now let's preprocess the data
 ```{r}
+# Create a DGE List data object
+data = cpm(data)
 d0 = DGEList(data)
 d0 = calcNormFactors(d0)
 
+# Filter out bad data points
 cutoff = 1
 drop = which(apply(cpm(d0), 1, max) < cutoff)
 d = d0[-drop,] 
-dim(d) # number of genes left
+dim(d)
+```
 
+We need to set up the groups we want to compare and the design matrix.
+```{r}
 group = as.factor(sample_info$primary_or_metastasis)
 design = model.matrix(~0+group)
+```
+
+## Run limma-voom
+Now let's run *limma-voom*
+```{r}
 v = voom(d, design, plot=TRUE)
-fit = lmFit(v, design)
-result = eBayes(fit)
+fit = lmFit(v, design, method='robust')
+result = eBayes(fit, robust=TRUE)
+```
+
+Finally, let's get the top 20 results
+```{r}
 top.table = topTable(result)
 head(top.table, 20)
 write.table(top.table, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-# 5. Get differentially expressed genes for A549
+# 8. Get gene list that are universally lethal across all cell lines
+This gene list was determined from Project Score. Specifically, I defined universally lethal genes that are lethal in more than 50% of the cancer cell lines out of > 300. 
+```{r}
+project_score_file = "D:/Data/CRISPR/Score/41586_2019_1103_MOESM4_ESM/Supplementary Table 3 - Core-Fitness and Context-Specificity Summary_v2.xlsx"
+sheet_name = "Filter Genes"
+
+project_score = read_excel(project_score_file, sheet_name)
+genes_to_filter = project_score[project_score$`Dependency Score` > 50, ]
+```
+
+# 9. Get differentially expressed genes for A549 from CERES score
+First, we'll get the row corresponding to the cancer cell line A549.
 ```{r}
 a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
 a549_ceres[2, ] = merged_pval[merged_pval$stripped_cell_line_name=="A549",]
@@ -271,20 +313,43 @@ a549_ceres = a549_ceres[, 6:ncol(a549_ceres)]
 a549_ceres = t(a549_ceres)
 a549_ceres = data.frame(a549_ceres)
 colnames(a549_ceres) = c("CERES", "PValue")
+```
 
+Now, let's grab the metabolic genes that are in RECON1
+```{r}
 xname = data.frame(entrez=rownames(a549_ceres))
 tmp = merge(xname, recon1_match, by='entrez')
 tmp[, 3:4] = NULL
 tmp = unique(tmp)
 a549_ceres$Symbol = tmp$symbol
+```
 
+## Plot Venn Diagram
+```{r}
+gene_overlap = list(
+  A549_specific = sig_a549_ceres$Symbol,
+  Core_fitness = genes_to_filter$`HGNC Symbol`
+)
+ggVennDiagram(gene_overlap)
+```
+
+Finally, we'll grab the genes that have a left-tailed p-value less than 0.05
+```{r}
 sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
+genes_to_filter = genes_to_filter$`Entrez ID`
+genes_to_filter = data.frame(genes_to_filter)
+ubiq_genes = merge(genes_to_filter, 
+                   sig_a549_ceres, 
+                   by.x='genes_to_filter', 
+                   by.y="row.names")
+unique_genes = sig_a549_ceres[!sig_a549_ceres$Symbol %in% ubiq_genes$Symbol, ]
 write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-# 6. Get differentially expressed genes across all NSCLC cell lines
+
+
+# 10. Get differentially expressed genes across all NSCLC cell lines
 ```{r}
 tmp = merged_pval[, -c(1:5)]
 tmp2 = merged_lung[, -c(1:5)]
-
 ```
