@@ -12,7 +12,7 @@
 <meta name="author" content="Scott Campit" />
 
 
-<title>CRISPR-Cas9 Validation</title>
+<title>Robust PCA data filtering</title>
 
 <script>/*! jQuery v1.11.3 | (c) 2005, 2015 jQuery Foundation, Inc. | jquery.org/license */
 !function(a,b){"object"==typeof module&&"object"==typeof module.exports?module.exports=a.document?b(a,!0):function(a){if(!a.document)throw new Error("jQuery requires a window with a document");return b(a)}:b(a)}("undefined"!=typeof window?window:this,function(a,b){var c=[],d=c.slice,e=c.concat,f=c.push,g=c.indexOf,h={},i=h.toString,j=h.hasOwnProperty,k={},l="1.11.3",m=function(a,b){return new m.fn.init(a,b)},n=/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,o=/^-ms-/,p=/-([\da-z])/gi,q=function(a,b){return b.toUpperCase()};m.fn=m.prototype={jquery:l,constructor:m,selector:"",length:0,toArray:function(){return d.call(this)},get:function(a){return null!=a?0>a?this[a+this.length]:this[a]:d.call(this)},pushStack:function(a){var b=m.merge(this.constructor(),a);return b.prevObject=this,b.context=this.context,b},each:function(a,b){return m.each(this,a,b)},map:function(a){return this.pushStack(m.map(this,function(b,c){return a.call(b,c,b)}))},slice:function(){return this.pushStack(d.apply(this,arguments))},first:function(){return this.eq(0)},last:function(){return this.eq(-1)},eq:function(a){var b=this.length,c=+a+(0>a?b:0);return this.pushStack(c>=0&&b>c?[this[c]]:[])},end:function(){return this.prevObject||this.constructor(null)},push:f,sort:c.sort,splice:c.splice},m.extend=m.fn.extend=function(){var a,b,c,d,e,f,g=arguments[0]||{},h=1,i=arguments.length,j=!1;for("boolean"==typeof g&&(j=g,g=arguments[h]||{},h++),"object"==typeof g||m.isFunction(g)||(g={}),h===i&&(g=this,h--);i>h;h++)if(null!=(e=arguments[h]))for(d in e)a=g[d],c=e[d],g!==c&&(j&&c&&(m.isPlainObject(c)||(b=m.isArray(c)))?(b?(b=!1,f=a&&m.isArray(a)?a:[]):f=a&&m.isPlainObject(a)?a:{},g[d]=m.extend(j,f,c)):void 0!==c&&(g[d]=c));return g},m.extend({expando:"jQuery"+(l+Math.random()).replace(/\D/g,""),isReady:!0,error:function(a){throw new Error(a)},noop:function(){},isFunction:function(a){return"function"===m.type(a)},isArray:Array.isArray||function(a){return"array"===m.type(a)},isWindow:function(a){return null!=a&&a==a.window},isNumeric:function(a){return!m.isArray(a)&&a-parseFloat(a)+1>=0},isEmptyObject:function(a){var b;for(b in a)return!1;return!0},isPlainObject:function(a){var b;if(!a||"object"!==m.type(a)||a.nodeType||m.isWindow(a))return!1;try{if(a.constructor&&!j.call(a,"constructor")&&!j.call(a.constructor.prototype,"isPrototypeOf"))return!1}catch(c){return!1}if(k.ownLast)for(b in a)return j.call(a,b);for(b in a);return void 0===b||j.call(a,b)},type:function(a){return null==a?a+"":"object"==typeof a||"function"==typeof a?h[i.call(a)]||"object":typeof a},globalEval:function(b){b&&m.trim(b)&&(a.execScript||function(b){a.eval.call(a,b)})(b)},camelCase:function(a){return a.replace(o,"ms-").replace(p,q)},nodeName:function(a,b){return a.nodeName&&a.nodeName.toLowerCase()===b.toLowerCase()},each:function(a,b,c){var d,e=0,f=a.length,g=r(a);if(c){if(g){for(;f>e;e++)if(d=b.apply(a[e],c),d===!1)break}else for(e in a)if(d=b.apply(a[e],c),d===!1)break}else if(g){for(;f>e;e++)if(d=b.call(a[e],e,a[e]),d===!1)break}else for(e in a)if(d=b.call(a[e],e,a[e]),d===!1)break;return a},trim:function(a){return null==a?"":(a+"").replace(n,"")},makeArray:function(a,b){var c=b||[];return null!=a&&(r(Object(a))?m.merge(c,"string"==typeof a?[a]:a):f.call(c,a)),c},inArray:function(a,b,c){var d;if(b){if(g)return g.call(b,a,c);for(d=b.length,c=c?0>c?Math.max(0,d+c):c:0;d>c;c++)if(c in b&&b[c]===a)return c}return-1},merge:function(a,b){var c=+b.length,d=0,e=a.length;while(c>d)a[e++]=b[d++];if(c!==c)while(void 0!==b[d])a[e++]=b[d++];return a.length=e,a},grep:function(a,b,c){for(var d,e=[],f=0,g=a.length,h=!c;g>f;f++)d=!b(a[f],f),d!==h&&e.push(a[f]);return e},map:function(a,b,c){var d,f=0,g=a.length,h=r(a),i=[];if(h)for(;g>f;f++)d=b(a[f],f,c),null!=d&&i.push(d);else for(f in a)d=b(a[f],f,c),null!=d&&i.push(d);return e.apply([],i)},guid:1,proxy:function(a,b){var c,e,f;return"string"==typeof b&&(f=a[b],b=a,a=f),m.isFunction(a)?(c=d.call(arguments,2),e=function(){return a.apply(b||this,c.concat(d.call(arguments)))},e.guid=a.guid=a.guid||m.guid++,e):void 0},now:function(){return+new Date},support:k}),m.each("Boolean Number String Function Array Date RegExp Object Error".split(" "),function(a,b){h["[object "+b+"]"]=b.toLowerCase()});function r(a){var b="length"in a&&a.length,c=m.type(a);return"function"===c||m.isWindow(a)?!1:1===a.nodeType&&b?!0:"array"===c||0===b||"number"==typeof b&&b>0&&b-1 in a}var s=function(a){var b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u="sizzle"+1*new Date,v=a.document,w=0,x=0,y=ha(),z=ha(),A=ha(),B=function(a,b){return a===b&&(l=!0),0},C=1<<31,D={}.hasOwnProperty,E=[],F=E.pop,G=E.push,H=E.push,I=E.slice,J=function(a,b){for(var c=0,d=a.length;d>c;c++)if(a[c]===b)return c;return-1},K="checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",L="[\\x20\\t\\r\\n\\f]",M="(?:\\\\.|[\\w-]|[^\\x00-\\xa0])+",N=M.replace("w","w#"),O="\\["+L+"*("+M+")(?:"+L+"*([*^$|!~]?=)"+L+"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|("+N+"))|)"+L+"*\\]",P=":("+M+")(?:\\((('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|((?:\\\\.|[^\\\\()[\\]]|"+O+")*)|.*)\\)|)",Q=new RegExp(L+"+","g"),R=new RegExp("^"+L+"+|((?:^|[^\\\\])(?:\\\\.)*)"+L+"+$","g"),S=new RegExp("^"+L+"*,"+L+"*"),T=new RegExp("^"+L+"*([>+~]|"+L+")"+L+"*"),U=new RegExp("="+L+"*([^\\]'\"]*?)"+L+"*\\]","g"),V=new RegExp(P),W=new RegExp("^"+N+"$"),X={ID:new RegExp("^#("+M+")"),CLASS:new RegExp("^\\.("+M+")"),TAG:new RegExp("^("+M.replace("w","w*")+")"),ATTR:new RegExp("^"+O),PSEUDO:new RegExp("^"+P),CHILD:new RegExp("^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\("+L+"*(even|odd|(([+-]|)(\\d*)n|)"+L+"*(?:([+-]|)"+L+"*(\\d+)|))"+L+"*\\)|)","i"),bool:new RegExp("^(?:"+K+")$","i"),needsContext:new RegExp("^"+L+"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\("+L+"*((?:-\\d)?\\d*)"+L+"*\\)|)(?=[^-]|$)","i")},Y=/^(?:input|select|textarea|button)$/i,Z=/^h\d$/i,$=/^[^{]+\{\s*\[native \w/,_=/^(?:#([\w-]+)|(\w+)|\.([\w-]+))$/,aa=/[+~]/,ba=/'|\\/g,ca=new RegExp("\\\\([\\da-f]{1,6}"+L+"?|("+L+")|.)","ig"),da=function(a,b,c){var d="0x"+b-65536;return d!==d||c?b:0>d?String.fromCharCode(d+65536):String.fromCharCode(d>>10|55296,1023&d|56320)},ea=function(){m()};try{H.apply(E=I.call(v.childNodes),v.childNodes),E[v.childNodes.length].nodeType}catch(fa){H={apply:E.length?function(a,b){G.apply(a,I.call(b))}:function(a,b){var c=a.length,d=0;while(a[c++]=b[d++]);a.length=c-1}}}function ga(a,b,d,e){var f,h,j,k,l,o,r,s,w,x;if((b?b.ownerDocument||b:v)!==n&&m(b),b=b||n,d=d||[],k=b.nodeType,"string"!=typeof a||!a||1!==k&&9!==k&&11!==k)return d;if(!e&&p){if(11!==k&&(f=_.exec(a)))if(j=f[1]){if(9===k){if(h=b.getElementById(j),!h||!h.parentNode)return d;if(h.id===j)return d.push(h),d}else if(b.ownerDocument&&(h=b.ownerDocument.getElementById(j))&&t(b,h)&&h.id===j)return d.push(h),d}else{if(f[2])return H.apply(d,b.getElementsByTagName(a)),d;if((j=f[3])&&c.getElementsByClassName)return H.apply(d,b.getElementsByClassName(j)),d}if(c.qsa&&(!q||!q.test(a))){if(s=r=u,w=b,x=1!==k&&a,1===k&&"object"!==b.nodeName.toLowerCase()){o=g(a),(r=b.getAttribute("id"))?s=r.replace(ba,"\\$&"):b.setAttribute("id",s),s="[id='"+s+"'] ",l=o.length;while(l--)o[l]=s+ra(o[l]);w=aa.test(a)&&pa(b.parentNode)||b,x=o.join(",")}if(x)try{return H.apply(d,w.querySelectorAll(x)),d}catch(y){}finally{r||b.removeAttribute("id")}}}return i(a.replace(R,"$1"),b,d,e)}function ha(){var a=[];function b(c,e){return a.push(c+" ")>d.cacheLength&&delete b[a.shift()],b[c+" "]=e}return b}function ia(a){return a[u]=!0,a}function ja(a){var b=n.createElement("div");try{return!!a(b)}catch(c){return!1}finally{b.parentNode&&b.parentNode.removeChild(b),b=null}}function ka(a,b){var c=a.split("|"),e=a.length;while(e--)d.attrHandle[c[e]]=b}function la(a,b){var c=b&&a,d=c&&1===a.nodeType&&1===b.nodeType&&(~b.sourceIndex||C)-(~a.sourceIndex||C);if(d)return d;if(c)while(c=c.nextSibling)if(c===b)return-1;return a?1:-1}function ma(a){return function(b){var c=b.nodeName.toLowerCase();return"input"===c&&b.type===a}}function na(a){return function(b){var c=b.nodeName.toLowerCase();return("input"===c||"button"===c)&&b.type===a}}function oa(a){return ia(function(b){return b=+b,ia(function(c,d){var e,f=a([],c.length,b),g=f.length;while(g--)c[e=f[g]]&&(c[e]=!(d[e]=c[e]))})})}function pa(a){return a&&"undefined"!=typeof a.getElementsByTagName&&a}c=ga.support={},f=ga.isXML=function(a){var b=a&&(a.ownerDocument||a).documentElement;return b?"HTML"!==b.nodeName:!1},m=ga.setDocument=function(a){var b,e,g=a?a.ownerDocument||a:v;return g!==n&&9===g.nodeType&&g.documentElement?(n=g,o=g.documentElement,e=g.defaultView,e&&e!==e.top&&(e.addEventListener?e.addEventListener("unload",ea,!1):e.attachEvent&&e.attachEvent("onunload",ea)),p=!f(g),c.attributes=ja(function(a){return a.className="i",!a.getAttribute("className")}),c.getElementsByTagName=ja(function(a){return a.appendChild(g.createComment("")),!a.getElementsByTagName("*").length}),c.getElementsByClassName=$.test(g.getElementsByClassName),c.getById=ja(function(a){return o.appendChild(a).id=u,!g.getElementsByName||!g.getElementsByName(u).length}),c.getById?(d.find.ID=function(a,b){if("undefined"!=typeof b.getElementById&&p){var c=b.getElementById(a);return c&&c.parentNode?[c]:[]}},d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){return a.getAttribute("id")===b}}):(delete d.find.ID,d.filter.ID=function(a){var b=a.replace(ca,da);return function(a){var c="undefined"!=typeof a.getAttributeNode&&a.getAttributeNode("id");return c&&c.value===b}}),d.find.TAG=c.getElementsByTagName?function(a,b){return"undefined"!=typeof b.getElementsByTagName?b.getElementsByTagName(a):c.qsa?b.querySelectorAll(a):void 0}:function(a,b){var c,d=[],e=0,f=b.getElementsByTagName(a);if("*"===a){while(c=f[e++])1===c.nodeType&&d.push(c);return d}return f},d.find.CLASS=c.getElementsByClassName&&function(a,b){return p?b.getElementsByClassName(a):void 0},r=[],q=[],(c.qsa=$.test(g.querySelectorAll))&&(ja(function(a){o.appendChild(a).innerHTML="<a id='"+u+"'></a><select id='"+u+"-\f]' msallowcapture=''><option selected=''></option></select>",a.querySelectorAll("[msallowcapture^='']").length&&q.push("[*^$]="+L+"*(?:''|\"\")"),a.querySelectorAll("[selected]").length||q.push("\\["+L+"*(?:value|"+K+")"),a.querySelectorAll("[id~="+u+"-]").length||q.push("~="),a.querySelectorAll(":checked").length||q.push(":checked"),a.querySelectorAll("a#"+u+"+*").length||q.push(".#.+[+~]")}),ja(function(a){var b=g.createElement("input");b.setAttribute("type","hidden"),a.appendChild(b).setAttribute("name","D"),a.querySelectorAll("[name=d]").length&&q.push("name"+L+"*[*^$|!~]?="),a.querySelectorAll(":enabled").length||q.push(":enabled",":disabled"),a.querySelectorAll("*,:x"),q.push(",.*:")})),(c.matchesSelector=$.test(s=o.matches||o.webkitMatchesSelector||o.mozMatchesSelector||o.oMatchesSelector||o.msMatchesSelector))&&ja(function(a){c.disconnectedMatch=s.call(a,"div"),s.call(a,"[s!='']:x"),r.push("!=",P)}),q=q.length&&new RegExp(q.join("|")),r=r.length&&new RegExp(r.join("|")),b=$.test(o.compareDocumentPosition),t=b||$.test(o.contains)?function(a,b){var c=9===a.nodeType?a.documentElement:a,d=b&&b.parentNode;return a===d||!(!d||1!==d.nodeType||!(c.contains?c.contains(d):a.compareDocumentPosition&&16&a.compareDocumentPosition(d)))}:function(a,b){if(b)while(b=b.parentNode)if(b===a)return!0;return!1},B=b?function(a,b){if(a===b)return l=!0,0;var d=!a.compareDocumentPosition-!b.compareDocumentPosition;return d?d:(d=(a.ownerDocument||a)===(b.ownerDocument||b)?a.compareDocumentPosition(b):1,1&d||!c.sortDetached&&b.compareDocumentPosition(a)===d?a===g||a.ownerDocument===v&&t(v,a)?-1:b===g||b.ownerDocument===v&&t(v,b)?1:k?J(k,a)-J(k,b):0:4&d?-1:1)}:function(a,b){if(a===b)return l=!0,0;var c,d=0,e=a.parentNode,f=b.parentNode,h=[a],i=[b];if(!e||!f)return a===g?-1:b===g?1:e?-1:f?1:k?J(k,a)-J(k,b):0;if(e===f)return la(a,b);c=a;while(c=c.parentNode)h.unshift(c);c=b;while(c=c.parentNode)i.unshift(c);while(h[d]===i[d])d++;return d?la(h[d],i[d]):h[d]===v?-1:i[d]===v?1:0},g):n},ga.matches=function(a,b){return ga(a,null,null,b)},ga.matchesSelector=function(a,b){if((a.ownerDocument||a)!==n&&m(a),b=b.replace(U,"='$1']"),!(!c.matchesSelector||!p||r&&r.test(b)||q&&q.test(b)))try{var d=s.call(a,b);if(d||c.disconnectedMatch||a.document&&11!==a.document.nodeType)return d}catch(e){}return ga(b,n,null,[a]).length>0},ga.contains=function(a,b){return(a.ownerDocument||a)!==n&&m(a),t(a,b)},ga.attr=function(a,b){(a.ownerDocument||a)!==n&&m(a);var e=d.attrHandle[b.toLowerCase()],f=e&&D.call(d.attrHandle,b.toLowerCase())?e(a,b,!p):void 0;return void 0!==f?f:c.attributes||!p?a.getAttribute(b):(f=a.getAttributeNode(b))&&f.specified?f.value:null},ga.error=function(a){throw new Error("Syntax error, unrecognized expression: "+a)},ga.uniqueSort=function(a){var b,d=[],e=0,f=0;if(l=!c.detectDuplicates,k=!c.sortStable&&a.slice(0),a.sort(B),l){while(b=a[f++])b===a[f]&&(e=d.push(f));while(e--)a.splice(d[e],1)}return k=null,a},e=ga.getText=function(a){var b,c="",d=0,f=a.nodeType;if(f){if(1===f||9===f||11===f){if("string"==typeof a.textContent)return a.textContent;for(a=a.firstChild;a;a=a.nextSibling)c+=e(a)}else if(3===f||4===f)return a.nodeValue}else while(b=a[d++])c+=e(b);return c},d=ga.selectors={cacheLength:50,createPseudo:ia,match:X,attrHandle:{},find:{},relative:{">":{dir:"parentNode",first:!0}," ":{dir:"parentNode"},"+":{dir:"previousSibling",first:!0},"~":{dir:"previousSibling"}},preFilter:{ATTR:function(a){return a[1]=a[1].replace(ca,da),a[3]=(a[3]||a[4]||a[5]||"").replace(ca,da),"~="===a[2]&&(a[3]=" "+a[3]+" "),a.slice(0,4)},CHILD:function(a){return a[1]=a[1].toLowerCase(),"nth"===a[1].slice(0,3)?(a[3]||ga.error(a[0]),a[4]=+(a[4]?a[5]+(a[6]||1):2*("even"===a[3]||"odd"===a[3])),a[5]=+(a[7]+a[8]||"odd"===a[3])):a[3]&&ga.error(a[0]),a},PSEUDO:function(a){var b,c=!a[6]&&a[2];return X.CHILD.test(a[0])?null:(a[3]?a[2]=a[4]||a[5]||"":c&&V.test(c)&&(b=g(c,!0))&&(b=c.indexOf(")",c.length-b)-c.length)&&(a[0]=a[0].slice(0,b),a[2]=c.slice(0,b)),a.slice(0,3))}},filter:{TAG:function(a){var b=a.replace(ca,da).toLowerCase();return"*"===a?function(){return!0}:function(a){return a.nodeName&&a.nodeName.toLowerCase()===b}},CLASS:function(a){var b=y[a+" "];return b||(b=new RegExp("(^|"+L+")"+a+"("+L+"|$)"))&&y(a,function(a){return b.test("string"==typeof a.className&&a.className||"undefined"!=typeof a.getAttribute&&a.getAttribute("class")||"")})},ATTR:function(a,b,c){return function(d){var e=ga.attr(d,a);return null==e?"!="===b:b?(e+="","="===b?e===c:"!="===b?e!==c:"^="===b?c&&0===e.indexOf(c):"*="===b?c&&e.indexOf(c)>-1:"$="===b?c&&e.slice(-c.length)===c:"~="===b?(" "+e.replace(Q," ")+" ").indexOf(c)>-1:"|="===b?e===c||e.slice(0,c.length+1)===c+"-":!1):!0}},CHILD:function(a,b,c,d,e){var f="nth"!==a.slice(0,3),g="last"!==a.slice(-4),h="of-type"===b;return 1===d&&0===e?function(a){return!!a.parentNode}:function(b,c,i){var j,k,l,m,n,o,p=f!==g?"nextSibling":"previousSibling",q=b.parentNode,r=h&&b.nodeName.toLowerCase(),s=!i&&!h;if(q){if(f){while(p){l=b;while(l=l[p])if(h?l.nodeName.toLowerCase()===r:1===l.nodeType)return!1;o=p="only"===a&&!o&&"nextSibling"}return!0}if(o=[g?q.firstChild:q.lastChild],g&&s){k=q[u]||(q[u]={}),j=k[a]||[],n=j[0]===w&&j[1],m=j[0]===w&&j[2],l=n&&q.childNodes[n];while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if(1===l.nodeType&&++m&&l===b){k[a]=[w,n,m];break}}else if(s&&(j=(b[u]||(b[u]={}))[a])&&j[0]===w)m=j[1];else while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if((h?l.nodeName.toLowerCase()===r:1===l.nodeType)&&++m&&(s&&((l[u]||(l[u]={}))[a]=[w,m]),l===b))break;return m-=e,m===d||m%d===0&&m/d>=0}}},PSEUDO:function(a,b){var c,e=d.pseudos[a]||d.setFilters[a.toLowerCase()]||ga.error("unsupported pseudo: "+a);return e[u]?e(b):e.length>1?(c=[a,a,"",b],d.setFilters.hasOwnProperty(a.toLowerCase())?ia(function(a,c){var d,f=e(a,b),g=f.length;while(g--)d=J(a,f[g]),a[d]=!(c[d]=f[g])}):function(a){return e(a,0,c)}):e}},pseudos:{not:ia(function(a){var b=[],c=[],d=h(a.replace(R,"$1"));return d[u]?ia(function(a,b,c,e){var f,g=d(a,null,e,[]),h=a.length;while(h--)(f=g[h])&&(a[h]=!(b[h]=f))}):function(a,e,f){return b[0]=a,d(b,null,f,c),b[0]=null,!c.pop()}}),has:ia(function(a){return function(b){return ga(a,b).length>0}}),contains:ia(function(a){return a=a.replace(ca,da),function(b){return(b.textContent||b.innerText||e(b)).indexOf(a)>-1}}),lang:ia(function(a){return W.test(a||"")||ga.error("unsupported lang: "+a),a=a.replace(ca,da).toLowerCase(),function(b){var c;do if(c=p?b.lang:b.getAttribute("xml:lang")||b.getAttribute("lang"))return c=c.toLowerCase(),c===a||0===c.indexOf(a+"-");while((b=b.parentNode)&&1===b.nodeType);return!1}}),target:function(b){var c=a.location&&a.location.hash;return c&&c.slice(1)===b.id},root:function(a){return a===o},focus:function(a){return a===n.activeElement&&(!n.hasFocus||n.hasFocus())&&!!(a.type||a.href||~a.tabIndex)},enabled:function(a){return a.disabled===!1},disabled:function(a){return a.disabled===!0},checked:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&!!a.checked||"option"===b&&!!a.selected},selected:function(a){return a.parentNode&&a.parentNode.selectedIndex,a.selected===!0},empty:function(a){for(a=a.firstChild;a;a=a.nextSibling)if(a.nodeType<6)return!1;return!0},parent:function(a){return!d.pseudos.empty(a)},header:function(a){return Z.test(a.nodeName)},input:function(a){return Y.test(a.nodeName)},button:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&"button"===a.type||"button"===b},text:function(a){var b;return"input"===a.nodeName.toLowerCase()&&"text"===a.type&&(null==(b=a.getAttribute("type"))||"text"===b.toLowerCase())},first:oa(function(){return[0]}),last:oa(function(a,b){return[b-1]}),eq:oa(function(a,b,c){return[0>c?c+b:c]}),even:oa(function(a,b){for(var c=0;b>c;c+=2)a.push(c);return a}),odd:oa(function(a,b){for(var c=1;b>c;c+=2)a.push(c);return a}),lt:oa(function(a,b,c){for(var d=0>c?c+b:c;--d>=0;)a.push(d);return a}),gt:oa(function(a,b,c){for(var d=0>c?c+b:c;++d<b;)a.push(d);return a})}},d.pseudos.nth=d.pseudos.eq;for(b in{radio:!0,checkbox:!0,file:!0,password:!0,image:!0})d.pseudos[b]=ma(b);for(b in{submit:!0,reset:!0})d.pseudos[b]=na(b);function qa(){}qa.prototype=d.filters=d.pseudos,d.setFilters=new qa,g=ga.tokenize=function(a,b){var c,e,f,g,h,i,j,k=z[a+" "];if(k)return b?0:k.slice(0);h=a,i=[],j=d.preFilter;while(h){(!c||(e=S.exec(h)))&&(e&&(h=h.slice(e[0].length)||h),i.push(f=[])),c=!1,(e=T.exec(h))&&(c=e.shift(),f.push({value:c,type:e[0].replace(R," ")}),h=h.slice(c.length));for(g in d.filter)!(e=X[g].exec(h))||j[g]&&!(e=j[g](e))||(c=e.shift(),f.push({value:c,type:g,matches:e}),h=h.slice(c.length));if(!c)break}return b?h.length:h?ga.error(a):z(a,i).slice(0)};function ra(a){for(var b=0,c=a.length,d="";c>b;b++)d+=a[b].value;return d}function sa(a,b,c){var d=b.dir,e=c&&"parentNode"===d,f=x++;return b.first?function(b,c,f){while(b=b[d])if(1===b.nodeType||e)return a(b,c,f)}:function(b,c,g){var h,i,j=[w,f];if(g){while(b=b[d])if((1===b.nodeType||e)&&a(b,c,g))return!0}else while(b=b[d])if(1===b.nodeType||e){if(i=b[u]||(b[u]={}),(h=i[d])&&h[0]===w&&h[1]===f)return j[2]=h[2];if(i[d]=j,j[2]=a(b,c,g))return!0}}}function ta(a){return a.length>1?function(b,c,d){var e=a.length;while(e--)if(!a[e](b,c,d))return!1;return!0}:a[0]}function ua(a,b,c){for(var d=0,e=b.length;e>d;d++)ga(a,b[d],c);return c}function va(a,b,c,d,e){for(var f,g=[],h=0,i=a.length,j=null!=b;i>h;h++)(f=a[h])&&(!c||c(f,d,e))&&(g.push(f),j&&b.push(h));return g}function wa(a,b,c,d,e,f){return d&&!d[u]&&(d=wa(d)),e&&!e[u]&&(e=wa(e,f)),ia(function(f,g,h,i){var j,k,l,m=[],n=[],o=g.length,p=f||ua(b||"*",h.nodeType?[h]:h,[]),q=!a||!f&&b?p:va(p,m,a,h,i),r=c?e||(f?a:o||d)?[]:g:q;if(c&&c(q,r,h,i),d){j=va(r,n),d(j,[],h,i),k=j.length;while(k--)(l=j[k])&&(r[n[k]]=!(q[n[k]]=l))}if(f){if(e||a){if(e){j=[],k=r.length;while(k--)(l=r[k])&&j.push(q[k]=l);e(null,r=[],j,i)}k=r.length;while(k--)(l=r[k])&&(j=e?J(f,l):m[k])>-1&&(f[j]=!(g[j]=l))}}else r=va(r===g?r.splice(o,r.length):r),e?e(null,g,r,i):H.apply(g,r)})}function xa(a){for(var b,c,e,f=a.length,g=d.relative[a[0].type],h=g||d.relative[" "],i=g?1:0,k=sa(function(a){return a===b},h,!0),l=sa(function(a){return J(b,a)>-1},h,!0),m=[function(a,c,d){var e=!g&&(d||c!==j)||((b=c).nodeType?k(a,c,d):l(a,c,d));return b=null,e}];f>i;i++)if(c=d.relative[a[i].type])m=[sa(ta(m),c)];else{if(c=d.filter[a[i].type].apply(null,a[i].matches),c[u]){for(e=++i;f>e;e++)if(d.relative[a[e].type])break;return wa(i>1&&ta(m),i>1&&ra(a.slice(0,i-1).concat({value:" "===a[i-2].type?"*":""})).replace(R,"$1"),c,e>i&&xa(a.slice(i,e)),f>e&&xa(a=a.slice(e)),f>e&&ra(a))}m.push(c)}return ta(m)}function ya(a,b){var c=b.length>0,e=a.length>0,f=function(f,g,h,i,k){var l,m,o,p=0,q="0",r=f&&[],s=[],t=j,u=f||e&&d.find.TAG("*",k),v=w+=null==t?1:Math.random()||.1,x=u.length;for(k&&(j=g!==n&&g);q!==x&&null!=(l=u[q]);q++){if(e&&l){m=0;while(o=a[m++])if(o(l,g,h)){i.push(l);break}k&&(w=v)}c&&((l=!o&&l)&&p--,f&&r.push(l))}if(p+=q,c&&q!==p){m=0;while(o=b[m++])o(r,s,g,h);if(f){if(p>0)while(q--)r[q]||s[q]||(s[q]=F.call(i));s=va(s)}H.apply(i,s),k&&!f&&s.length>0&&p+b.length>1&&ga.uniqueSort(i)}return k&&(w=v,j=t),r};return c?ia(f):f}return h=ga.compile=function(a,b){var c,d=[],e=[],f=A[a+" "];if(!f){b||(b=g(a)),c=b.length;while(c--)f=xa(b[c]),f[u]?d.push(f):e.push(f);f=A(a,ya(e,d)),f.selector=a}return f},i=ga.select=function(a,b,e,f){var i,j,k,l,m,n="function"==typeof a&&a,o=!f&&g(a=n.selector||a);if(e=e||[],1===o.length){if(j=o[0]=o[0].slice(0),j.length>2&&"ID"===(k=j[0]).type&&c.getById&&9===b.nodeType&&p&&d.relative[j[1].type]){if(b=(d.find.ID(k.matches[0].replace(ca,da),b)||[])[0],!b)return e;n&&(b=b.parentNode),a=a.slice(j.shift().value.length)}i=X.needsContext.test(a)?0:j.length;while(i--){if(k=j[i],d.relative[l=k.type])break;if((m=d.find[l])&&(f=m(k.matches[0].replace(ca,da),aa.test(j[0].type)&&pa(b.parentNode)||b))){if(j.splice(i,1),a=f.length&&ra(j),!a)return H.apply(e,f),e;break}}}return(n||h(a,o))(f,b,!p,e,aa.test(a)&&pa(b.parentNode)||b),e},c.sortStable=u.split("").sort(B).join("")===u,c.detectDuplicates=!!l,m(),c.sortDetached=ja(function(a){return 1&a.compareDocumentPosition(n.createElement("div"))}),ja(function(a){return a.innerHTML="<a href='#'></a>","#"===a.firstChild.getAttribute("href")})||ka("type|href|height|width",function(a,b,c){return c?void 0:a.getAttribute(b,"type"===b.toLowerCase()?1:2)}),c.attributes&&ja(function(a){return a.innerHTML="<input/>",a.firstChild.setAttribute("value",""),""===a.firstChild.getAttribute("value")})||ka("value",function(a,b,c){return c||"input"!==a.nodeName.toLowerCase()?void 0:a.defaultValue}),ja(function(a){return null==a.getAttribute("disabled")})||ka(K,function(a,b,c){var d;return c?void 0:a[b]===!0?b.toLowerCase():(d=a.getAttributeNode(b))&&d.specified?d.value:null}),ga}(a);m.find=s,m.expr=s.selectors,m.expr[":"]=m.expr.pseudos,m.unique=s.uniqueSort,m.text=s.getText,m.isXMLDoc=s.isXML,m.contains=s.contains;var t=m.expr.match.needsContext,u=/^<(\w+)\s*\/?>(?:<\/\1>|)$/,v=/^.[^:#\[\.,]*$/;function w(a,b,c){if(m.isFunction(b))return m.grep(a,function(a,d){return!!b.call(a,d,a)!==c});if(b.nodeType)return m.grep(a,function(a){return a===b!==c});if("string"==typeof b){if(v.test(b))return m.filter(b,a,c);b=m.filter(b,a)}return m.grep(a,function(a){return m.inArray(a,b)>=0!==c})}m.filter=function(a,b,c){var d=b[0];return c&&(a=":not("+a+")"),1===b.length&&1===d.nodeType?m.find.matchesSelector(d,a)?[d]:[]:m.find.matches(a,m.grep(b,function(a){return 1===a.nodeType}))},m.fn.extend({find:function(a){var b,c=[],d=this,e=d.length;if("string"!=typeof a)return this.pushStack(m(a).filter(function(){for(b=0;e>b;b++)if(m.contains(d[b],this))return!0}));for(b=0;e>b;b++)m.find(a,d[b],c);return c=this.pushStack(e>1?m.unique(c):c),c.selector=this.selector?this.selector+" "+a:a,c},filter:function(a){return this.pushStack(w(this,a||[],!1))},not:function(a){return this.pushStack(w(this,a||[],!0))},is:function(a){return!!w(this,"string"==typeof a&&t.test(a)?m(a):a||[],!1).length}});var x,y=a.document,z=/^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]*))$/,A=m.fn.init=function(a,b){var c,d;if(!a)return this;if("string"==typeof a){if(c="<"===a.charAt(0)&&">"===a.charAt(a.length-1)&&a.length>=3?[null,a,null]:z.exec(a),!c||!c[1]&&b)return!b||b.jquery?(b||x).find(a):this.constructor(b).find(a);if(c[1]){if(b=b instanceof m?b[0]:b,m.merge(this,m.parseHTML(c[1],b&&b.nodeType?b.ownerDocument||b:y,!0)),u.test(c[1])&&m.isPlainObject(b))for(c in b)m.isFunction(this[c])?this[c](b[c]):this.attr(c,b[c]);return this}if(d=y.getElementById(c[2]),d&&d.parentNode){if(d.id!==c[2])return x.find(a);this.length=1,this[0]=d}return this.context=y,this.selector=a,this}return a.nodeType?(this.context=this[0]=a,this.length=1,this):m.isFunction(a)?"undefined"!=typeof x.ready?x.ready(a):a(m):(void 0!==a.selector&&(this.selector=a.selector,this.context=a.context),m.makeArray(a,this))};A.prototype=m.fn,x=m(y);var B=/^(?:parents|prev(?:Until|All))/,C={children:!0,contents:!0,next:!0,prev:!0};m.extend({dir:function(a,b,c){var d=[],e=a[b];while(e&&9!==e.nodeType&&(void 0===c||1!==e.nodeType||!m(e).is(c)))1===e.nodeType&&d.push(e),e=e[b];return d},sibling:function(a,b){for(var c=[];a;a=a.nextSibling)1===a.nodeType&&a!==b&&c.push(a);return c}}),m.fn.extend({has:function(a){var b,c=m(a,this),d=c.length;return this.filter(function(){for(b=0;d>b;b++)if(m.contains(this,c[b]))return!0})},closest:function(a,b){for(var c,d=0,e=this.length,f=[],g=t.test(a)||"string"!=typeof a?m(a,b||this.context):0;e>d;d++)for(c=this[d];c&&c!==b;c=c.parentNode)if(c.nodeType<11&&(g?g.index(c)>-1:1===c.nodeType&&m.find.matchesSelector(c,a))){f.push(c);break}return this.pushStack(f.length>1?m.unique(f):f)},index:function(a){return a?"string"==typeof a?m.inArray(this[0],m(a)):m.inArray(a.jquery?a[0]:a,this):this[0]&&this[0].parentNode?this.first().prevAll().length:-1},add:function(a,b){return this.pushStack(m.unique(m.merge(this.get(),m(a,b))))},addBack:function(a){return this.add(null==a?this.prevObject:this.prevObject.filter(a))}});function D(a,b){do a=a[b];while(a&&1!==a.nodeType);return a}m.each({parent:function(a){var b=a.parentNode;return b&&11!==b.nodeType?b:null},parents:function(a){return m.dir(a,"parentNode")},parentsUntil:function(a,b,c){return m.dir(a,"parentNode",c)},next:function(a){return D(a,"nextSibling")},prev:function(a){return D(a,"previousSibling")},nextAll:function(a){return m.dir(a,"nextSibling")},prevAll:function(a){return m.dir(a,"previousSibling")},nextUntil:function(a,b,c){return m.dir(a,"nextSibling",c)},prevUntil:function(a,b,c){return m.dir(a,"previousSibling",c)},siblings:function(a){return m.sibling((a.parentNode||{}).firstChild,a)},children:function(a){return m.sibling(a.firstChild)},contents:function(a){return m.nodeName(a,"iframe")?a.contentDocument||a.contentWindow.document:m.merge([],a.childNodes)}},function(a,b){m.fn[a]=function(c,d){var e=m.map(this,b,c);return"Until"!==a.slice(-5)&&(d=c),d&&"string"==typeof d&&(e=m.filter(d,e)),this.length>1&&(C[a]||(e=m.unique(e)),B.test(a)&&(e=e.reverse())),this.pushStack(e)}});var E=/\S+/g,F={};function G(a){var b=F[a]={};return m.each(a.match(E)||[],function(a,c){b[c]=!0}),b}m.Callbacks=function(a){a="string"==typeof a?F[a]||G(a):m.extend({},a);var b,c,d,e,f,g,h=[],i=!a.once&&[],j=function(l){for(c=a.memory&&l,d=!0,f=g||0,g=0,e=h.length,b=!0;h&&e>f;f++)if(h[f].apply(l[0],l[1])===!1&&a.stopOnFalse){c=!1;break}b=!1,h&&(i?i.length&&j(i.shift()):c?h=[]:k.disable())},k={add:function(){if(h){var d=h.length;!function f(b){m.each(b,function(b,c){var d=m.type(c);"function"===d?a.unique&&k.has(c)||h.push(c):c&&c.length&&"string"!==d&&f(c)})}(arguments),b?e=h.length:c&&(g=d,j(c))}return this},remove:function(){return h&&m.each(arguments,function(a,c){var d;while((d=m.inArray(c,h,d))>-1)h.splice(d,1),b&&(e>=d&&e--,f>=d&&f--)}),this},has:function(a){return a?m.inArray(a,h)>-1:!(!h||!h.length)},empty:function(){return h=[],e=0,this},disable:function(){return h=i=c=void 0,this},disabled:function(){return!h},lock:function(){return i=void 0,c||k.disable(),this},locked:function(){return!i},fireWith:function(a,c){return!h||d&&!i||(c=c||[],c=[a,c.slice?c.slice():c],b?i.push(c):j(c)),this},fire:function(){return k.fireWith(this,arguments),this},fired:function(){return!!d}};return k},m.extend({Deferred:function(a){var b=[["resolve","done",m.Callbacks("once memory"),"resolved"],["reject","fail",m.Callbacks("once memory"),"rejected"],["notify","progress",m.Callbacks("memory")]],c="pending",d={state:function(){return c},always:function(){return e.done(arguments).fail(arguments),this},then:function(){var a=arguments;return m.Deferred(function(c){m.each(b,function(b,f){var g=m.isFunction(a[b])&&a[b];e[f[1]](function(){var a=g&&g.apply(this,arguments);a&&m.isFunction(a.promise)?a.promise().done(c.resolve).fail(c.reject).progress(c.notify):c[f[0]+"With"](this===d?c.promise():this,g?[a]:arguments)})}),a=null}).promise()},promise:function(a){return null!=a?m.extend(a,d):d}},e={};return d.pipe=d.then,m.each(b,function(a,f){var g=f[2],h=f[3];d[f[1]]=g.add,h&&g.add(function(){c=h},b[1^a][2].disable,b[2][2].lock),e[f[0]]=function(){return e[f[0]+"With"](this===e?d:this,arguments),this},e[f[0]+"With"]=g.fireWith}),d.promise(e),a&&a.call(e,e),e},when:function(a){var b=0,c=d.call(arguments),e=c.length,f=1!==e||a&&m.isFunction(a.promise)?e:0,g=1===f?a:m.Deferred(),h=function(a,b,c){return function(e){b[a]=this,c[a]=arguments.length>1?d.call(arguments):e,c===i?g.notifyWith(b,c):--f||g.resolveWith(b,c)}},i,j,k;if(e>1)for(i=new Array(e),j=new Array(e),k=new Array(e);e>b;b++)c[b]&&m.isFunction(c[b].promise)?c[b].promise().done(h(b,k,c)).fail(g.reject).progress(h(b,j,i)):--f;return f||g.resolveWith(k,c),g.promise()}});var H;m.fn.ready=function(a){return m.ready.promise().done(a),this},m.extend({isReady:!1,readyWait:1,holdReady:function(a){a?m.readyWait++:m.ready(!0)},ready:function(a){if(a===!0?!--m.readyWait:!m.isReady){if(!y.body)return setTimeout(m.ready);m.isReady=!0,a!==!0&&--m.readyWait>0||(H.resolveWith(y,[m]),m.fn.triggerHandler&&(m(y).triggerHandler("ready"),m(y).off("ready")))}}});function I(){y.addEventListener?(y.removeEventListener("DOMContentLoaded",J,!1),a.removeEventListener("load",J,!1)):(y.detachEvent("onreadystatechange",J),a.detachEvent("onload",J))}function J(){(y.addEventListener||"load"===event.type||"complete"===y.readyState)&&(I(),m.ready())}m.ready.promise=function(b){if(!H)if(H=m.Deferred(),"complete"===y.readyState)setTimeout(m.ready);else if(y.addEventListener)y.addEventListener("DOMContentLoaded",J,!1),a.addEventListener("load",J,!1);else{y.attachEvent("onreadystatechange",J),a.attachEvent("onload",J);var c=!1;try{c=null==a.frameElement&&y.documentElement}catch(d){}c&&c.doScroll&&!function e(){if(!m.isReady){try{c.doScroll("left")}catch(a){return setTimeout(e,50)}I(),m.ready()}}()}return H.promise(b)};var K="undefined",L;for(L in m(k))break;k.ownLast="0"!==L,k.inlineBlockNeedsLayout=!1,m(function(){var a,b,c,d;c=y.getElementsByTagName("body")[0],c&&c.style&&(b=y.createElement("div"),d=y.createElement("div"),d.style.cssText="position:absolute;border:0;width:0;height:0;top:0;left:-9999px",c.appendChild(d).appendChild(b),typeof b.style.zoom!==K&&(b.style.cssText="display:inline;margin:0;border:0;padding:1px;width:1px;zoom:1",k.inlineBlockNeedsLayout=a=3===b.offsetWidth,a&&(c.style.zoom=1)),c.removeChild(d))}),function(){var a=y.createElement("div");if(null==k.deleteExpando){k.deleteExpando=!0;try{delete a.test}catch(b){k.deleteExpando=!1}}a=null}(),m.acceptData=function(a){var b=m.noData[(a.nodeName+" ").toLowerCase()],c=+a.nodeType||1;return 1!==c&&9!==c?!1:!b||b!==!0&&a.getAttribute("classid")===b};var M=/^(?:\{[\w\W]*\}|\[[\w\W]*\])$/,N=/([A-Z])/g;function O(a,b,c){if(void 0===c&&1===a.nodeType){var d="data-"+b.replace(N,"-$1").toLowerCase();if(c=a.getAttribute(d),"string"==typeof c){try{c="true"===c?!0:"false"===c?!1:"null"===c?null:+c+""===c?+c:M.test(c)?m.parseJSON(c):c}catch(e){}m.data(a,b,c)}else c=void 0}return c}function P(a){var b;for(b in a)if(("data"!==b||!m.isEmptyObject(a[b]))&&"toJSON"!==b)return!1;
@@ -1732,7 +1732,7 @@ pre code {
 
 
 
-<h1 class="title toc-ignore">CRISPR-Cas9 Validation</h1>
+<h1 class="title toc-ignore">Robust PCA data filtering</h1>
 <h4 class="author">Scott Campit</h4>
 
 </div>
@@ -1741,68 +1741,27 @@ pre code {
 <!-- rnb-text-begin -->
 <div id="summary" class="section level1">
 <h1>Summary</h1>
-<p>This notebook does the following analysis: 1. Separate out lung cancer cell lines 2. Compute differentially expressed CS 3. Compare it to current iteration of metabolic reactions and genes predicted by COBRA</p>
 </div>
 <div id="load-libraries" class="section level1">
 <h1>1. Load libraries</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5cilcbmxpYnJhcnkocmVhZHIpXG5saWJyYXJ5KHN0cmluZ3IpXG5saWJyYXJ5KGdncGxvdDIpXG5saWJyYXJ5KHJldGljdWxhdGUpXG5saWJyYXJ5KGxpbW1hKVxubGlicmFyeShHbGltbWEpXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5cilcbmxpYnJhcnkocmVhZHIpXG5saWJyYXJ5KHN0cmluZ3IpXG5saWJyYXJ5KGdncGxvdDIpXG5saWJyYXJ5KHJldGljdWxhdGUpXG5saWJyYXJ5KGxpbW1hKVxubGlicmFyeShHbGltbWEpXG5saWJyYXJ5KGVkZ2VSKVxubGlicmFyeSh0aWR5dmVyc2UpXG5saWJyYXJ5KGRwbHlyKVxubGlicmFyeShyZXNoYXBlMilcbmxpYnJhcnkocmVhZHhsKVxubGlicmFyeShnZ1Zlbm5EaWFncmFtKVxubGlicmFyeShycmNvdilcbmBgYCJ9 -->
 <pre class="r"><code>library(tidyr)
 library(readr)
 library(stringr)
 library(ggplot2)
 library(reticulate)
 library(limma)
-library(Glimma)</code></pre>
+library(Glimma)
+library(edgeR)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(readxl)
+library(ggVennDiagram)
+library(rrcov)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiUmVnaXN0ZXJlZCBTMyBtZXRob2Qgb3ZlcndyaXR0ZW4gYnkgJ2h0bWx3aWRnZXRzJzpcbiAgbWV0aG9kICAgICAgICAgICBmcm9tICAgICAgICAgXG4gIHByaW50Lmh0bWx3aWRnZXQgdG9vbHM6cnN0dWRpb1xuIn0= -->
-<pre><code>Registered S3 method overwritten by &#39;htmlwidgets&#39;:
-  method           from         
-  print.htmlwidget tools:rstudio</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShlZGdlUilcbmxpYnJhcnkodGlkeXZlcnNlKVxuYGBgIn0= -->
-<pre class="r"><code>library(edgeR)
-library(tidyverse)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiUmVnaXN0ZXJlZCBTMyBtZXRob2RzIG92ZXJ3cml0dGVuIGJ5ICdkYnBseXInOlxuICBtZXRob2QgICAgICAgICBmcm9tXG4gIHByaW50LnRibF9sYXp5ICAgICBcbiAgcHJpbnQudGJsX3NxbCAgICAgIFxuLS0gQXR0YWNoaW5nIHBhY2thZ2VzIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tIHRpZHl2ZXJzZSAxLjMuMCAtLVxudiB0aWJibGUgIDMuMC40ICAgICB2IGRwbHlyICAgMS4wLjNcbnYgcHVycnIgICAwLjMuNCAgICAgdiBmb3JjYXRzIDAuNS4xXG4tLSBDb25mbGljdHMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0gdGlkeXZlcnNlX2NvbmZsaWN0cygpIC0tXG54IGRwbHlyOjpmaWx0ZXIoKSBtYXNrcyBzdGF0czo6ZmlsdGVyKClcbnggZHBseXI6OmxhZygpICAgIG1hc2tzIHN0YXRzOjpsYWcoKVxuIn0= -->
-<pre><code>Registered S3 methods overwritten by &#39;dbplyr&#39;:
-  method         from
-  print.tbl_lazy     
-  print.tbl_sql      
--- Attaching packages ----------------------------------------------------------------------------- tidyverse 1.3.0 --
-v tibble  3.0.4     v dplyr   1.0.3
-v purrr   0.3.4     v forcats 0.5.1
--- Conflicts -------------------------------------------------------------------------------- tidyverse_conflicts() --
-x dplyr::filter() masks stats::filter()
-x dplyr::lag()    masks stats::lag()</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmxpYnJhcnkocmVzaGFwZTIpXG5gYGAifQ== -->
-<pre class="r"><code>library(dplyr)
-library(reshape2)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog46S847ixcmVzaGFwZTLjpLzjuLJcblxuVGhlIGZvbGxvd2luZyBvYmplY3QgaXMgbWFza2VkIGZyb20g46S847ixcGFja2FnZTp0aWR5cuOkvOO4sjpcblxuICAgIHNtaXRoc1xuIn0= -->
-<pre><code>
-Attaching package: 㤼㸱reshape2㤼㸲
-
-The following object is masked from 㤼㸱package:tidyr㤼㸲:
-
-    smiths</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShyZWFkeGwpXG5saWJyYXJ5KGdnVmVubkRpYWdyYW0pXG5gYGAifQ== -->
-<pre class="r"><code>library(readxl)
-library(ggVennDiagram)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoicGFja2FnZSDjpLzjuLFnZ1Zlbm5EaWFncmFt46S847iyIHdhcyBidWlsdCB1bmRlciBSIHZlcnNpb24gNC4wLjRcbiJ9 -->
-<pre><code>package 㤼㸱ggVennDiagram㤼㸲 was built under R version 4.0.4</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShycmNvdilcbmBgYCJ9 -->
-<pre class="r"><code>library(rrcov)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoicGFja2FnZSDjpLzjuLFycmNvduOkvOO4siB3YXMgYnVpbHQgdW5kZXIgUiB2ZXJzaW9uIDQuMC40TG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiByb2J1c3RiYXNlXG5TY2FsYWJsZSBSb2J1c3QgRXN0aW1hdG9ycyB3aXRoIEhpZ2ggQnJlYWtkb3duIFBvaW50ICh2ZXJzaW9uIDEuNS01KVxuIn0= -->
-<pre><code>package 㤼㸱rrcov㤼㸲 was built under R version 4.0.4Loading required package: robustbase
-Scalable Robust Estimators with High Breakdown Point (version 1.5-5)</code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
@@ -1810,10 +1769,17 @@ Scalable Robust Estimators with High Breakdown Point (version 1.5-5)</code></pre
 <h1>2. Read in data</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucm0obGlzdD1scygpKVxucm9icGNhX2RhdGEgPSBcIkQ6L0FuYWx5c2lzL0VNVC9jZXJlc19yb2JwY2EuUkRhdGFcIlxubG9hZChyb2JwY2FfZGF0YSlcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucm0obGlzdD1scygpKVxuXG4jIERlbGxcbmRhdGFwYXRoID0gJ0Q6L0RhdGEvQ1JJU1BSL0FjaGlsbGVzL0FjaGlsbGVzX2dlbmVfZWZmZWN0LmNzdidcblxuIyBMaW51eFxuI2RhdGFwYXRoID0gJ34vRGF0YS9DUklTUFIvQWNoaWxsZXNfZ2VuZV9lZmZlY3QuY3N2J1xuXG4jIFJlYWQgaW4gZGF0YVxuZGF0YSA9IHJlYWRyOjpyZWFkX2NzdihkYXRhcGF0aClcbmBgYCJ9 -->
 <pre class="r"><code>rm(list=ls())
-robpca_data = &quot;D:/Analysis/EMT/ceres_robpca.RData&quot;
-load(robpca_data)</code></pre>
+
+# Dell
+datapath = &#39;D:/Data/CRISPR/Achilles/Achilles_gene_effect.csv&#39;
+
+# Linux
+#datapath = &#39;~/Data/CRISPR/Achilles_gene_effect.csv&#39;
+
+# Read in data
+data = readr::read_csv(datapath)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1841,416 +1807,225 @@ meta_data = meta_data[, c(&quot;DepMap_ID&quot;,
 <!-- rnb-text-begin -->
 </div>
 </div>
-<div id="compute-p-values-from-ceres-score" class="section level1">
-<h1>4. Compute P-values from CERES Score</h1>
-<div id="global-p-value" class="section level2">
-<h2>Global p-value</h2>
-<p>Next, we’ll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we’ll compute the left-tailed P-value.</p>
+<div id="dimension-reduction" class="section level1">
+<h1>3. Dimension reduction</h1>
+<p>First, we’ll grab the CERES Scores.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubXUgPSBtZWFuKGNlcmVzLCBuYS5ybT1UUlVFKVxuc3RkZXYgPSBzZChhcy5tYXRyaXgoY2VyZXMpLCBuYS5ybT1UUlVFKVxuZ2xvYmFsX3B2YWxzID0gcG5vcm0oYXMubnVtZXJpYyhjZXJlcyksIFxuICAgICAgICAgICAgICAgICAgICAgbWVhbj1tdSwgXG4gICAgICAgICAgICAgICAgICAgICBzZD1zdGRldixcbiAgICAgICAgICAgICAgICAgICAgIGxvd2VyLnRhaWw9VFJVRSlcbnB2YWxzID0gZ2xvYmFsX3B2YWxzXG5wdmFscyA9IGRhdGEubWF0cml4KHB2YWxzKVxuYGBgIn0= -->
-<pre class="r"><code>mu = mean(ceres, na.rm=TRUE)
-stdev = sd(as.matrix(ceres), na.rm=TRUE)
-global_pvals = pnorm(as.numeric(ceres), 
-                     mean=mu, 
-                     sd=stdev,
-                     lower.tail=TRUE)
-pvals = global_pvals
-pvals = data.matrix(pvals)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2VyZXMgPSBkYXRhWywgMjpuY29sKGRhdGEpXVxuY2VyZXMgPSBkYXRhLm1hdHJpeChjZXJlcylcbmNlcmVzW2lzLm5hKGNlcmVzKV0gPSAwXG5jZXJlcyA9IGFzLm1hdHJpeChjZXJlcylcbmlkcyA9IGRhdGEuZnJhbWUoZGF0YVssIDFdKVxuYGBgIn0= -->
+<pre class="r"><code>ceres = data[, 2:ncol(data)]
+ceres = data.matrix(ceres)
+ceres[is.na(ceres)] = 0
+ceres = as.matrix(ceres)
+ids = data.frame(data[, 1])</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p>Because we are testing several hypotheses, we should control using the FDR.</p>
+<p>First, we’ll create a function that can perform ROBPCA on the data.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBQZXJmb3JtIEZEUiBBZGp1c3RtZW50XG5hZGp1c3RlZF9wdmFsID0gcC5hZGp1c3QocHZhbHMsIG1ldGhvZD1cImZkclwiKVxucHZhbHMgPSBhZGp1c3RlZF9wdmFsXG5ybShsaXN0PWMoXCJhZGp1c3RlZF9wdmFsXCIsIFwiZ2xvYmFsX3B2YWxzXCIpKVxuYGBgIn0= -->
-<pre class="r"><code># Perform FDR Adjustment
-adjusted_pval = p.adjust(pvals, method=&quot;fdr&quot;)
-pvals = adjusted_pval
-rm(list=c(&quot;adjusted_pval&quot;, &quot;global_pvals&quot;))</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBDcmVhdGUgYSBmdW5jdGlvbiB0aGF0IGZpbHRlcnMgZGF0YSB1c2luZyBST0JQQ0FcbnJlbW92ZU91dGxpZXJzID0gZnVuY3Rpb24oZGF0YSwgaWQpe1xuICBwY2Ffb2JqID0gUGNhSHViZXJ0KGRhdGEpXG4gIGZpbHRlcmVkX2RhdGEgPSBkYXRhW3BjYV9vYmpAZmxhZywgXVxuICBmaWx0ZXJlZF9pZCA9IGlkW3BjYV9vYmpAZmxhZyxdXG4gIG91dGxpZXJfZGF0YSA9IGRhdGFbIXBjYV9vYmpAZmxhZywgXVxuICBvdXRsaWVyX2lkID0gaWRbIXBjYV9vYmpAZmxhZyxdXG4gIFxuICBzZXRDbGFzcyhDbGFzcz1cImdlbmVPYmpcIixcbiAgICAgICAgICAgcmVwcmVzZW50YXRpb24oXG4gICAgICAgICAgICAgZGF0YT1cIm1hdHJpeFwiLFxuICAgICAgICAgICAgIG91dGxpZXJfZGF0YT1cIm1hdHJpeFwiLFxuICAgICAgICAgICAgIGlkPVwiY2hhcmFjdGVyXCIsXG4gICAgICAgICAgICAgZmxhZz1cImxvZ2ljYWxcIixcbiAgICAgICAgICAgICBvdXRsaWVyX2lkPVwiY2hhcmFjdGVyXCIsXG4gICAgICAgICAgICAgcm9icGNhPSdQY2FIdWJlcnQnXG4gICAgICAgICAgIClcbiAgIClcbiAgIHJldHVybihuZXcoXCJnZW5lT2JqXCIsXG4gICAgICAgICAgZGF0YT1maWx0ZXJlZF9kYXRhLFxuICAgICAgICAgIG91dGxpZXJfZGF0YT1vdXRsaWVyX2RhdGEsXG4gICAgICAgICAgaWQ9ZmlsdGVyZWRfaWQsXG4gICAgICAgICAgZmxhZz1wY2Ffb2JqQGZsYWcsXG4gICAgICAgICAgb3V0bGllcl9pZD1vdXRsaWVyX2lkLFxuICAgICAgICAgIHJvYnBjYT1wY2Ffb2JqKSlcbn1cbmBgYCJ9 -->
+<pre class="r"><code># Create a function that filters data using ROBPCA
+removeOutliers = function(data, id){
+  pca_obj = PcaHubert(data)
+  filtered_data = data[pca_obj@flag, ]
+  filtered_id = id[pca_obj@flag,]
+  outlier_data = data[!pca_obj@flag, ]
+  outlier_id = id[!pca_obj@flag,]
+  
+  setClass(Class=&quot;geneObj&quot;,
+           representation(
+             data=&quot;matrix&quot;,
+             outlier_data=&quot;matrix&quot;,
+             id=&quot;character&quot;,
+             flag=&quot;logical&quot;,
+             outlier_id=&quot;character&quot;,
+             robpca=&#39;PcaHubert&#39;
+           )
+   )
+   return(new(&quot;geneObj&quot;,
+          data=filtered_data,
+          outlier_data=outlier_data,
+          id=filtered_id,
+          flag=pca_obj@flag,
+          outlier_id=outlier_id,
+          robpca=pca_obj))
+}</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<div id="perform-pca" class="section level2">
+<h2>Perform PCA</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGNhX29iaiA9IHByY29tcChjZXJlcywgc2NhbGU9RkFMU0UpXG5gYGAifQ== -->
+<pre class="r"><code>pca_obj = prcomp(ceres, scale=FALSE)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="plot-the-data-distribution" class="section level2">
-<h2>Plot the data distribution</h2>
-<p>Preprocess data</p>
+<div id="visualize-pca-scores-plot" class="section level2">
+<h2>Visualize PCA Scores Plot</h2>
+<p>Let’s visualize the original PCA dimension reduction.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudG1wID0gZGF0YS5mcmFtZShwdmFscylcbnRtcCRjb2wgPSBhcy5mYWN0b3IodG1wJHB2YWxzIDwgMC4wNSlcbm1sdF9jZXJlcyA9IHJlc2hhcGUyOjptZWx0KGNlcmVzKVxudG1wJGNlcmVzID0gbWx0X2NlcmVzJHZhbHVlXG5gYGAifQ== -->
-<pre class="r"><code>tmp = data.frame(pvals)
-tmp$col = as.factor(tmp$pvals &lt; 0.05)
-mlt_ceres = reshape2::melt(ceres)
-tmp$ceres = mlt_ceres$value</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Now let’s plot the data distribution.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBQbG90IHAtdmFsdWUgZGlzdHJpYnV0aW9uXG5nZ3Bsb3QoZGF0YS5mcmFtZSh0bXApLCBhZXMoeD1wdmFscywgZmlsbD1jb2wpKSArICBcbiAgZ2VvbV9oaXN0b2dyYW0oYmlucz0xMDApICtcbiAgc2NhbGVfZmlsbF9tYW51YWwodmFsdWVzID0gYyhcIlRSVUVcIj1cInJlZFwiLCBcIkZBTFNFXCI9XCJncmF5XCIpKSArXG4gIGxhYnModGl0bGU9XCJDRVJFUyBGRFIgZGlzdHJpYnV0aW9uIChhbGwpXCIsIFxuICAgICAgIHg9XCJGRFIgQWRqdXN0ZWQgUC12YWx1ZXMgKGxlZnQtc2lkZWQpXCIsIFxuICAgICAgIHk9XCJGcmVxdWVuY3lcIikgK1xuICB0aGVtZShsZWdlbmQucG9zaXRpb249XCJub25lXCIpXG5cbiMgUGxvdCBDRVJFUyBkaXN0cmlidXRpb25cbmdncGxvdCh0bXAsIGFlcyh4PWNlcmVzLCBmaWxsPWNvbCkpICsgIFxuICBnZW9tX2hpc3RvZ3JhbShiaW5zPTEwMCkgK1xuICBzY2FsZV9maWxsX21hbnVhbCh2YWx1ZXMgPSBjKFwiVFJVRVwiPVwicmVkXCIsIFwiRkFMU0VcIj1cImdyYXlcIikpICtcbiAgbGFicyh0aXRsZT1cIkNFUkVTIGRpc3RyaWJ1dGlvbiAoYWxsKVwiLCBcbiAgICAgICB4PVwiQ0VSRVNcIiwgXG4gICAgICAgeT1cIkZyZXF1ZW5jeVwiKSArXG4gIHRoZW1lKGxlZ2VuZC5wb3NpdGlvbj1cIm5vbmVcIilcbmBgYCJ9 -->
-<pre class="r"><code># Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c(&quot;TRUE&quot;=&quot;red&quot;, &quot;FALSE&quot;=&quot;gray&quot;)) +
-  labs(title=&quot;CERES FDR distribution (all)&quot;, 
-       x=&quot;FDR Adjusted P-values (left-sided)&quot;, 
-       y=&quot;Frequency&quot;) +
-  theme(legend.position=&quot;none&quot;)
-
-# Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c(&quot;TRUE&quot;=&quot;red&quot;, &quot;FALSE&quot;=&quot;gray&quot;)) +
-  labs(title=&quot;CERES distribution (all)&quot;, 
-       x=&quot;CERES&quot;, 
-       y=&quot;Frequency&quot;) +
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc2NvcmVzID0gZGF0YS5mcmFtZShwY2Ffb2JqW1tcInhcIl1dKVxuZ2dwbG90KHNjb3JlcywgYWVzKHg9UEMxLCB5PVBDMikpICsgIFxuICBnZW9tX3BvaW50KCkgK1xuICBsYWJzKHRpdGxlPVwiQ0VSRVMgU2NvcmVzIFBsb3RcIiwgXG4gICAgICAgeD1cIlBDMVwiLCBcbiAgICAgICB5PVwiUEMyXCIpICtcbiAgdGhlbWUobGVnZW5kLnBvc2l0aW9uPVwibm9uZVwiKVxuYGBgIn0= -->
+<pre class="r"><code>scores = data.frame(pca_obj[[&quot;x&quot;]])
+ggplot(scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title=&quot;CERES Scores Plot&quot;, 
+       x=&quot;PC1&quot;, 
+       y=&quot;PC2&quot;) +
   theme(legend.position=&quot;none&quot;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-</div>
-<div id="map-the-ceres-scores-back-to-ccle" class="section level1">
-<h1>5. Map the CERES scores back to CCLE</h1>
-<p>The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.</p>
-<p>What we need to do is map it to the following:</p>
-<ul>
-<li>Cancer Cell Line</li>
-<li>Cancer Cell Line Tissue Lineage</li>
-<li>Entrez ID</li>
-</ul>
-<div id="filter-the-data-to-get-only-nsclc" class="section level2">
-<h2>Filter the data to get only NSCLC</h2>
-<p>Now we need to select specific cell lines that we’re interested in from the NSCLC subtype.</p>
+<div id="visualize-cell-line-distribution" class="section level2">
+<h2>Visualize cell line distribution</h2>
+<p>Let’s also get the distribution of the data</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBMdW5nIGRhdGEgbmVlZHMgdG8gYmUgTlNDTEMgYW5kIHdlIG5lZWQgdG8ga25vdyB3aGV0aGVyIGl0J3MgZnJvbSB0aGUgcHJpbWFyeSBzaXRlIG9yIGlmIGl0IGlzIG1ldGFzdGF0aWNcbmx1bmdfbWV0YV9kYXRhID0gbWV0YV9kYXRhW21ldGFfZGF0YVtcImxpbmVhZ2VcIl09PVwibHVuZ1wiLF1cbmx1bmdfbWV0YV9kYXRhID0gbHVuZ19tZXRhX2RhdGFbbHVuZ19tZXRhX2RhdGFbXCJsaW5lYWdlX3N1YnR5cGVcIl09PVwiTlNDTENcIixdXG5sdW5nX21ldGFfZGF0YSA9IGx1bmdfbWV0YV9kYXRhWyFpcy5uYShsdW5nX21ldGFfZGF0YSRwcmltYXJ5X29yX21ldGFzdGFzaXMpLF1cbmBgYCJ9 -->
-<pre class="r"><code># Lung data needs to be NSCLC and we need to know whether it&#39;s from the primary site or if it is metastatic
-lung_meta_data = meta_data[meta_data[&quot;lineage&quot;]==&quot;lung&quot;,]
-lung_meta_data = lung_meta_data[lung_meta_data[&quot;lineage_subtype&quot;]==&quot;NSCLC&quot;,]
-lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3V0bGllcl9pZCA9IGRhdGEuZnJhbWUoaWRzKVxuZmlsdGVyZWRfY2VsbF9saW5lcyA9IG1lcmdlKG1ldGFfZGF0YSwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgb3V0bGllcl9pZCxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICBieS54PSdEZXBNYXBfSUQnLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJ5Lnk9J0RlcE1hcF9JRCcpXG5gYGAifQ== -->
+<pre class="r"><code>outlier_id = data.frame(ids)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x=&#39;DepMap_ID&#39;,
+                            by.y=&#39;DepMap_ID&#39;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-</div>
-<div id="separate-entrez-and-gene-symbol-identifiers" class="section level2">
-<h2>Separate entrez and gene symbol identifiers</h2>
-<p>We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.</p>
+<p>Now let’s plot it</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBTYXZlIGdlbmUgc3ltYm9sc1xub3JpZ19jb2xuYW1lcyA9IGNvbG5hbWVzKGNlcmVzKVxuYWxsX3N5bWJvbCA9IGFzLmNoYXJhY3RlcihzYXBwbHkoc3Ryc3BsaXQob3JpZ19jb2xuYW1lcywgXCIgXCIpLCAnWycsIDEpKVxuI2FsbF9zeW1ib2wgPSBhbGxfc3ltYm9sWy0xXVxuXG4jIFNhdmUgRW50cmV6IElEIFxuYWxsX2VudHJleiA9IGFzLmNoYXJhY3RlcihzYXBwbHkoc3Ryc3BsaXQob3JpZ19jb2xuYW1lcywgXCIgXCIpLCAnWycsIC0xKSlcbmFsbF9lbnRyZXogPSBzdHJfcmVtb3ZlKGFsbF9lbnRyZXosIFwiWyggKV1cIilcbmFsbF9lbnRyZXogPSBzdHJfcmVtb3ZlKGFsbF9lbnRyZXosIFwiWyggKV1cIilcbmFsbF9lbnRyZXpbMV0gPSBhbGxfc3ltYm9sWzFdXG5gYGAifQ== -->
-<pre class="r"><code># Save gene symbols
-orig_colnames = colnames(ceres)
-all_symbol = as.character(sapply(strsplit(orig_colnames, &quot; &quot;), &#39;[&#39;, 1))
-#all_symbol = all_symbol[-1]
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBHcm91cCBieSBcbnRtcCA9IGFnZ3JlZ2F0ZShmaWx0ZXJlZF9jZWxsX2xpbmVzJGxpbmVhZ2UsIFxuICAgICAgICAgICAgICAgIGJ5PWxpc3QoZmlsdGVyZWRfY2VsbF9saW5lcyRsaW5lYWdlKSwgXG4gICAgICAgICAgICAgICAgbGVuZ3RoKVxudG1wID0gdG1wICU+JSBhcnJhbmdlKHgpXG50bXAkR3JvdXAuMSA9IGZhY3Rvcih0bXAkR3JvdXAuMSxcbiAgICAgICAgICAgICAgICAgICAgIGxldmVscz10bXAkR3JvdXAuMVtvcmRlcih0bXAkeCwgZGVjcmVhc2luZyA9IFRSVUUpXSlcblxuIyBQbG90IGJ5IHRpc3N1ZVxuZ2dwbG90KGRhdGE9dG1wLCBcbiAgICAgICBhZXMoeD1Hcm91cC4xLCBcbiAgICAgICAgICAgeT14LCBcbiAgICAgICAgICAgZmlsbD14LFxuICAgICAgICAgICBsYWJlbD14KSkgK1xuICBnZW9tX2JhcihzdGF0PSdpZGVudGl0eScsXG4gICAgICAgICAgIHBvc2l0aW9uPSdkb2RnZScpICtcbiAgY29vcmRfZmxpcCgpICtcbiAgbGFicyh5PVwiTnVtYmVyIG9mIGNlbGwgbGluZXMgcGVyIHRpc3N1ZVwiLFxuICAgICAgIHg9XCJUaXNzdWUgbGluZWFnZVwiLFxuICAgICAgIHRpdGxlPVwiQWxsIGludGVyc2VjdGluZyBjZWxsIGxpbmVzXCIpICsgXG4gIGd1aWRlcyhmaWxsPWd1aWRlX2xlZ2VuZCh0aXRsZT1cIk4gY2VsbCBsaW5lc1wiKSkgK1xuICBnZW9tX3RleHQoYWVzKGxhYmVsPXgpLCBcbiAgICAgICAgICAgIHBvc2l0aW9uPXBvc2l0aW9uX2RvZGdlKHdpZHRoPTAuOSkpXG5gYGAifQ== -->
+<pre class="r"><code># Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %&gt;% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
 
-# Save Entrez ID 
-all_entrez = as.character(sapply(strsplit(orig_colnames, &quot; &quot;), &#39;[&#39;, -1))
-all_entrez = str_remove(all_entrez, &quot;[( )]&quot;)
-all_entrez = str_remove(all_entrez, &quot;[( )]&quot;)
-all_entrez[1] = all_symbol[1]</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Combine all the identifiers into a single dataframe.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBBbGwgaWRlbnRpZmllcnNcbmFsbF9pZHMgPSBkYXRhLmZyYW1lKHN5bWJvbD1hbGxfc3ltYm9sLCBlbnRyZXo9YWxsX2VudHJleilcbmFsbF9pZHMgPSBhbGxfaWRzWy0xLCBdXG5gYGAifQ== -->
-<pre class="r"><code># All identifiers
-all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
-all_ids = all_ids[-1, ]</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<div id="map-dataset-to-entrez-ids" class="section level3">
-<h3>Map dataset to Entrez IDs</h3>
-<p>Map everything to Entrez IDs</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBDcmVhdGUgZGF0YXNldCB3aXRoIGdlbmUgc3ltYm9scyBhcyBJRFxuZGF0YV9lbnRyZXogPSBjZXJlc1xuY29sbmFtZXMoZGF0YV9lbnRyZXopID0gYWxsX2VudHJlelxuXG4jIENyZWF0ZSBwdmFsdWUgZGF0YWZyYW1lXG5wdmFscyA9IGFzLm1hdHJpeChwdmFscylcbmRhdGFfZGltcyA9IGRpbShjZXJlcylcbnB2YWx1ZV9lbnRyZXogPSBtYXRyaXgocHZhbHMsIFxuICAgICAgICAgICAgICAgICAgIG5yb3c9ZGF0YV9kaW1zWzFdLCBcbiAgICAgICAgICAgICAgICAgICBuY29sPWRhdGFfZGltc1syXSlcbnB2YWx1ZV9lbnRyZXogPSBkYXRhLmZyYW1lKHB2YWx1ZV9lbnRyZXopXG5jb2xuYW1lcyhwdmFsdWVfZW50cmV6KSA9IGFsbF9lbnRyZXpbMjpsZW5ndGgocHZhbHVlX2VudHJleildIFxuYGBgIn0= -->
-<pre class="r"><code># Create dataset with gene symbols as ID
-data_entrez = ceres
-colnames(data_entrez) = all_entrez
-
-# Create pvalue dataframe
-pvals = as.matrix(pvals)
-data_dims = dim(ceres)
-pvalue_entrez = matrix(pvals, 
-                   nrow=data_dims[1], 
-                   ncol=data_dims[2])
-pvalue_entrez = data.frame(pvalue_entrez)
-colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] </code></pre>
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat=&#39;identity&#39;,
+           position=&#39;dodge&#39;) +
+  coord_flip() +
+  labs(y=&quot;Number of cell lines per tissue&quot;,
+       x=&quot;Tissue lineage&quot;,
+       title=&quot;All intersecting cell lines&quot;) + 
+  guides(fill=guide_legend(title=&quot;N cell lines&quot;)) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9))</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="map-dataset-to-gene-symbols" class="section level3">
-<h3>Map dataset to Gene Symbols</h3>
-<p>Map everything to Gene Symbols</p>
+<div id="robust-pca" class="section level2">
+<h2>Robust PCA</h2>
+<p>Now let’s remove some outliers using Robust PCA:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBDcmVhdGUgZGF0YXNldCB3aXRoIGdlbmUgc3ltYm9scyBhcyBJRFxuZGF0YV9zeW1ib2wgPSBjZXJlc1xuY29sbmFtZXMoZGF0YV9zeW1ib2wpID0gYWxsX3N5bWJvbFxuXG4jIENyZWF0ZSBwdmFsdWUgZGF0YWZyYW1lXG5wdmFscyA9IGFzLm1hdHJpeChwdmFscylcbmRhdGFfZGltcyA9IGRpbShjZXJlcylcbnB2YWx1ZV9zeW1ib2wgPSBtYXRyaXgocHZhbHMsIFxuICAgICAgICAgICAgICAgICAgIG5yb3c9ZGF0YV9kaW1zWzFdLCBcbiAgICAgICAgICAgICAgICAgICBuY29sPWRhdGFfZGltc1syXSlcbnB2YWx1ZV9zeW1ib2wgPSBkYXRhLmZyYW1lKHB2YWx1ZV9zeW1ib2wpXG5jb2xuYW1lcyhwdmFsdWVfc3ltYm9sKSA9IGFsbF9zeW1ib2xbMjpsZW5ndGgocHZhbHVlX3N5bWJvbCldIFxucHZhbHVlX3N5bWJvbCREZXBNYXBfSUQgPSBpZHNcbmBgYCJ9 -->
-<pre class="r"><code># Create dataset with gene symbols as ID
-data_symbol = ceres
-colnames(data_symbol) = all_symbol
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucm9icGNhX2NlcmVzID0gcmVtb3ZlT3V0bGllcnMoY2VyZXMsIGlkcylcblxucm9iX3Njb3JlcyA9IGRhdGEuZnJhbWUocm9icGNhX2NlcmVzQHJvYnBjYSRzY29yZXMpXG5nZ3Bsb3Qocm9iX3Njb3JlcywgYWVzKHg9UEMxLCB5PVBDMikpICsgIFxuICBnZW9tX3BvaW50KCkgK1xuICBsYWJzKHRpdGxlPVwiQ0VSRVMgUm9idXN0IFBDQSBTY29yZXMgUGxvdFwiLCBcbiAgICAgICB4PVwiUEMxXCIsIFxuICAgICAgIHk9XCJQQzJcIikgK1xuICB0aGVtZShsZWdlbmQucG9zaXRpb249XCJub25lXCIpXG5gYGAifQ== -->
+<pre class="r"><code>robpca_ceres = removeOutliers(ceres, ids)
 
-# Create pvalue dataframe
-pvals = as.matrix(pvals)
-data_dims = dim(ceres)
-pvalue_symbol = matrix(pvals, 
-                   nrow=data_dims[1], 
-                   ncol=data_dims[2])
-pvalue_symbol = data.frame(pvalue_symbol)
-colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
-pvalue_symbol$DepMap_ID = ids</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-</div>
-<div id="filter-metabolic-genes-only" class="section level2">
-<h2>Filter metabolic genes only</h2>
-<p>Map it back to the human metabolic reconstruction.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucmVjb24xX21hcCA9IFwiRDovRGF0YS9NYXBwaW5ncy9SZWNvbnN0cnVjdGlvbnMvUkVDT04xL1JFQ09OMS54bHN4XCJcbnJlY29uMV9nZW5lcyA9IHJlYWR4bDo6cmVhZF9leGNlbChyZWNvbjFfbWFwLCBzaGVldD1cIkdlbmVzXCIpXG5yZWNvbjFfbWF0Y2ggPSBtZXJnZShhbGxfaWRzLCByZWNvbjFfZ2VuZXMsIGJ5Lng9XCJlbnRyZXpcIiwgYnkueT1cIkVudHJlelwiKVxuXG5kYXRhX2VudHJleiA9IGRhdGFfZW50cmV6WywgdW5pcXVlKHJlY29uMV9tYXRjaCRlbnRyZXopXVxuZGF0YV9lbnRyZXokRGVwTWFwX0lEID0gaWRzXG5cbnB2YWx1ZV9lbnRyZXogPSBwdmFsdWVfZW50cmV6WywgdW5pcXVlKHJlY29uMV9tYXRjaCRlbnRyZXopXVxucHZhbHVlX2VudHJleiREZXBNYXBfSUQgPSBpZHNcbmBgYCJ9 -->
-<pre class="r"><code>recon1_map = &quot;D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx&quot;
-recon1_genes = readxl::read_excel(recon1_map, sheet=&quot;Genes&quot;)
-recon1_match = merge(all_ids, recon1_genes, by.x=&quot;entrez&quot;, by.y=&quot;Entrez&quot;)
-
-data_entrez = data_entrez[, unique(recon1_match$entrez)]
-data_entrez$DepMap_ID = ids
-
-pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-pvalue_entrez$DepMap_ID = ids</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-</div>
-<div id="merge-metadata-to-metabolic-p-values-and-ceres-scores" class="section level1">
-<h1>6. Merge metadata to metabolic p-values and CERES scores</h1>
-<p>Finally, we can the NSCLC data back to RECON1 genes.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBFbnRyZXogSURzXG5tZXJnZWRfbHVuZyA9IG1lcmdlKGx1bmdfbWV0YV9kYXRhLCBkYXRhX2VudHJleiwgYnk9J0RlcE1hcF9JRCcpXG5tZXJnZWRfcHZhbCA9IG1lcmdlKGx1bmdfbWV0YV9kYXRhLCBwdmFsdWVfZW50cmV6LCBieT0nRGVwTWFwX0lEJylcblxuIyBHZW5lIFN5bWJvbHNcbm1lcmdlZF9sdW5nID0gbWVyZ2UobHVuZ19tZXRhX2RhdGEsIGRhdGFfc3ltYm9sLCBieT0nRGVwTWFwX0lEJylcbm1lcmdlZF9wdmFsID0gbWVyZ2UobHVuZ19tZXRhX2RhdGEsIHB2YWx1ZV9zeW1ib2wsIGJ5PSdEZXBNYXBfSUQnKVxuXG5gYGAifQ== -->
-<pre class="r"><code># Entrez IDs
-merged_lung = merge(lung_meta_data, data_entrez, by=&#39;DepMap_ID&#39;)
-merged_pval = merge(lung_meta_data, pvalue_entrez, by=&#39;DepMap_ID&#39;)
-
-# Gene Symbols
-merged_lung = merge(lung_meta_data, data_symbol, by=&#39;DepMap_ID&#39;)
-merged_pval = merge(lung_meta_data, pvalue_symbol, by=&#39;DepMap_ID&#39;)
-</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<div id="visualize-the-nsclc-crispr-cas9-metabolism-data-mapped-to-recon1" class="section level2">
-<h2>Visualize the NSCLC CRISPR-Cas9 metabolism data mapped to RECON1</h2>
-<p>Let’s construct the data object used for the visualization.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudG1wID0gbWVyZ2VkX3B2YWxbLCA2Om5jb2wobWVyZ2VkX3B2YWwpXVxudG1wID0gcmVzaGFwZTI6Om1lbHQoZGF0YS5mcmFtZSh0bXApKVxudG1wJGNvbCA9IGFzLmZhY3Rvcih0bXAkdmFsdWUgPCAwLjA1KVxubHVuZ19jZXJlcyA9IHJlc2hhcGUyOjptZWx0KG1lcmdlZF9sdW5nWywgNjpuY29sKG1lcmdlZF9sdW5nKV0pXG50bXAkY2VyZXMgPSBsdW5nX2NlcmVzJHZhbHVlXG5gYGAifQ== -->
-<pre class="r"><code>tmp = merged_pval[, 6:ncol(merged_pval)]
-tmp = reshape2::melt(data.frame(tmp))
-tmp$col = as.factor(tmp$value &lt; 0.05)
-lung_ceres = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
-tmp$ceres = lung_ceres$value</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Now actually plot the p-values and CERES scores.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBQbG90IHAtdmFsdWUgZGlzdHJpYnV0aW9uXG5nZ3Bsb3QoZGF0YS5mcmFtZSh0bXApLCBhZXMoeD12YWx1ZSwgZmlsbD1jb2wpKSArICBcbiAgZ2VvbV9oaXN0b2dyYW0oYmlucz0xMDApICtcbiAgc2NhbGVfZmlsbF9tYW51YWwodmFsdWVzID0gYyhcIlRSVUVcIj1cInJlZFwiLCBcIkZBTFNFXCI9XCJncmF5XCIpKSArXG4gIGxhYnModGl0bGU9XCJDRVJFUyBOU0NMQyBwLXZhbHVlIGRpc3RyaWJ1dGlvblwiLCBcbiAgICAgICB4PVwiUC12YWx1ZXMgKGxlZnQtc2lkZWQpXCIsIFxuICAgICAgIHk9XCJGcmVxdWVuY3lcIikgK1xuICB0aGVtZShsZWdlbmQucG9zaXRpb249XCJub25lXCIpXG5cbiMgUGxvdCBDRVJFUyBkaXN0cmlidXRpb25cbmdncGxvdCh0bXAsIGFlcyh4PWNlcmVzLCBmaWxsPWNvbCkpICsgIFxuICBnZW9tX2hpc3RvZ3JhbShiaW5zPTEwMCkgK1xuICBzY2FsZV9maWxsX21hbnVhbCh2YWx1ZXMgPSBjKFwiVFJVRVwiPVwicmVkXCIsIFwiRkFMU0VcIj1cImdyYXlcIikpICtcbiAgbGFicyh0aXRsZT1cIkNFUkVTIE5TQ0xDIGRpc3RyaWJ1dGlvblwiLCBcbiAgICAgICB4PVwiQ0VSRVNcIiwgXG4gICAgICAgeT1cIkZyZXF1ZW5jeVwiKSArXG4gIHRoZW1lKGxlZ2VuZC5wb3NpdGlvbj1cIm5vbmVcIilcbmBgYCJ9 -->
-<pre class="r"><code># Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c(&quot;TRUE&quot;=&quot;red&quot;, &quot;FALSE&quot;=&quot;gray&quot;)) +
-  labs(title=&quot;CERES NSCLC p-value distribution&quot;, 
-       x=&quot;P-values (left-sided)&quot;, 
-       y=&quot;Frequency&quot;) +
-  theme(legend.position=&quot;none&quot;)
-
-# Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c(&quot;TRUE&quot;=&quot;red&quot;, &quot;FALSE&quot;=&quot;gray&quot;)) +
-  labs(title=&quot;CERES NSCLC distribution&quot;, 
-       x=&quot;CERES&quot;, 
-       y=&quot;Frequency&quot;) +
+rob_scores = data.frame(robpca_ceres@robpca$scores)
+ggplot(rob_scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title=&quot;CERES Robust PCA Scores Plot&quot;, 
+       x=&quot;PC1&quot;, 
+       y=&quot;PC2&quot;) +
   theme(legend.position=&quot;none&quot;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-</div>
-<div id="get-differentially-expressed-ceres-score-by-comparing-metastatic-primary-site-using-limma-voom" class="section level1">
-<h1>7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom</h1>
-<div id="data-preprocessing" class="section level2">
-<h2>Data preprocessing</h2>
-<p>Format the dataset</p>
+<div id="visualize-cell-lines-that-are-omitted-from-robpca" class="section level2">
+<h2>Visualize cell lines that are omitted from ROBPCA</h2>
+<p>I am curious about what cell lines are omitted.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc2FtcGxlX2luZm8gPSBtZXJnZWRfbHVuZ1ssIDE6NV1cbmRhdGEgPSBtZXJnZWRfbHVuZ1ssIC1jKDE6NSldXG5yb3duYW1lcyhkYXRhKSA9IHNhbXBsZV9pbmZvWywgMl1cbmRhdGEgPSB0KGRhdGEpXG5zYW1wbGVfaW5mbyA9IHNhbXBsZV9pbmZvICU+JSBkcGx5cjo6c2VsZWN0KDI6MylcbmBgYCJ9 -->
-<pre class="r"><code>sample_info = merged_lung[, 1:5]
-data = merged_lung[, -c(1:5)]
-rownames(data) = sample_info[, 2]
-data = t(data)
-sample_info = sample_info %&gt;% dplyr::select(2:3)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Now we’ll floor positive CERES Scores to 0, and take the absolute value for the CERES Scores</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YVtkYXRhID4gMF0gPSAwXG5kYXRhID0gYWJzKGRhdGEpXG5kYXRhW2lzLm5hKGRhdGEpXSA9IDBcbmBgYCJ9 -->
-<pre class="r"><code>data[data &gt; 0] = 0
-data = abs(data)
-data[is.na(data)] = 0</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3V0bGllcl9pZCA9IGRhdGEuZnJhbWUocm9icGNhX2NlcmVzQG91dGxpZXJfaWQpXG5maWx0ZXJlZF9jZWxsX2xpbmVzID0gbWVyZ2UobWV0YV9kYXRhLCBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICBvdXRsaWVyX2lkLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJ5Lng9J0RlcE1hcF9JRCcsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgYnkueT0ncm9icGNhX2NlcmVzLm91dGxpZXJfaWQnKVxuYGBgIn0= -->
+<pre class="r"><code>outlier_id = data.frame(robpca_ceres@outlier_id)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x=&#39;DepMap_ID&#39;,
+                            by.y=&#39;robpca_ceres.outlier_id&#39;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="preparing-limma-voom-data" class="section level2">
-<h2>Preparing limma-voom data</h2>
-<p>Now let’s preprocess the data</p>
+<div id="visualize-outlier-cell-line-distribution" class="section level2">
+<h2>Visualize outlier cell line distribution</h2>
+<p>Visualize the cell lines that are omitted from downstream analyses.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBDcmVhdGUgYSBER0UgTGlzdCBkYXRhIG9iamVjdFxuZGF0YSA9IGNwbShkYXRhKVxuZDAgPSBER0VMaXN0KGRhdGEpXG5kMCA9IGNhbGNOb3JtRmFjdG9ycyhkMClcblxuIyBGaWx0ZXIgb3V0IGJhZCBkYXRhIHBvaW50c1xuY3V0b2ZmID0gMVxuZHJvcCA9IHdoaWNoKGFwcGx5KGNwbShkMCksIDEsIG1heCkgPCBjdXRvZmYpXG5kID0gZDBbLWRyb3AsXSBcbmRpbShkKVxuYGBgIn0= -->
-<pre class="r"><code># Create a DGE List data object
-data = cpm(data)
-d0 = DGEList(data)
-d0 = calcNormFactors(d0)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBHcm91cCBieSBcbnRtcCA9IGFnZ3JlZ2F0ZShmaWx0ZXJlZF9jZWxsX2xpbmVzJGxpbmVhZ2UsIFxuICAgICAgICAgICAgICAgIGJ5PWxpc3QoZmlsdGVyZWRfY2VsbF9saW5lcyRsaW5lYWdlKSwgXG4gICAgICAgICAgICAgICAgbGVuZ3RoKVxudG1wID0gdG1wICU+JSBhcnJhbmdlKHgpXG50bXAkR3JvdXAuMSA9IGZhY3Rvcih0bXAkR3JvdXAuMSxcbiAgICAgICAgICAgICAgICAgICAgIGxldmVscz10bXAkR3JvdXAuMVtvcmRlcih0bXAkeCwgZGVjcmVhc2luZyA9IFRSVUUpXSlcblxuIyBQbG90IGJ5IHRpc3N1ZVxuZ2dwbG90KGRhdGE9dG1wLCBcbiAgICAgICBhZXMoeD1Hcm91cC4xLCBcbiAgICAgICAgICAgeT14LCBcbiAgICAgICAgICAgZmlsbD14LFxuICAgICAgICAgICBsYWJlbD14KSkgK1xuICBnZW9tX2JhcihzdGF0PSdpZGVudGl0eScsXG4gICAgICAgICAgIHBvc2l0aW9uPSdkb2RnZScpICtcbiAgY29vcmRfZmxpcCgpICtcbiAgbGFicyh5PVwiTnVtYmVyIG9mIGNlbGwgbGluZXMgcmVtb3ZlZFwiLFxuICAgICAgIHg9XCJUaXNzdWUgbGluZWFnZVwiLFxuICAgICAgIHRpdGxlPVwiQ2VsbCBsaW5lcyByZW1vdmVkIGZyb20gcm9idXN0IFBDQVwiKSArIFxuICBndWlkZXMoZmlsbD1ndWlkZV9sZWdlbmQodGl0bGU9XCJOIGNlbGwgbGluZXNcIikpICtcbiAgZ2VvbV90ZXh0KGFlcyhsYWJlbD14KSwgXG4gICAgICAgICAgICBwb3NpdGlvbj1wb3NpdGlvbl9kb2RnZSh3aWR0aD0wLjkpLCBcbiAgICAgICAgICAgIGhqdXN0PS0wLjI1KVxuYGBgIn0= -->
+<pre class="r"><code># Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %&gt;% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
 
-# Filter out bad data points
-cutoff = 1
-drop = which(apply(cpm(d0), 1, max) &lt; cutoff)
-d = d0[-drop,] 
-dim(d)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>We need to set up the groups we want to compare and the design matrix.</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ3JvdXAgPSBhcy5mYWN0b3Ioc2FtcGxlX2luZm8kcHJpbWFyeV9vcl9tZXRhc3Rhc2lzKVxuZGVzaWduID0gbW9kZWwubWF0cml4KH4wK2dyb3VwKVxuYGBgIn0= -->
-<pre class="r"><code>group = as.factor(sample_info$primary_or_metastasis)
-design = model.matrix(~0+group)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-</div>
-<div id="run-limma-voom" class="section level2">
-<h2>Run limma-voom</h2>
-<p>Now let’s run <em>limma-voom</em></p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudiA9IHZvb20oZCwgZGVzaWduLCBwbG90PVRSVUUpXG5maXQgPSBsbUZpdCh2LCBkZXNpZ24sIG1ldGhvZD0ncm9idXN0JylcbnJlc3VsdCA9IGVCYXllcyhmaXQsIHJvYnVzdD1UUlVFKVxuYGBgIn0= -->
-<pre class="r"><code>v = voom(d, design, plot=TRUE)
-fit = lmFit(v, design, method=&#39;robust&#39;)
-result = eBayes(fit, robust=TRUE)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Finally, let’s get the top 20 results</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudG9wLnRhYmxlID0gdG9wVGFibGUocmVzdWx0KVxuaGVhZCh0b3AudGFibGUsIDIwKVxud3JpdGUudGFibGUodG9wLnRhYmxlLCBcImNsaXBib2FyZFwiLCBzZXA9XCJcXHRcIiwgY29sLm5hbWVzPVRSVUUpXG5gYGAifQ== -->
-<pre class="r"><code>top.table = topTable(result)
-head(top.table, 20)
-write.table(top.table, &quot;clipboard&quot;, sep=&quot;\t&quot;, col.names=TRUE)</code></pre>
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat=&#39;identity&#39;,
+           position=&#39;dodge&#39;) +
+  coord_flip() +
+  labs(y=&quot;Number of cell lines removed&quot;,
+       x=&quot;Tissue lineage&quot;,
+       title=&quot;Cell lines removed from robust PCA&quot;) + 
+  guides(fill=guide_legend(title=&quot;N cell lines&quot;)) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9), 
+            hjust=-0.25)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-</div>
-<div id="get-gene-list-that-are-universally-lethal-across-all-cell-lines" class="section level1">
-<h1>8. Get gene list that are universally lethal across all cell lines</h1>
-<p>This gene list was determined from Project Score. Specifically, I defined universally lethal genes that are lethal in more than 50% of the cancer cell lines out of &gt; 300.</p>
+<div id="repeat-robpca-filter-for-genes" class="section level2">
+<h2>Repeat ROBPCA filter for genes</h2>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJvamVjdF9zY29yZV9maWxlID0gXCJEOi9EYXRhL0NSSVNQUi9TY29yZS80MTU4Nl8yMDE5XzExMDNfTU9FU000X0VTTS9TdXBwbGVtZW50YXJ5IFRhYmxlIDMgLSBDb3JlLUZpdG5lc3MgYW5kIENvbnRleHQtU3BlY2lmaWNpdHkgU3VtbWFyeV92Mi54bHN4XCJcbnNoZWV0X25hbWUgPSBcIkZpbHRlciBHZW5lc1wiXG5cbnByb2plY3Rfc2NvcmUgPSByZWFkX2V4Y2VsKHByb2plY3Rfc2NvcmVfZmlsZSwgc2hlZXRfbmFtZSlcbmdlbmVzX3RvX2ZpbHRlciA9IHByb2plY3Rfc2NvcmVbcHJvamVjdF9zY29yZSRgRGVwZW5kZW5jeSBTY29yZWAgPiA1MCwgXVxuYGBgIn0= -->
-<pre class="r"><code>project_score_file = &quot;D:/Data/CRISPR/Score/41586_2019_1103_MOESM4_ESM/Supplementary Table 3 - Core-Fitness and Context-Specificity Summary_v2.xlsx&quot;
-sheet_name = &quot;Filter Genes&quot;
-
-project_score = read_excel(project_score_file, sheet_name)
-genes_to_filter = project_score[project_score$`Dependency Score` &gt; 50, ]</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudG1wID0gcm9icGNhX2NlcmVzQGRhdGFcbnRtcGlkID0gcm9icGNhX2NlcmVzQGlkXG5yb3duYW1lcyh0bXApID0gdG1waWRcbnRtcCA9IHQodG1wKVxudG1waWQgPSBkYXRhLmZyYW1lKHJvd25hbWVzKHRtcCkpXG5yb2JwY2FfY2VyZXMgPSByZW1vdmVPdXRsaWVycyh0bXAsIHRtcGlkKVxuYGBgIn0= -->
+<pre class="r"><code>tmp = robpca_ceres@data
+tmpid = robpca_ceres@id
+rownames(tmp) = tmpid
+tmp = t(tmp)
+tmpid = data.frame(rownames(tmp))
+robpca_ceres = removeOutliers(tmp, tmpid)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="get-differentially-expressed-genes-for-a549-from-ceres-score" class="section level1">
-<h1>9. Get differentially expressed genes for A549 from CERES score</h1>
-<p>First, we’ll get the row corresponding to the cancer cell line A549.</p>
+<div id="construction-final-dataset-for-downstream-analysis" class="section level2">
+<h2>Construction final dataset for downstream analysis</h2>
+<p>We’ll use the ceres data from the Robust PCA analysis.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYTU0OV9jZXJlcyA9IG1lcmdlZF9sdW5nW21lcmdlZF9sdW5nJHN0cmlwcGVkX2NlbGxfbGluZV9uYW1lPT1cIkE1NDlcIixdXG5hNTQ5X2NlcmVzWzIsIF0gPSBtZXJnZWRfcHZhbFttZXJnZWRfcHZhbCRzdHJpcHBlZF9jZWxsX2xpbmVfbmFtZT09XCJBNTQ5XCIsXVxuYTU0OV9jZXJlcyA9IGE1NDlfY2VyZXNbLCA2Om5jb2woYTU0OV9jZXJlcyldXG5hNTQ5X2NlcmVzID0gdChhNTQ5X2NlcmVzKVxuYTU0OV9jZXJlcyA9IGRhdGEuZnJhbWUoYTU0OV9jZXJlcylcbmNvbG5hbWVzKGE1NDlfY2VyZXMpID0gYyhcIkNFUkVTXCIsIFwiUFZhbHVlXCIpXG5gYGAifQ== -->
-<pre class="r"><code>a549_ceres = merged_lung[merged_lung$stripped_cell_line_name==&quot;A549&quot;,]
-a549_ceres[2, ] = merged_pval[merged_pval$stripped_cell_line_name==&quot;A549&quot;,]
-a549_ceres = a549_ceres[, 6:ncol(a549_ceres)]
-a549_ceres = t(a549_ceres)
-a549_ceres = data.frame(a549_ceres)
-colnames(a549_ceres) = c(&quot;CERES&quot;, &quot;PValue&quot;)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2VyZXMgPSB0KHJvYnBjYV9jZXJlc0BkYXRhKVxuaWRzID0gcm93bmFtZXMoY2VyZXMpXG5ybShsaXN0PWMoXCJwY2Ffb2JqXCIsIFwicm9icGNhX2NlcmVzXCIsIFwicm9ic2NvcmVzXCIsIFwic2NvcmVzXCIpKVxuc2F2ZShsaXN0PWMoXCJjZXJlc1wiLCBcImlkc1wiKSwgZmlsZT1zYXZlcGF0aClcbmxvYWQoc2F2ZXBhdGgpXG5gYGAifQ== -->
+<pre class="r"><code>ceres = t(robpca_ceres@data)
+ids = rownames(ceres)
+rm(list=c(&quot;pca_obj&quot;, &quot;robpca_ceres&quot;, &quot;robscores&quot;, &quot;scores&quot;))
+save(list=c(&quot;ceres&quot;, &quot;ids&quot;), file=savepath)
+load(savepath)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Now, let’s grab the metabolic genes that are in RECON1</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueG5hbWUgPSBkYXRhLmZyYW1lKGVudHJlej1yb3duYW1lcyhhNTQ5X2NlcmVzKSlcbnRtcCA9IG1lcmdlKHhuYW1lLCByZWNvbjFfbWF0Y2gsIGJ5PSdlbnRyZXonKVxudG1wWywgMzo0XSA9IE5VTExcbnRtcCA9IHVuaXF1ZSh0bXApXG5hNTQ5X2NlcmVzJFN5bWJvbCA9IHRtcCRzeW1ib2xcbmBgYCJ9 -->
-<pre class="r"><code>xname = data.frame(entrez=rownames(a549_ceres))
-tmp = merge(xname, recon1_match, by=&#39;entrez&#39;)
-tmp[, 3:4] = NULL
-tmp = unique(tmp)
-a549_ceres$Symbol = tmp$symbol</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<div id="plot-venn-diagram" class="section level2">
-<h2>Plot Venn Diagram</h2>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2VuZV9vdmVybGFwID0gbGlzdChcbiAgQTU0OV9zcGVjaWZpYyA9IHNpZ19hNTQ5X2NlcmVzJFN5bWJvbCxcbiAgQ29yZV9maXRuZXNzID0gZ2VuZXNfdG9fZmlsdGVyJGBIR05DIFN5bWJvbGBcbilcbmdnVmVubkRpYWdyYW0oZ2VuZV9vdmVybGFwKVxuYGBgIn0= -->
-<pre class="r"><code>gene_overlap = list(
-  A549_specific = sig_a549_ceres$Symbol,
-  Core_fitness = genes_to_filter$`HGNC Symbol`
-)
-ggVennDiagram(gene_overlap)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<p>Finally, we’ll grab the genes that have a left-tailed p-value less than 0.05</p>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc2lnX2E1NDlfY2VyZXMgPSBhNTQ5X2NlcmVzW2E1NDlfY2VyZXMkUFZhbHVlIDwgMC4wNSwgXVxuZ2VuZXNfdG9fZmlsdGVyID0gZ2VuZXNfdG9fZmlsdGVyJGBFbnRyZXogSURgXG5nZW5lc190b19maWx0ZXIgPSBkYXRhLmZyYW1lKGdlbmVzX3RvX2ZpbHRlcilcbnViaXFfZ2VuZXMgPSBtZXJnZShnZW5lc190b19maWx0ZXIsIFxuICAgICAgICAgICAgICAgICAgIHNpZ19hNTQ5X2NlcmVzLCBcbiAgICAgICAgICAgICAgICAgICBieS54PSdnZW5lc190b19maWx0ZXInLCBcbiAgICAgICAgICAgICAgICAgICBieS55PVwicm93Lm5hbWVzXCIpXG51bmlxdWVfZ2VuZXMgPSBzaWdfYTU0OV9jZXJlc1shc2lnX2E1NDlfY2VyZXMkU3ltYm9sICVpbiUgdWJpcV9nZW5lcyRTeW1ib2wsIF1cbndyaXRlLnRhYmxlKHNpZ19hNTQ5X2NlcmVzLCBcImNsaXBib2FyZFwiLCBzZXA9XCJcXHRcIiwgY29sLm5hbWVzPVRSVUUpXG5gYGAifQ== -->
-<pre class="r"><code>sig_a549_ceres = a549_ceres[a549_ceres$PValue &lt; 0.05, ]
-genes_to_filter = genes_to_filter$`Entrez ID`
-genes_to_filter = data.frame(genes_to_filter)
-ubiq_genes = merge(genes_to_filter, 
-                   sig_a549_ceres, 
-                   by.x=&#39;genes_to_filter&#39;, 
-                   by.y=&quot;row.names&quot;)
-unique_genes = sig_a549_ceres[!sig_a549_ceres$Symbol %in% ubiq_genes$Symbol, ]
-write.table(sig_a549_ceres, &quot;clipboard&quot;, sep=&quot;\t&quot;, col.names=TRUE)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
 </div>
-</div>
-<div id="get-differentially-expressed-genes-across-all-nsclc-cell-lines" class="section level1">
-<h1>10. Get differentially expressed genes across all NSCLC cell lines</h1>
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudG1wID0gbWVyZ2VkX3B2YWxbLCAtYygxOjUpXVxudG1wMiA9IG1lcmdlZF9sdW5nWywgLWMoMTo1KV1cbmBgYCJ9 -->
-<pre class="r"><code>tmp = merged_pval[, -c(1:5)]
-tmp2 = merged_lung[, -c(1:5)]</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
 </div>
 
-<div id="rmd-source-code">LS0tDQp0aXRsZTogIkNSSVNQUi1DYXM5IFZhbGlkYXRpb24iDQphdXRob3I6ICJTY290dCBDYW1waXQiDQpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sNCi0tLQ0KDQojIFN1bW1hcnkNClRoaXMgbm90ZWJvb2sgZG9lcyB0aGUgZm9sbG93aW5nIGFuYWx5c2lzOg0KICAxLiBTZXBhcmF0ZSBvdXQgbHVuZyBjYW5jZXIgY2VsbCBsaW5lcw0KICAyLiBDb21wdXRlIGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBDUw0KICAzLiBDb21wYXJlIGl0IHRvIGN1cnJlbnQgaXRlcmF0aW9uIG9mIG1ldGFib2xpYyByZWFjdGlvbnMgYW5kIGdlbmVzIHByZWRpY3RlZCBieSBDT0JSQQ0KDQojIDEuIExvYWQgbGlicmFyaWVzDQpgYGB7cn0NCmxpYnJhcnkodGlkeXIpDQpsaWJyYXJ5KHJlYWRyKQ0KbGlicmFyeShzdHJpbmdyKQ0KbGlicmFyeShnZ3Bsb3QyKQ0KbGlicmFyeShyZXRpY3VsYXRlKQ0KbGlicmFyeShsaW1tYSkNCmxpYnJhcnkoR2xpbW1hKQ0KbGlicmFyeShlZGdlUikNCmxpYnJhcnkodGlkeXZlcnNlKQ0KbGlicmFyeShkcGx5cikNCmxpYnJhcnkocmVzaGFwZTIpDQpsaWJyYXJ5KHJlYWR4bCkNCmxpYnJhcnkoZ2dWZW5uRGlhZ3JhbSkNCmxpYnJhcnkocnJjb3YpDQpgYGANCg0KIyAyLiBSZWFkIGluIGRhdGENCmBgYHtyfQ0Kcm0obGlzdD1scygpKQ0Kcm9icGNhX2RhdGEgPSAiRDovQW5hbHlzaXMvRU1UL2NlcmVzX3JvYnBjYS5SRGF0YSINCmxvYWQocm9icGNhX2RhdGEpDQpgYGANCg0KIyMgR3JhYiBDQ0xFIG1ldGEgZGF0YQ0KRmlyc3QsIHdlJ2xsIGdldCByZWxldmFudCBtZXRhIGRhdGENCmBgYHtyfQ0KIyBMaW51eA0KI21ldGFwYXRoID0gIn4vRGF0YS9DUklTUFIvc2FtcGxlX2luZm8uY3N2Ig0KDQojIERlbGwNCm1ldGFwYXRoID0gJ0Q6L0RhdGEvTWFwcGluZ3MvQ0NMRS9zYW1wbGVfaW5mby5jc3YnDQoNCiMgUmVhZCBpbiBtZXRhIGRhdGENCm1ldGFfZGF0YSA9IHJlYWRfY3N2KG1ldGFwYXRoKQ0KbWV0YV9kYXRhID0gbWV0YV9kYXRhWywgYygiRGVwTWFwX0lEIiwgDQogICAgICAgICAgICAgICAgICAgICAgICAic3RyaXBwZWRfY2VsbF9saW5lX25hbWUiLCANCiAgICAgICAgICAgICAgICAgICAgICAgICJwcmltYXJ5X29yX21ldGFzdGFzaXMiLA0KICAgICAgICAgICAgICAgICAgICAgICAgImxpbmVhZ2UiLA0KICAgICAgICAgICAgICAgICAgICAgICAgImxpbmVhZ2Vfc3VidHlwZSIpXQ0KYGBgDQoNCiMgNC4gQ29tcHV0ZSBQLXZhbHVlcyBmcm9tIENFUkVTIFNjb3JlDQoNCiMjIEdsb2JhbCBwLXZhbHVlDQpOZXh0LCB3ZSdsbCBjb21wdXRlIHRoZSBwLXZhbHVlcyB1c2luZyB0aGUgZGF0YSBpdHNlbGYuIE1vc3Qgb2YgdGhlIGRhdGEgbGllcyBjbG9zZSB0byAwIChubyBhY3Rpdml0eSksIHdoaWxlIHRoZSBzaWduaWZpY2FudCBkYXRhIHBvaW50cyBsaWUgb24gdGhlIGxlZnQgc2lkZSBvZiB0aGUgZGF0YSBkaXN0cmlidXRpb24uIFRodXMsIHdlJ2xsIGNvbXB1dGUgdGhlIGxlZnQtdGFpbGVkIFAtdmFsdWUuDQpgYGB7cn0NCm11ID0gbWVhbihjZXJlcywgbmEucm09VFJVRSkNCnN0ZGV2ID0gc2QoYXMubWF0cml4KGNlcmVzKSwgbmEucm09VFJVRSkNCmdsb2JhbF9wdmFscyA9IHBub3JtKGFzLm51bWVyaWMoY2VyZXMpLCANCiAgICAgICAgICAgICAgICAgICAgIG1lYW49bXUsIA0KICAgICAgICAgICAgICAgICAgICAgc2Q9c3RkZXYsDQogICAgICAgICAgICAgICAgICAgICBsb3dlci50YWlsPVRSVUUpDQpwdmFscyA9IGdsb2JhbF9wdmFscw0KcHZhbHMgPSBkYXRhLm1hdHJpeChwdmFscykNCmBgYA0KDQpCZWNhdXNlIHdlIGFyZSB0ZXN0aW5nIHNldmVyYWwgaHlwb3RoZXNlcywgd2Ugc2hvdWxkIGNvbnRyb2wgdXNpbmcgdGhlIEZEUi4NCmBgYHtyfQ0KIyBQZXJmb3JtIEZEUiBBZGp1c3RtZW50DQphZGp1c3RlZF9wdmFsID0gcC5hZGp1c3QocHZhbHMsIG1ldGhvZD0iZmRyIikNCnB2YWxzID0gYWRqdXN0ZWRfcHZhbA0Kcm0obGlzdD1jKCJhZGp1c3RlZF9wdmFsIiwgImdsb2JhbF9wdmFscyIpKQ0KYGBgDQoNCiMjIFBsb3QgdGhlIGRhdGEgZGlzdHJpYnV0aW9uDQoNClByZXByb2Nlc3MgZGF0YQ0KYGBge3J9DQp0bXAgPSBkYXRhLmZyYW1lKHB2YWxzKQ0KdG1wJGNvbCA9IGFzLmZhY3Rvcih0bXAkcHZhbHMgPCAwLjA1KQ0KbWx0X2NlcmVzID0gcmVzaGFwZTI6Om1lbHQoY2VyZXMpDQp0bXAkY2VyZXMgPSBtbHRfY2VyZXMkdmFsdWUNCmBgYA0KDQpOb3cgbGV0J3MgcGxvdCB0aGUgZGF0YSBkaXN0cmlidXRpb24uDQpgYGB7cn0NCiMgUGxvdCBwLXZhbHVlIGRpc3RyaWJ1dGlvbg0KZ2dwbG90KGRhdGEuZnJhbWUodG1wKSwgYWVzKHg9cHZhbHMsIGZpbGw9Y29sKSkgKyAgDQogIGdlb21faGlzdG9ncmFtKGJpbnM9MTAwKSArDQogIHNjYWxlX2ZpbGxfbWFudWFsKHZhbHVlcyA9IGMoIlRSVUUiPSJyZWQiLCAiRkFMU0UiPSJncmF5IikpICsNCiAgbGFicyh0aXRsZT0iQ0VSRVMgRkRSIGRpc3RyaWJ1dGlvbiAoYWxsKSIsIA0KICAgICAgIHg9IkZEUiBBZGp1c3RlZCBQLXZhbHVlcyAobGVmdC1zaWRlZCkiLCANCiAgICAgICB5PSJGcmVxdWVuY3kiKSArDQogIHRoZW1lKGxlZ2VuZC5wb3NpdGlvbj0ibm9uZSIpDQoNCiMgUGxvdCBDRVJFUyBkaXN0cmlidXRpb24NCmdncGxvdCh0bXAsIGFlcyh4PWNlcmVzLCBmaWxsPWNvbCkpICsgIA0KICBnZW9tX2hpc3RvZ3JhbShiaW5zPTEwMCkgKw0KICBzY2FsZV9maWxsX21hbnVhbCh2YWx1ZXMgPSBjKCJUUlVFIj0icmVkIiwgIkZBTFNFIj0iZ3JheSIpKSArDQogIGxhYnModGl0bGU9IkNFUkVTIGRpc3RyaWJ1dGlvbiAoYWxsKSIsIA0KICAgICAgIHg9IkNFUkVTIiwgDQogICAgICAgeT0iRnJlcXVlbmN5IikgKw0KICB0aGVtZShsZWdlbmQucG9zaXRpb249Im5vbmUiKQ0KYGBgDQoNCiMgNS4gTWFwIHRoZSBDRVJFUyBzY29yZXMgYmFjayB0byBDQ0xFDQpUaGUgZGF0YSBpcyBjdXJyZW50bHkgbWFwcGVkIHRvIGEpIERlcE1hcCBpZGVudGlmaWVycywgYW5kIGIpIGEgaHlicmlkIG9mIGdlbmUgc3ltYm9scyBhbmQgRW50cmV6IElEcy4NCg0KV2hhdCB3ZSBuZWVkIHRvIGRvIGlzIG1hcCBpdCB0byB0aGUgZm9sbG93aW5nOg0KDQogICogQ2FuY2VyIENlbGwgTGluZQ0KICAqIENhbmNlciBDZWxsIExpbmUgVGlzc3VlIExpbmVhZ2UNCiAgKiBFbnRyZXogSUQNCg0KIyMgRmlsdGVyIHRoZSBkYXRhIHRvIGdldCBvbmx5IE5TQ0xDDQpOb3cgd2UgbmVlZCB0byBzZWxlY3Qgc3BlY2lmaWMgY2VsbCBsaW5lcyB0aGF0IHdlJ3JlIGludGVyZXN0ZWQgaW4gZnJvbSB0aGUgTlNDTEMgc3VidHlwZS4NCmBgYHtyfQ0KIyBMdW5nIGRhdGEgbmVlZHMgdG8gYmUgTlNDTEMgYW5kIHdlIG5lZWQgdG8ga25vdyB3aGV0aGVyIGl0J3MgZnJvbSB0aGUgcHJpbWFyeSBzaXRlIG9yIGlmIGl0IGlzIG1ldGFzdGF0aWMNCmx1bmdfbWV0YV9kYXRhID0gbWV0YV9kYXRhW21ldGFfZGF0YVsibGluZWFnZSJdPT0ibHVuZyIsXQ0KbHVuZ19tZXRhX2RhdGEgPSBsdW5nX21ldGFfZGF0YVtsdW5nX21ldGFfZGF0YVsibGluZWFnZV9zdWJ0eXBlIl09PSJOU0NMQyIsXQ0KbHVuZ19tZXRhX2RhdGEgPSBsdW5nX21ldGFfZGF0YVshaXMubmEobHVuZ19tZXRhX2RhdGEkcHJpbWFyeV9vcl9tZXRhc3Rhc2lzKSxdDQpgYGAgDQoNCiMjIFNlcGFyYXRlIGVudHJleiBhbmQgZ2VuZSBzeW1ib2wgaWRlbnRpZmllcnMNCldlIHNob3VsZCBjbGVhbiB1cCB0aGUgY29sdW1uIG5hbWVzIGZvciB0aGUgUHJvamVjdCBBY2hpbGxlcyBhbmQgc3RvcmUgYXMgYm90aCBzeW1ib2wgYW5kIGVudHJleiBJRCBzZXBhcmF0ZWx5Lg0KYGBge3J9DQojIFNhdmUgZ2VuZSBzeW1ib2xzDQpvcmlnX2NvbG5hbWVzID0gY29sbmFtZXMoY2VyZXMpDQphbGxfc3ltYm9sID0gYXMuY2hhcmFjdGVyKHNhcHBseShzdHJzcGxpdChvcmlnX2NvbG5hbWVzLCAiICIpLCAnWycsIDEpKQ0KI2FsbF9zeW1ib2wgPSBhbGxfc3ltYm9sWy0xXQ0KDQojIFNhdmUgRW50cmV6IElEIA0KYWxsX2VudHJleiA9IGFzLmNoYXJhY3RlcihzYXBwbHkoc3Ryc3BsaXQob3JpZ19jb2xuYW1lcywgIiAiKSwgJ1snLCAtMSkpDQphbGxfZW50cmV6ID0gc3RyX3JlbW92ZShhbGxfZW50cmV6LCAiWyggKV0iKQ0KYWxsX2VudHJleiA9IHN0cl9yZW1vdmUoYWxsX2VudHJleiwgIlsoICldIikNCmFsbF9lbnRyZXpbMV0gPSBhbGxfc3ltYm9sWzFdDQpgYGANCg0KQ29tYmluZSBhbGwgdGhlIGlkZW50aWZpZXJzIGludG8gYSBzaW5nbGUgZGF0YWZyYW1lLg0KYGBge3J9DQojIEFsbCBpZGVudGlmaWVycw0KYWxsX2lkcyA9IGRhdGEuZnJhbWUoc3ltYm9sPWFsbF9zeW1ib2wsIGVudHJlej1hbGxfZW50cmV6KQ0KYWxsX2lkcyA9IGFsbF9pZHNbLTEsIF0NCmBgYA0KDQojIyMgTWFwIGRhdGFzZXQgdG8gRW50cmV6IElEcw0KTWFwIGV2ZXJ5dGhpbmcgdG8gRW50cmV6IElEcw0KYGBge3J9DQojIENyZWF0ZSBkYXRhc2V0IHdpdGggZ2VuZSBzeW1ib2xzIGFzIElEDQpkYXRhX2VudHJleiA9IGNlcmVzDQpjb2xuYW1lcyhkYXRhX2VudHJleikgPSBhbGxfZW50cmV6DQoNCiMgQ3JlYXRlIHB2YWx1ZSBkYXRhZnJhbWUNCnB2YWxzID0gYXMubWF0cml4KHB2YWxzKQ0KZGF0YV9kaW1zID0gZGltKGNlcmVzKQ0KcHZhbHVlX2VudHJleiA9IG1hdHJpeChwdmFscywgDQogICAgICAgICAgICAgICAgICAgbnJvdz1kYXRhX2RpbXNbMV0sIA0KICAgICAgICAgICAgICAgICAgIG5jb2w9ZGF0YV9kaW1zWzJdKQ0KcHZhbHVlX2VudHJleiA9IGRhdGEuZnJhbWUocHZhbHVlX2VudHJleikNCmNvbG5hbWVzKHB2YWx1ZV9lbnRyZXopID0gYWxsX2VudHJlelsyOmxlbmd0aChwdmFsdWVfZW50cmV6KV0gDQpgYGANCg0KIyMjIE1hcCBkYXRhc2V0IHRvIEdlbmUgU3ltYm9scw0KTWFwIGV2ZXJ5dGhpbmcgdG8gR2VuZSBTeW1ib2xzDQpgYGB7cn0NCiMgQ3JlYXRlIGRhdGFzZXQgd2l0aCBnZW5lIHN5bWJvbHMgYXMgSUQNCmRhdGFfc3ltYm9sID0gY2VyZXMNCmNvbG5hbWVzKGRhdGFfc3ltYm9sKSA9IGFsbF9zeW1ib2wNCg0KIyBDcmVhdGUgcHZhbHVlIGRhdGFmcmFtZQ0KcHZhbHMgPSBhcy5tYXRyaXgocHZhbHMpDQpkYXRhX2RpbXMgPSBkaW0oY2VyZXMpDQpwdmFsdWVfc3ltYm9sID0gbWF0cml4KHB2YWxzLCANCiAgICAgICAgICAgICAgICAgICBucm93PWRhdGFfZGltc1sxXSwgDQogICAgICAgICAgICAgICAgICAgbmNvbD1kYXRhX2RpbXNbMl0pDQpwdmFsdWVfc3ltYm9sID0gZGF0YS5mcmFtZShwdmFsdWVfc3ltYm9sKQ0KY29sbmFtZXMocHZhbHVlX3N5bWJvbCkgPSBhbGxfc3ltYm9sWzI6bGVuZ3RoKHB2YWx1ZV9zeW1ib2wpXSANCnB2YWx1ZV9zeW1ib2wkRGVwTWFwX0lEID0gaWRzDQpgYGANCg0KIyMgRmlsdGVyIG1ldGFib2xpYyBnZW5lcyBvbmx5DQpNYXAgaXQgYmFjayB0byB0aGUgaHVtYW4gbWV0YWJvbGljIHJlY29uc3RydWN0aW9uLg0KYGBge3J9DQpyZWNvbjFfbWFwID0gIkQ6L0RhdGEvTWFwcGluZ3MvUmVjb25zdHJ1Y3Rpb25zL1JFQ09OMS9SRUNPTjEueGxzeCINCnJlY29uMV9nZW5lcyA9IHJlYWR4bDo6cmVhZF9leGNlbChyZWNvbjFfbWFwLCBzaGVldD0iR2VuZXMiKQ0KcmVjb24xX21hdGNoID0gbWVyZ2UoYWxsX2lkcywgcmVjb24xX2dlbmVzLCBieS54PSJlbnRyZXoiLCBieS55PSJFbnRyZXoiKQ0KDQpkYXRhX2VudHJleiA9IGRhdGFfZW50cmV6WywgdW5pcXVlKHJlY29uMV9tYXRjaCRlbnRyZXopXQ0KZGF0YV9lbnRyZXokRGVwTWFwX0lEID0gaWRzDQoNCnB2YWx1ZV9lbnRyZXogPSBwdmFsdWVfZW50cmV6WywgdW5pcXVlKHJlY29uMV9tYXRjaCRlbnRyZXopXQ0KcHZhbHVlX2VudHJleiREZXBNYXBfSUQgPSBpZHMNCmBgYA0KDQojIDYuIE1lcmdlIG1ldGFkYXRhIHRvIG1ldGFib2xpYyBwLXZhbHVlcyBhbmQgQ0VSRVMgc2NvcmVzDQpGaW5hbGx5LCB3ZSBjYW4gdGhlIE5TQ0xDIGRhdGEgYmFjayB0byBSRUNPTjEgZ2VuZXMuDQpgYGB7cn0NCiMgRW50cmV6IElEcw0KbWVyZ2VkX2x1bmcgPSBtZXJnZShsdW5nX21ldGFfZGF0YSwgZGF0YV9lbnRyZXosIGJ5PSdEZXBNYXBfSUQnKQ0KbWVyZ2VkX3B2YWwgPSBtZXJnZShsdW5nX21ldGFfZGF0YSwgcHZhbHVlX2VudHJleiwgYnk9J0RlcE1hcF9JRCcpDQoNCiMgR2VuZSBTeW1ib2xzDQptZXJnZWRfbHVuZyA9IG1lcmdlKGx1bmdfbWV0YV9kYXRhLCBkYXRhX3N5bWJvbCwgYnk9J0RlcE1hcF9JRCcpDQptZXJnZWRfcHZhbCA9IG1lcmdlKGx1bmdfbWV0YV9kYXRhLCBwdmFsdWVfc3ltYm9sLCBieT0nRGVwTWFwX0lEJykNCg0KYGBgDQojIyBWaXN1YWxpemUgdGhlIE5TQ0xDIENSSVNQUi1DYXM5IG1ldGFib2xpc20gZGF0YSBtYXBwZWQgdG8gUkVDT04xDQpMZXQncyBjb25zdHJ1Y3QgdGhlIGRhdGEgb2JqZWN0IHVzZWQgZm9yIHRoZSB2aXN1YWxpemF0aW9uLg0KYGBge3J9DQp0bXAgPSBtZXJnZWRfcHZhbFssIDY6bmNvbChtZXJnZWRfcHZhbCldDQp0bXAgPSByZXNoYXBlMjo6bWVsdChkYXRhLmZyYW1lKHRtcCkpDQp0bXAkY29sID0gYXMuZmFjdG9yKHRtcCR2YWx1ZSA8IDAuMDUpDQpsdW5nX2NlcmVzID0gcmVzaGFwZTI6Om1lbHQobWVyZ2VkX2x1bmdbLCA2Om5jb2wobWVyZ2VkX2x1bmcpXSkNCnRtcCRjZXJlcyA9IGx1bmdfY2VyZXMkdmFsdWUNCmBgYA0KDQpOb3cgYWN0dWFsbHkgcGxvdCB0aGUgcC12YWx1ZXMgYW5kIENFUkVTIHNjb3Jlcy4NCmBgYHtyfQ0KIyBQbG90IHAtdmFsdWUgZGlzdHJpYnV0aW9uDQpnZ3Bsb3QoZGF0YS5mcmFtZSh0bXApLCBhZXMoeD12YWx1ZSwgZmlsbD1jb2wpKSArICANCiAgZ2VvbV9oaXN0b2dyYW0oYmlucz0xMDApICsNCiAgc2NhbGVfZmlsbF9tYW51YWwodmFsdWVzID0gYygiVFJVRSI9InJlZCIsICJGQUxTRSI9ImdyYXkiKSkgKw0KICBsYWJzKHRpdGxlPSJDRVJFUyBOU0NMQyBwLXZhbHVlIGRpc3RyaWJ1dGlvbiIsIA0KICAgICAgIHg9IlAtdmFsdWVzIChsZWZ0LXNpZGVkKSIsIA0KICAgICAgIHk9IkZyZXF1ZW5jeSIpICsNCiAgdGhlbWUobGVnZW5kLnBvc2l0aW9uPSJub25lIikNCg0KIyBQbG90IENFUkVTIGRpc3RyaWJ1dGlvbg0KZ2dwbG90KHRtcCwgYWVzKHg9Y2VyZXMsIGZpbGw9Y29sKSkgKyAgDQogIGdlb21faGlzdG9ncmFtKGJpbnM9MTAwKSArDQogIHNjYWxlX2ZpbGxfbWFudWFsKHZhbHVlcyA9IGMoIlRSVUUiPSJyZWQiLCAiRkFMU0UiPSJncmF5IikpICsNCiAgbGFicyh0aXRsZT0iQ0VSRVMgTlNDTEMgZGlzdHJpYnV0aW9uIiwgDQogICAgICAgeD0iQ0VSRVMiLCANCiAgICAgICB5PSJGcmVxdWVuY3kiKSArDQogIHRoZW1lKGxlZ2VuZC5wb3NpdGlvbj0ibm9uZSIpDQpgYGANCg0KIyA3LiBHZXQgZGlmZmVyZW50aWFsbHkgZXhwcmVzc2VkIENFUkVTIHNjb3JlIGJ5IGNvbXBhcmluZyBtZXRhc3RhdGljIC8gcHJpbWFyeSBzaXRlIHVzaW5nIGxpbW1hLXZvb20NCg0KIyMgRGF0YSBwcmVwcm9jZXNzaW5nDQpGb3JtYXQgdGhlIGRhdGFzZXQNCmBgYHtyfQ0Kc2FtcGxlX2luZm8gPSBtZXJnZWRfbHVuZ1ssIDE6NV0NCmRhdGEgPSBtZXJnZWRfbHVuZ1ssIC1jKDE6NSldDQpyb3duYW1lcyhkYXRhKSA9IHNhbXBsZV9pbmZvWywgMl0NCmRhdGEgPSB0KGRhdGEpDQpzYW1wbGVfaW5mbyA9IHNhbXBsZV9pbmZvICU+JSBkcGx5cjo6c2VsZWN0KDI6MykNCmBgYA0KDQpOb3cgd2UnbGwgZmxvb3IgcG9zaXRpdmUgQ0VSRVMgU2NvcmVzIHRvIDAsIGFuZCB0YWtlIHRoZSBhYnNvbHV0ZSB2YWx1ZSBmb3IgdGhlIENFUkVTIFNjb3Jlcw0KYGBge3J9DQpkYXRhW2RhdGEgPiAwXSA9IDANCmRhdGEgPSBhYnMoZGF0YSkNCmRhdGFbaXMubmEoZGF0YSldID0gMA0KYGBgDQoNCiMjIFByZXBhcmluZyBsaW1tYS12b29tIGRhdGEgDQpOb3cgbGV0J3MgcHJlcHJvY2VzcyB0aGUgZGF0YQ0KYGBge3J9DQojIENyZWF0ZSBhIERHRSBMaXN0IGRhdGEgb2JqZWN0DQpkYXRhID0gY3BtKGRhdGEpDQpkMCA9IERHRUxpc3QoZGF0YSkNCmQwID0gY2FsY05vcm1GYWN0b3JzKGQwKQ0KDQojIEZpbHRlciBvdXQgYmFkIGRhdGEgcG9pbnRzDQpjdXRvZmYgPSAxDQpkcm9wID0gd2hpY2goYXBwbHkoY3BtKGQwKSwgMSwgbWF4KSA8IGN1dG9mZikNCmQgPSBkMFstZHJvcCxdIA0KZGltKGQpDQpgYGANCg0KV2UgbmVlZCB0byBzZXQgdXAgdGhlIGdyb3VwcyB3ZSB3YW50IHRvIGNvbXBhcmUgYW5kIHRoZSBkZXNpZ24gbWF0cml4Lg0KYGBge3J9DQpncm91cCA9IGFzLmZhY3RvcihzYW1wbGVfaW5mbyRwcmltYXJ5X29yX21ldGFzdGFzaXMpDQpkZXNpZ24gPSBtb2RlbC5tYXRyaXgofjArZ3JvdXApDQpgYGANCg0KIyMgUnVuIGxpbW1hLXZvb20NCk5vdyBsZXQncyBydW4gKmxpbW1hLXZvb20qDQpgYGB7cn0NCnYgPSB2b29tKGQsIGRlc2lnbiwgcGxvdD1UUlVFKQ0KZml0ID0gbG1GaXQodiwgZGVzaWduLCBtZXRob2Q9J3JvYnVzdCcpDQpyZXN1bHQgPSBlQmF5ZXMoZml0LCByb2J1c3Q9VFJVRSkNCmBgYA0KDQpGaW5hbGx5LCBsZXQncyBnZXQgdGhlIHRvcCAyMCByZXN1bHRzDQpgYGB7cn0NCnRvcC50YWJsZSA9IHRvcFRhYmxlKHJlc3VsdCkNCmhlYWQodG9wLnRhYmxlLCAyMCkNCndyaXRlLnRhYmxlKHRvcC50YWJsZSwgImNsaXBib2FyZCIsIHNlcD0iXHQiLCBjb2wubmFtZXM9VFJVRSkNCmBgYA0KDQojIDguIEdldCBnZW5lIGxpc3QgdGhhdCBhcmUgdW5pdmVyc2FsbHkgbGV0aGFsIGFjcm9zcyBhbGwgY2VsbCBsaW5lcw0KVGhpcyBnZW5lIGxpc3Qgd2FzIGRldGVybWluZWQgZnJvbSBQcm9qZWN0IFNjb3JlLiBTcGVjaWZpY2FsbHksIEkgZGVmaW5lZCB1bml2ZXJzYWxseSBsZXRoYWwgZ2VuZXMgdGhhdCBhcmUgbGV0aGFsIGluIG1vcmUgdGhhbiA1MCUgb2YgdGhlIGNhbmNlciBjZWxsIGxpbmVzIG91dCBvZiA+IDMwMC4gDQpgYGB7cn0NCnByb2plY3Rfc2NvcmVfZmlsZSA9ICJEOi9EYXRhL0NSSVNQUi9TY29yZS80MTU4Nl8yMDE5XzExMDNfTU9FU000X0VTTS9TdXBwbGVtZW50YXJ5IFRhYmxlIDMgLSBDb3JlLUZpdG5lc3MgYW5kIENvbnRleHQtU3BlY2lmaWNpdHkgU3VtbWFyeV92Mi54bHN4Ig0Kc2hlZXRfbmFtZSA9ICJGaWx0ZXIgR2VuZXMiDQoNCnByb2plY3Rfc2NvcmUgPSByZWFkX2V4Y2VsKHByb2plY3Rfc2NvcmVfZmlsZSwgc2hlZXRfbmFtZSkNCmdlbmVzX3RvX2ZpbHRlciA9IHByb2plY3Rfc2NvcmVbcHJvamVjdF9zY29yZSRgRGVwZW5kZW5jeSBTY29yZWAgPiA1MCwgXQ0KYGBgDQoNCiMgOS4gR2V0IGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcyBmb3IgQTU0OSBmcm9tIENFUkVTIHNjb3JlDQpGaXJzdCwgd2UnbGwgZ2V0IHRoZSByb3cgY29ycmVzcG9uZGluZyB0byB0aGUgY2FuY2VyIGNlbGwgbGluZSBBNTQ5Lg0KYGBge3J9DQphNTQ5X2NlcmVzID0gbWVyZ2VkX2x1bmdbbWVyZ2VkX2x1bmckc3RyaXBwZWRfY2VsbF9saW5lX25hbWU9PSJBNTQ5IixdDQphNTQ5X2NlcmVzWzIsIF0gPSBtZXJnZWRfcHZhbFttZXJnZWRfcHZhbCRzdHJpcHBlZF9jZWxsX2xpbmVfbmFtZT09IkE1NDkiLF0NCmE1NDlfY2VyZXMgPSBhNTQ5X2NlcmVzWywgNjpuY29sKGE1NDlfY2VyZXMpXQ0KYTU0OV9jZXJlcyA9IHQoYTU0OV9jZXJlcykNCmE1NDlfY2VyZXMgPSBkYXRhLmZyYW1lKGE1NDlfY2VyZXMpDQpjb2xuYW1lcyhhNTQ5X2NlcmVzKSA9IGMoIkNFUkVTIiwgIlBWYWx1ZSIpDQpgYGANCg0KTm93LCBsZXQncyBncmFiIHRoZSBtZXRhYm9saWMgZ2VuZXMgdGhhdCBhcmUgaW4gUkVDT04xDQpgYGB7cn0NCnhuYW1lID0gZGF0YS5mcmFtZShlbnRyZXo9cm93bmFtZXMoYTU0OV9jZXJlcykpDQp0bXAgPSBtZXJnZSh4bmFtZSwgcmVjb24xX21hdGNoLCBieT0nZW50cmV6JykNCnRtcFssIDM6NF0gPSBOVUxMDQp0bXAgPSB1bmlxdWUodG1wKQ0KYTU0OV9jZXJlcyRTeW1ib2wgPSB0bXAkc3ltYm9sDQpgYGANCg0KIyMgUGxvdCBWZW5uIERpYWdyYW0NCmBgYHtyfQ0KZ2VuZV9vdmVybGFwID0gbGlzdCgNCiAgQTU0OV9zcGVjaWZpYyA9IHNpZ19hNTQ5X2NlcmVzJFN5bWJvbCwNCiAgQ29yZV9maXRuZXNzID0gZ2VuZXNfdG9fZmlsdGVyJGBIR05DIFN5bWJvbGANCikNCmdnVmVubkRpYWdyYW0oZ2VuZV9vdmVybGFwKQ0KYGBgDQoNCkZpbmFsbHksIHdlJ2xsIGdyYWIgdGhlIGdlbmVzIHRoYXQgaGF2ZSBhIGxlZnQtdGFpbGVkIHAtdmFsdWUgbGVzcyB0aGFuIDAuMDUNCmBgYHtyfQ0Kc2lnX2E1NDlfY2VyZXMgPSBhNTQ5X2NlcmVzW2E1NDlfY2VyZXMkUFZhbHVlIDwgMC4wNSwgXQ0KZ2VuZXNfdG9fZmlsdGVyID0gZ2VuZXNfdG9fZmlsdGVyJGBFbnRyZXogSURgDQpnZW5lc190b19maWx0ZXIgPSBkYXRhLmZyYW1lKGdlbmVzX3RvX2ZpbHRlcikNCnViaXFfZ2VuZXMgPSBtZXJnZShnZW5lc190b19maWx0ZXIsIA0KICAgICAgICAgICAgICAgICAgIHNpZ19hNTQ5X2NlcmVzLCANCiAgICAgICAgICAgICAgICAgICBieS54PSdnZW5lc190b19maWx0ZXInLCANCiAgICAgICAgICAgICAgICAgICBieS55PSJyb3cubmFtZXMiKQ0KdW5pcXVlX2dlbmVzID0gc2lnX2E1NDlfY2VyZXNbIXNpZ19hNTQ5X2NlcmVzJFN5bWJvbCAlaW4lIHViaXFfZ2VuZXMkU3ltYm9sLCBdDQp3cml0ZS50YWJsZShzaWdfYTU0OV9jZXJlcywgImNsaXBib2FyZCIsIHNlcD0iXHQiLCBjb2wubmFtZXM9VFJVRSkNCmBgYA0KDQoNCg0KIyAxMC4gR2V0IGRpZmZlcmVudGlhbGx5IGV4cHJlc3NlZCBnZW5lcyBhY3Jvc3MgYWxsIE5TQ0xDIGNlbGwgbGluZXMNCmBgYHtyfQ0KdG1wID0gbWVyZ2VkX3B2YWxbLCAtYygxOjUpXQ0KdG1wMiA9IG1lcmdlZF9sdW5nWywgLWMoMTo1KV0NCmBgYA==</div>
+<div id="rmd-source-code">LS0tDQp0aXRsZTogIlJvYnVzdCBQQ0EgZGF0YSBmaWx0ZXJpbmciDQphdXRob3I6ICJTY290dCBDYW1waXQiDQpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sNCi0tLQ0KDQojIFN1bW1hcnkNCg0KIyAxLiBMb2FkIGxpYnJhcmllcw0KYGBge3J9DQpsaWJyYXJ5KHRpZHlyKQ0KbGlicmFyeShyZWFkcikNCmxpYnJhcnkoc3RyaW5ncikNCmxpYnJhcnkoZ2dwbG90MikNCmxpYnJhcnkocmV0aWN1bGF0ZSkNCmxpYnJhcnkobGltbWEpDQpsaWJyYXJ5KEdsaW1tYSkNCmxpYnJhcnkoZWRnZVIpDQpsaWJyYXJ5KHRpZHl2ZXJzZSkNCmxpYnJhcnkoZHBseXIpDQpsaWJyYXJ5KHJlc2hhcGUyKQ0KbGlicmFyeShyZWFkeGwpDQpsaWJyYXJ5KGdnVmVubkRpYWdyYW0pDQpsaWJyYXJ5KHJyY292KQ0KYGBgDQoNCiMgMi4gUmVhZCBpbiBkYXRhDQpgYGB7cn0NCnJtKGxpc3Q9bHMoKSkNCg0KIyBEZWxsDQpkYXRhcGF0aCA9ICdEOi9EYXRhL0NSSVNQUi9BY2hpbGxlcy9BY2hpbGxlc19nZW5lX2VmZmVjdC5jc3YnDQoNCiMgTGludXgNCiNkYXRhcGF0aCA9ICd+L0RhdGEvQ1JJU1BSL0FjaGlsbGVzX2dlbmVfZWZmZWN0LmNzdicNCg0KIyBSZWFkIGluIGRhdGENCmRhdGEgPSByZWFkcjo6cmVhZF9jc3YoZGF0YXBhdGgpDQpgYGANCiMjIEdyYWIgQ0NMRSBtZXRhIGRhdGENCkZpcnN0LCB3ZSdsbCBnZXQgcmVsZXZhbnQgbWV0YSBkYXRhDQpgYGB7cn0NCiMgTGludXgNCiNtZXRhcGF0aCA9ICJ+L0RhdGEvQ1JJU1BSL3NhbXBsZV9pbmZvLmNzdiINCg0KIyBEZWxsDQptZXRhcGF0aCA9ICdEOi9EYXRhL01hcHBpbmdzL0NDTEUvc2FtcGxlX2luZm8uY3N2Jw0KDQojIFJlYWQgaW4gbWV0YSBkYXRhDQptZXRhX2RhdGEgPSByZWFkX2NzdihtZXRhcGF0aCkNCm1ldGFfZGF0YSA9IG1ldGFfZGF0YVssIGMoIkRlcE1hcF9JRCIsIA0KICAgICAgICAgICAgICAgICAgICAgICAgInN0cmlwcGVkX2NlbGxfbGluZV9uYW1lIiwgDQogICAgICAgICAgICAgICAgICAgICAgICAicHJpbWFyeV9vcl9tZXRhc3Rhc2lzIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICJsaW5lYWdlIiwNCiAgICAgICAgICAgICAgICAgICAgICAgICJsaW5lYWdlX3N1YnR5cGUiKV0NCmBgYA0KDQojIDMuIERpbWVuc2lvbiByZWR1Y3Rpb24NCkZpcnN0LCB3ZSdsbCBncmFiIHRoZSBDRVJFUyBTY29yZXMuDQpgYGB7cn0NCmNlcmVzID0gZGF0YVssIDI6bmNvbChkYXRhKV0NCmNlcmVzID0gZGF0YS5tYXRyaXgoY2VyZXMpDQpjZXJlc1tpcy5uYShjZXJlcyldID0gMA0KY2VyZXMgPSBhcy5tYXRyaXgoY2VyZXMpDQppZHMgPSBkYXRhLmZyYW1lKGRhdGFbLCAxXSkNCmBgYA0KDQpGaXJzdCwgd2UnbGwgY3JlYXRlIGEgZnVuY3Rpb24gdGhhdCBjYW4gcGVyZm9ybSBST0JQQ0Egb24gdGhlIGRhdGEuDQpgYGB7cn0NCiMgQ3JlYXRlIGEgZnVuY3Rpb24gdGhhdCBmaWx0ZXJzIGRhdGEgdXNpbmcgUk9CUENBDQpyZW1vdmVPdXRsaWVycyA9IGZ1bmN0aW9uKGRhdGEsIGlkKXsNCiAgcGNhX29iaiA9IFBjYUh1YmVydChkYXRhKQ0KICBmaWx0ZXJlZF9kYXRhID0gZGF0YVtwY2Ffb2JqQGZsYWcsIF0NCiAgZmlsdGVyZWRfaWQgPSBpZFtwY2Ffb2JqQGZsYWcsXQ0KICBvdXRsaWVyX2RhdGEgPSBkYXRhWyFwY2Ffb2JqQGZsYWcsIF0NCiAgb3V0bGllcl9pZCA9IGlkWyFwY2Ffb2JqQGZsYWcsXQ0KICANCiAgc2V0Q2xhc3MoQ2xhc3M9ImdlbmVPYmoiLA0KICAgICAgICAgICByZXByZXNlbnRhdGlvbigNCiAgICAgICAgICAgICBkYXRhPSJtYXRyaXgiLA0KICAgICAgICAgICAgIG91dGxpZXJfZGF0YT0ibWF0cml4IiwNCiAgICAgICAgICAgICBpZD0iY2hhcmFjdGVyIiwNCiAgICAgICAgICAgICBmbGFnPSJsb2dpY2FsIiwNCiAgICAgICAgICAgICBvdXRsaWVyX2lkPSJjaGFyYWN0ZXIiLA0KICAgICAgICAgICAgIHJvYnBjYT0nUGNhSHViZXJ0Jw0KICAgICAgICAgICApDQogICApDQogICByZXR1cm4obmV3KCJnZW5lT2JqIiwNCiAgICAgICAgICBkYXRhPWZpbHRlcmVkX2RhdGEsDQogICAgICAgICAgb3V0bGllcl9kYXRhPW91dGxpZXJfZGF0YSwNCiAgICAgICAgICBpZD1maWx0ZXJlZF9pZCwNCiAgICAgICAgICBmbGFnPXBjYV9vYmpAZmxhZywNCiAgICAgICAgICBvdXRsaWVyX2lkPW91dGxpZXJfaWQsDQogICAgICAgICAgcm9icGNhPXBjYV9vYmopKQ0KfQ0KYGBgDQoNCiMjIFBlcmZvcm0gUENBDQpgYGB7cn0NCnBjYV9vYmogPSBwcmNvbXAoY2VyZXMsIHNjYWxlPUZBTFNFKQ0KYGBgDQoNCiMjIFZpc3VhbGl6ZSBQQ0EgU2NvcmVzIFBsb3QNCkxldCdzIHZpc3VhbGl6ZSB0aGUgb3JpZ2luYWwgUENBIGRpbWVuc2lvbiByZWR1Y3Rpb24uDQpgYGB7cn0NCnNjb3JlcyA9IGRhdGEuZnJhbWUocGNhX29ialtbIngiXV0pDQpnZ3Bsb3Qoc2NvcmVzLCBhZXMoeD1QQzEsIHk9UEMyKSkgKyAgDQogIGdlb21fcG9pbnQoKSArDQogIGxhYnModGl0bGU9IkNFUkVTIFNjb3JlcyBQbG90IiwgDQogICAgICAgeD0iUEMxIiwgDQogICAgICAgeT0iUEMyIikgKw0KICB0aGVtZShsZWdlbmQucG9zaXRpb249Im5vbmUiKQ0KYGBgDQoNCiMjIFZpc3VhbGl6ZSBjZWxsIGxpbmUgZGlzdHJpYnV0aW9uDQpMZXQncyBhbHNvIGdldCB0aGUgZGlzdHJpYnV0aW9uIG9mIHRoZSBkYXRhDQpgYGB7Un0NCm91dGxpZXJfaWQgPSBkYXRhLmZyYW1lKGlkcykNCmZpbHRlcmVkX2NlbGxfbGluZXMgPSBtZXJnZShtZXRhX2RhdGEsIA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIG91dGxpZXJfaWQsDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgYnkueD0nRGVwTWFwX0lEJywNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBieS55PSdEZXBNYXBfSUQnKQ0KYGBgDQoNCk5vdyBsZXQncyBwbG90IGl0DQpgYGB7cn0NCiMgR3JvdXAgYnkgDQp0bXAgPSBhZ2dyZWdhdGUoZmlsdGVyZWRfY2VsbF9saW5lcyRsaW5lYWdlLCANCiAgICAgICAgICAgICAgICBieT1saXN0KGZpbHRlcmVkX2NlbGxfbGluZXMkbGluZWFnZSksIA0KICAgICAgICAgICAgICAgIGxlbmd0aCkNCnRtcCA9IHRtcCAlPiUgYXJyYW5nZSh4KQ0KdG1wJEdyb3VwLjEgPSBmYWN0b3IodG1wJEdyb3VwLjEsDQogICAgICAgICAgICAgICAgICAgICBsZXZlbHM9dG1wJEdyb3VwLjFbb3JkZXIodG1wJHgsIGRlY3JlYXNpbmcgPSBUUlVFKV0pDQoNCiMgUGxvdCBieSB0aXNzdWUNCmdncGxvdChkYXRhPXRtcCwgDQogICAgICAgYWVzKHg9R3JvdXAuMSwgDQogICAgICAgICAgIHk9eCwgDQogICAgICAgICAgIGZpbGw9eCwNCiAgICAgICAgICAgbGFiZWw9eCkpICsNCiAgZ2VvbV9iYXIoc3RhdD0naWRlbnRpdHknLA0KICAgICAgICAgICBwb3NpdGlvbj0nZG9kZ2UnKSArDQogIGNvb3JkX2ZsaXAoKSArDQogIGxhYnMoeT0iTnVtYmVyIG9mIGNlbGwgbGluZXMgcGVyIHRpc3N1ZSIsDQogICAgICAgeD0iVGlzc3VlIGxpbmVhZ2UiLA0KICAgICAgIHRpdGxlPSJBbGwgaW50ZXJzZWN0aW5nIGNlbGwgbGluZXMiKSArIA0KICBndWlkZXMoZmlsbD1ndWlkZV9sZWdlbmQodGl0bGU9Ik4gY2VsbCBsaW5lcyIpKSArDQogIGdlb21fdGV4dChhZXMobGFiZWw9eCksIA0KICAgICAgICAgICAgcG9zaXRpb249cG9zaXRpb25fZG9kZ2Uod2lkdGg9MC45KSkNCmBgYA0KDQojIyBSb2J1c3QgUENBDQpOb3cgbGV0J3MgcmVtb3ZlIHNvbWUgb3V0bGllcnMgdXNpbmcgUm9idXN0IFBDQToNCmBgYHtyfQ0Kcm9icGNhX2NlcmVzID0gcmVtb3ZlT3V0bGllcnMoY2VyZXMsIGlkcykNCg0Kcm9iX3Njb3JlcyA9IGRhdGEuZnJhbWUocm9icGNhX2NlcmVzQHJvYnBjYSRzY29yZXMpDQpnZ3Bsb3Qocm9iX3Njb3JlcywgYWVzKHg9UEMxLCB5PVBDMikpICsgIA0KICBnZW9tX3BvaW50KCkgKw0KICBsYWJzKHRpdGxlPSJDRVJFUyBSb2J1c3QgUENBIFNjb3JlcyBQbG90IiwgDQogICAgICAgeD0iUEMxIiwgDQogICAgICAgeT0iUEMyIikgKw0KICB0aGVtZShsZWdlbmQucG9zaXRpb249Im5vbmUiKQ0KYGBgDQoNCiMjIFZpc3VhbGl6ZSBjZWxsIGxpbmVzIHRoYXQgYXJlIG9taXR0ZWQgZnJvbSBST0JQQ0ENCkkgYW0gY3VyaW91cyBhYm91dCB3aGF0IGNlbGwgbGluZXMgYXJlIG9taXR0ZWQuDQpgYGB7Un0NCm91dGxpZXJfaWQgPSBkYXRhLmZyYW1lKHJvYnBjYV9jZXJlc0BvdXRsaWVyX2lkKQ0KZmlsdGVyZWRfY2VsbF9saW5lcyA9IG1lcmdlKG1ldGFfZGF0YSwgDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgb3V0bGllcl9pZCwNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBieS54PSdEZXBNYXBfSUQnLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJ5Lnk9J3JvYnBjYV9jZXJlcy5vdXRsaWVyX2lkJykNCmBgYA0KDQojIyBWaXN1YWxpemUgb3V0bGllciBjZWxsIGxpbmUgZGlzdHJpYnV0aW9uDQpWaXN1YWxpemUgdGhlIGNlbGwgbGluZXMgdGhhdCBhcmUgb21pdHRlZCBmcm9tIGRvd25zdHJlYW0gYW5hbHlzZXMuDQpgYGB7cn0NCiMgR3JvdXAgYnkgDQp0bXAgPSBhZ2dyZWdhdGUoZmlsdGVyZWRfY2VsbF9saW5lcyRsaW5lYWdlLCANCiAgICAgICAgICAgICAgICBieT1saXN0KGZpbHRlcmVkX2NlbGxfbGluZXMkbGluZWFnZSksIA0KICAgICAgICAgICAgICAgIGxlbmd0aCkNCnRtcCA9IHRtcCAlPiUgYXJyYW5nZSh4KQ0KdG1wJEdyb3VwLjEgPSBmYWN0b3IodG1wJEdyb3VwLjEsDQogICAgICAgICAgICAgICAgICAgICBsZXZlbHM9dG1wJEdyb3VwLjFbb3JkZXIodG1wJHgsIGRlY3JlYXNpbmcgPSBUUlVFKV0pDQoNCiMgUGxvdCBieSB0aXNzdWUNCmdncGxvdChkYXRhPXRtcCwgDQogICAgICAgYWVzKHg9R3JvdXAuMSwgDQogICAgICAgICAgIHk9eCwgDQogICAgICAgICAgIGZpbGw9eCwNCiAgICAgICAgICAgbGFiZWw9eCkpICsNCiAgZ2VvbV9iYXIoc3RhdD0naWRlbnRpdHknLA0KICAgICAgICAgICBwb3NpdGlvbj0nZG9kZ2UnKSArDQogIGNvb3JkX2ZsaXAoKSArDQogIGxhYnMoeT0iTnVtYmVyIG9mIGNlbGwgbGluZXMgcmVtb3ZlZCIsDQogICAgICAgeD0iVGlzc3VlIGxpbmVhZ2UiLA0KICAgICAgIHRpdGxlPSJDZWxsIGxpbmVzIHJlbW92ZWQgZnJvbSByb2J1c3QgUENBIikgKyANCiAgZ3VpZGVzKGZpbGw9Z3VpZGVfbGVnZW5kKHRpdGxlPSJOIGNlbGwgbGluZXMiKSkgKw0KICBnZW9tX3RleHQoYWVzKGxhYmVsPXgpLCANCiAgICAgICAgICAgIHBvc2l0aW9uPXBvc2l0aW9uX2RvZGdlKHdpZHRoPTAuOSksIA0KICAgICAgICAgICAgaGp1c3Q9LTAuMjUpDQpgYGANCiMjIFJlcGVhdCBST0JQQ0EgZmlsdGVyIGZvciBnZW5lcw0KYGBge3J9DQp0bXAgPSByb2JwY2FfY2VyZXNAZGF0YQ0KdG1waWQgPSByb2JwY2FfY2VyZXNAaWQNCnJvd25hbWVzKHRtcCkgPSB0bXBpZA0KdG1wID0gdCh0bXApDQp0bXBpZCA9IGRhdGEuZnJhbWUocm93bmFtZXModG1wKSkNCnJvYnBjYV9jZXJlcyA9IHJlbW92ZU91dGxpZXJzKHRtcCwgdG1waWQpDQpgYGANCg0KIyMgQ29uc3RydWN0aW9uIGZpbmFsIGRhdGFzZXQgZm9yIGRvd25zdHJlYW0gYW5hbHlzaXMNCldlJ2xsIHVzZSB0aGUgY2VyZXMgZGF0YSBmcm9tIHRoZSBSb2J1c3QgUENBIGFuYWx5c2lzLg0KYGBge3J9DQpjZXJlcyA9IHQocm9icGNhX2NlcmVzQGRhdGEpDQppZHMgPSByb3duYW1lcyhjZXJlcykNCnJtKGxpc3Q9YygicGNhX29iaiIsICJyb2JwY2FfY2VyZXMiLCAicm9ic2NvcmVzIiwgInNjb3JlcyIpKQ0Kc2F2ZShsaXN0PWMoImNlcmVzIiwgImlkcyIpLCBmaWxlPXNhdmVwYXRoKQ0KbG9hZChzYXZlcGF0aCkNCmBgYA==</div>
 
 
 
@@ -2297,7 +2072,7 @@ $(document).ready(function () {
 <!-- code folding -->
 <script>
 $(document).ready(function () {
-  window.initializeSourceEmbed("crispr_validation.Rmd");
+  window.initializeSourceEmbed("robpca.Rmd");
   window.initializeCodeFolding("show" === "show");
 });
 </script>
