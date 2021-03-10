@@ -25,6 +25,7 @@ library(dplyr)
 library(reshape2)
 library(readxl)
 library(ggVennDiagram)
+library(rrcov)
 ```
 
 # 2. Read in data
@@ -41,12 +42,121 @@ datapath = 'D:/Data/CRISPR/Achilles/Achilles_gene_effect.csv'
 data = readr::read_csv(datapath)
 ```
 
-# 3. Compute P-values from CERES Score
+# 3. Perform Robust PCA to remove bad cell line and gene data
 First, we'll grab the CERES Scores.
 ```{r}
 ceres = data[, 2:ncol(data)]
+ceres = data.matrix(ceres)
+ceres[is.na(ceres)] = 0
 ceres = as.matrix(ceres)
-is.na(ceres) = 0
+ids = data.frame(data[, 1])
+```
+
+First, we'll create a function that can perform ROBPCA on the data.
+```{r}
+# Create a function that filters data using ROBPCA
+removeOutliers = function(data, id){
+  pca_obj = PcaHubert(data)
+  filtered_data = data[pca_obj@flag, ]
+  filtered_id = id[pca_obj@flag,]
+  outlier_data = data[!pca_obj@flag, ]
+  outlier_id = id[!pca_obj@flag,]
+  
+  setClass(Class="geneObj",
+           representation(
+             data="matrix",
+             outlier_data="matrix",
+             id="character",
+             flag="logical",
+             outlier_id="character",
+             robpca='PcaHubert'
+           )
+   )
+   return(new("geneObj",
+          data=filtered_data,
+          outlier_data=outlier_data,
+          id=filtered_id,
+          flag=pca_obj@flag,
+          outlier_id=outlier_id,
+          robpca=pca_obj))
+}
+```
+
+## Perform PCA
+```{r}
+pca_obj = prcomp(ceres, scale=FALSE)
+```
+
+## Visualize PCA Scores Plot
+Let's visualize the original PCA dimension reduction.
+```{r}
+scores = data.frame(pca_obj[["x"]])
+ggplot(scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title="CERES Scores Plot", 
+       x="PC1", 
+       y="PC2") +
+  theme(legend.position="none")
+```
+
+## Robust PCA
+Now let's remove some outliers using Robust PCA:
+```{r}
+pca_obj = PcaHubert(ceres)
+robpca_ceres = removeOutliers(ceres, ids)
+
+rob_scores = data.frame(robpca_ceres@robpca$scores)
+ggplot(rob_scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title="CERES Robust PCA Scores Plot", 
+       x="PC1", 
+       y="PC2") +
+  theme(legend.position="none")
+```
+
+## Visualize cell lines that are omitted from ROBPCA
+I am curious about what cell lines are omitted.
+```{R}
+outlier_id = data.frame(robpca_ceres@outlier_id)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x='DepMap_ID',
+                            by.y='robpca_ceres.outlier_id')
+```
+
+
+```{r}
+# Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %>% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
+
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat='identity',
+           position='dodge') +
+  coord_flip() +
+  labs(y="Number of cell lines removed",
+       x="Tissue lineage",
+       title="Cell lines removed from robust PCA") + 
+  guides(fill=guide_legend(title="N cell lines")) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9), 
+            hjust=-0.25)
+```
+
+# 4. Compute P-values from CERES Score
+We'll use the ceres data from the Robust PCA analysis.
+```{r}
+ceres = robpca_ceres@data
+ids = robpca_ceres@id
 ```
 
 ### Global p-value
@@ -72,7 +182,7 @@ rm(list=c("adjusted_pval", "global_pvals"))
 
 ## Plot the data distribution
 
-Now let's plot the data distribution.
+Preprocess data
 ```{r}
 tmp = data.frame(pvals)
 tmp$col = as.factor(tmp$pvals < 0.05)
@@ -80,7 +190,7 @@ mlt_ceres = reshape2::melt(ceres)
 tmp$ceres = mlt_ceres$value
 ```
 
-
+Now let's plot the data distribution.
 ```{r}
 # Plot p-value distribution
 ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
@@ -101,7 +211,7 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
   theme(legend.position="none")
 ```
 
-# 4. Map the CERES scores back to CCLE
+# 5. Map the CERES scores back to CCLE
 The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
 
 What we need to do is map it to the following:
@@ -162,12 +272,12 @@ all_ids = all_ids[-1, ]
 Map everything to Entrez IDs
 ```{r}
 # Create dataset with gene symbols as ID
-data_entrez = data
+data_entrez = ceres
 colnames(data_entrez) = all_entrez
 
 # Create pvalue dataframe
 pvals = as.matrix(pvals)
-data_dims = dim(data[, 2:ncol(data)])
+data_dims = dim(ceres)
 pvalue_entrez = matrix(pvals, 
                    nrow=data_dims[1], 
                    ncol=data_dims[2])
@@ -179,18 +289,18 @@ colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)]
 Map everything to Gene Symbols
 ```{r}
 # Create dataset with gene symbols as ID
-data_symbol = data
+data_symbol = ceres
 colnames(data_symbol) = all_symbol
 
 # Create pvalue dataframe
 pvals = as.matrix(pvals)
-data_dims = dim(data[, 2:ncol(data)])
+data_dims = dim(ceres)
 pvalue_symbol = matrix(pvals, 
                    nrow=data_dims[1], 
                    ncol=data_dims[2])
 pvalue_symbol = data.frame(pvalue_symbol)
 colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
-pvalue_symbol$DepMap_ID = data$DepMap_ID
+pvalue_symbol$DepMap_ID = ids
 ```
 
 ## Filter metabolic genes only
@@ -201,13 +311,13 @@ recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
 recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
 
 data_entrez = data_entrez[, unique(recon1_match$entrez)]
-data_entrez$DepMap_ID = data$DepMap_ID
+data_entrez$DepMap_ID = ids
 
 pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-pvalue_entrez$DepMap_ID = data$DepMap_ID
+pvalue_entrez$DepMap_ID = ids
 ```
 
-# 5. Merge metadata to metabolic p-values and CERES scores
+# 6. Merge metadata to metabolic p-values and CERES scores
 Finally, we can the NSCLC data back to RECON1 genes.
 ```{r}
 # Entrez IDs
@@ -250,7 +360,7 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
   theme(legend.position="none")
 ```
 
-# 6. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
+# 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
 ## Data preprocessing
 Format the dataset
@@ -273,6 +383,7 @@ data[is.na(data)] = 0
 Now let's preprocess the data
 ```{r}
 # Create a DGE List data object
+data = cpm(data)
 d0 = DGEList(data)
 d0 = calcNormFactors(d0)
 
@@ -293,8 +404,8 @@ design = model.matrix(~0+group)
 Now let's run *limma-voom*
 ```{r}
 v = voom(d, design, plot=TRUE)
-fit = lmFit(v, design)
-result = eBayes(fit)
+fit = lmFit(v, design, method='robust')
+result = eBayes(fit, robust=TRUE)
 ```
 
 Finally, let's get the top 20 results
@@ -304,7 +415,7 @@ head(top.table, 20)
 write.table(top.table, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-# 7. Get gene list that are universally lethal across all cell lines
+# 8. Get gene list that are universally lethal across all cell lines
 This gene list was determined from Project Score. Specifically, I defined universally lethal genes that are lethal in more than 50% of the cancer cell lines out of > 300. 
 ```{r}
 project_score_file = "D:/Data/CRISPR/Score/41586_2019_1103_MOESM4_ESM/Supplementary Table 3 - Core-Fitness and Context-Specificity Summary_v2.xlsx"
@@ -314,7 +425,7 @@ project_score = read_excel(project_score_file, sheet_name)
 genes_to_filter = project_score[project_score$`Dependency Score` > 50, ]
 ```
 
-# 8. Get differentially expressed genes for A549 from CERES score
+# 9. Get differentially expressed genes for A549 from CERES score
 First, we'll get the row corresponding to the cancer cell line A549.
 ```{r}
 a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
@@ -358,7 +469,7 @@ write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
 
 
 
-# 9. Get differentially expressed genes across all NSCLC cell lines
+# 10. Get differentially expressed genes across all NSCLC cell lines
 ```{r}
 tmp = merged_pval[, -c(1:5)]
 tmp2 = merged_lung[, -c(1:5)]
