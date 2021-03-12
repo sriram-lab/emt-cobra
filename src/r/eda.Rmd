@@ -18,10 +18,10 @@ data processing and data visualization.
 Note that the following codeblock takes awhile to run. Only do it if you do not
 have the libraries pre-installed in your R environment.
 ```{r, include=TRUE}
-pkgLst = c("Seurat", "dplyr", "viridis", 
-           "matrixStats", "UpSetR", 
-           "mgcv", "tidyverse", "reshape2", "ggplot2")
-install.packages(pkgLst)
+#pkgLst = c("Seurat", "dplyr", "viridis", 
+#           "matrixStats", "UpSetR", 
+#           "mgcv", "tidyverse", "reshape2", "ggplot2")
+#install.packages(pkgLst)
 
 library(mgcv)
 library(splines)

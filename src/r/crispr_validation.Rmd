@@ -26,44 +26,54 @@ library(reshape2)
 library(readxl)
 library(ggVennDiagram)
 library(rrcov)
+library(data.table)
+library(stats)
+library(ggpubr)
 ```
 
 # 2. Read in data
 ```{r}
 rm(list=ls())
-robpca_data = "D:/Analysis/EMT/ceres_robpca.RData"
-load(robpca_data)
+savepath = "D:/Analysis/EMT/ceres_robpca.RData"
+load(savepath)
 ```
 
-## Grab CCLE meta data
-First, we'll get relevant meta data
+# 3. Compute P-values from CERES Score
 ```{r}
-# Linux
-#metapath = "~/Data/CRISPR/sample_info.csv"
-
-# Dell
-metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
-
-# Read in meta data
-meta_data = read_csv(metapath)
-meta_data = meta_data[, c("DepMap_ID", 
-                        "stripped_cell_line_name", 
-                        "primary_or_metastasis",
-                        "lineage",
-                        "lineage_subtype")]
+mlt_ceres = reshape2::melt(ceres)
+x = as.numeric(mlt_ceres$value)
 ```
-
-# 4. Compute P-values from CERES Score
 
 ## Global p-value
 Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
 ```{r}
-mu = mean(ceres, na.rm=TRUE)
-stdev = sd(as.matrix(ceres), na.rm=TRUE)
-global_pvals = pnorm(as.numeric(ceres), 
+mu = mean(x, na.rm=TRUE)
+stdev = sd(x, na.rm=TRUE)
+global_pvals = pnorm(x, 
                      mean=mu, 
                      sd=stdev,
                      lower.tail=TRUE)
+#rm("x")
+```
+
+Now let's recast the dataframe.
+```{r}
+#global_pvals = matrix(global_pvals, 
+#                      nrow=dim(ceres)[1], 
+#                      ncol=dim(ceres)[2],
+#                      byrow=TRUE)
+#global_pvals = data.frame(global_pvals)
+#global_pvals$Var1 = mlt_ceres$Var1
+#global_pvals$Var2 = mlt_ceres$Var2
+
+#tmp = dcast(global_pvals, 
+#                        formula=Var1~Var2, 
+#                        value.var=global_pvals)
+#rownames(tmp) = tmp$Var1
+#tmp$Var1 = NULL
+```
+
+```{r}
 pvals = global_pvals
 pvals = data.matrix(pvals)
 ```
@@ -107,7 +117,7 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
   theme(legend.position="none")
 ```
 
-# 5. Map the CERES scores back to CCLE
+# 4. Map the CERES scores back to CCLE
 The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
 
 What we need to do is map it to the following:
@@ -115,6 +125,23 @@ What we need to do is map it to the following:
   * Cancer Cell Line
   * Cancer Cell Line Tissue Lineage
   * Entrez ID
+
+First, we'll get relevant meta data
+```{r}
+# Linux
+#metapath = "~/Data/CRISPR/sample_info.csv"
+
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
+meta_data = read_csv(metapath)
+meta_data = meta_data[, c("DepMap_ID", 
+                        "stripped_cell_line_name", 
+                        "primary_or_metastasis",
+                        "lineage",
+                        "lineage_subtype")]
+```
 
 ## Filter the data to get only NSCLC
 Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
@@ -190,18 +217,17 @@ recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
 recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
 
 data_entrez = data_entrez[, unique(recon1_match$entrez)]
-data_entrez$DepMap_ID = ids
 
 pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-pvalue_entrez$DepMap_ID = ids
+rownames(pvalue_entrez) = rownames(data_entrez)
 ```
 
-# 6. Merge metadata to metabolic p-values and CERES scores
+# 5. Merge metadata to metabolic p-values and CERES scores
 Finally, we can the NSCLC data back to RECON1 genes.
 ```{r}
 # Entrez IDs
-merged_lung = merge(lung_meta_data, data_entrez, by='DepMap_ID')
-merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID')
+merged_lung = merge(lung_meta_data, data_entrez, by.x='DepMap_ID', by.y='row.names')
+merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID', by.y='row.names')
 
 # Gene Symbols
 merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
@@ -219,6 +245,7 @@ tmp$ceres = lung_ceres$value
 ```
 
 Now actually plot the p-values and CERES scores.
+  * Note this doesn't look right.
 ```{r}
 # Plot p-value distribution
 ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
@@ -238,6 +265,29 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
        y="Frequency") +
   theme(legend.position="none")
 ```
+# 6. A549-specific p-values
+```{r}
+a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
+tmp = as.numeric(a549_ceres[, 6:ncol(a549_ceres)])
+mu = mean(tmp, na.rm=TRUE)
+stdev = sd(tmp, na.rm=TRUE)
+a549_pvals = pnorm(tmp, 
+                     mean=mu, 
+                     sd=stdev,
+                     lower.tail=TRUE)
+a549_data = data.frame(tmp)
+a549_data$pval = a549_pvals
+a549_data$entrez = colnames(a549_ceres[, 6:ncol(a549_ceres)]) 
+
+
+xname = data.frame(entrez=colnames(a549_ceres[, 6:ncol(a549_ceres)]))
+tmp = merge(xname, recon1_match, by='entrez')
+tmp[, 3:4] = NULL
+tmp = unique(tmp)
+a549_data$Symbol = tmp$symbol
+sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
+```
+
 
 # 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
@@ -346,10 +396,58 @@ unique_genes = sig_a549_ceres[!sig_a549_ceres$Symbol %in% ubiq_genes$Symbol, ]
 write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-
-
-# 10. Get differentially expressed genes across all NSCLC cell lines
+# 10. Identify where the predicted knockouts are in the CERES distribution
+First, let's load the model predictions
 ```{r}
-tmp = merged_pval[, -c(1:5)]
-tmp2 = merged_lung[, -c(1:5)]
+recon1_prediction = "D:/Analysis/EMT/EMT_RECON1_KO_PRED.xlsx"
+pred = read_excel(recon1_prediction)
+a549_ceres$is_pred = rownames(a549_ceres) == pred$Entrez
+a549_ceres$category = "A549"
+sum(a549_ceres$is_pred)
+```
+
+Now let's create the histogram
+```{r}
+# Create histogram of reaction distribution
+p1 = ggplot(a549_ceres, aes(x=CERES, fill=is_pred)) +
+  geom_histogram(bins=100, show.legend=TRUE) +
+  theme_minimal() +
+  theme(legend.position="none") +
+  xlim(-0.5, 0.5) +
+  theme(plot.title = element_text(size=10),
+              legend.text=element_text(size=8),
+              axis.title.x=element_text(size=10),
+              axis.title.y=element_text(size=10),
+              axis.text.x=element_blank(),
+              axis.text.y=element_text(size=8),
+              legend.box="vertical",
+              legend.margin=margin()) +
+  labs(title="",
+       x=element_blank(),
+       y="Frequency") + 
+     scale_color_manual(values=c("TRUE" = "red", 
+                                 "FALSE" = "gray"),
+                        aesthetics = c("colour", "fill"))
+```
+
+Let's create the scatter plot
+```{r}
+p2 = ggplot(a549_ceres, aes(x=CERES, y=category, color=is_pred)) +
+     geom_point(show.legend=FALSE, alpha=0.01) +
+     geom_jitter() +
+     theme_minimal() + 
+     theme(legend.position="none") +
+     xlim(-0.5, 0.5) +
+     labs(x="CERES Score",
+          y=element_blank()) + 
+     scale_color_manual(values=c("TRUE" = "red", 
+                                 "FALSE" = "gray"),
+                        aesthetics = c("colour", "fill"))
+```
+
+Finally construct the figure.
+```{r}
+figure = ggarrange(p1, p2,
+                   ncol = 1, nrow = 2)
+figure
 ```
