@@ -26,44 +26,53 @@ library(reshape2)
 library(readxl)
 library(ggVennDiagram)
 library(rrcov)
+library(data.table)
+library(stats)
 ```
 
 # 2. Read in data
 ```{r}
 rm(list=ls())
-robpca_data = "D:/Analysis/EMT/ceres_robpca.RData"
-load(robpca_data)
-```
-
-## Grab CCLE meta data
-First, we'll get relevant meta data
-```{r}
-# Linux
-#metapath = "~/Data/CRISPR/sample_info.csv"
-
-# Dell
-metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
-
-# Read in meta data
-meta_data = read_csv(metapath)
-meta_data = meta_data[, c("DepMap_ID", 
-                        "stripped_cell_line_name", 
-                        "primary_or_metastasis",
-                        "lineage",
-                        "lineage_subtype")]
+savepath = "D:/Analysis/EMT/ceres_robpca.RData"
+load(savepath)
 ```
 
 # 4. Compute P-values from CERES Score
+```{r}
+mlt_ceres = reshape2::melt(ceres)
+x = as.numeric(mlt_ceres$value)
+```
 
 ## Global p-value
 Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
 ```{r}
-mu = mean(ceres, na.rm=TRUE)
-stdev = sd(as.matrix(ceres), na.rm=TRUE)
-global_pvals = pnorm(as.numeric(ceres), 
+mu = mean(x, na.rm=TRUE)
+stdev = sd(x, na.rm=TRUE)
+global_pvals = pnorm(x, 
                      mean=mu, 
                      sd=stdev,
                      lower.tail=TRUE)
+#rm("x")
+```
+
+Now let's recast the dataframe.
+```{r}
+#global_pvals = matrix(global_pvals, 
+#                      nrow=dim(ceres)[1], 
+#                      ncol=dim(ceres)[2],
+#                      byrow=TRUE)
+#global_pvals = data.frame(global_pvals)
+#global_pvals$Var1 = mlt_ceres$Var1
+#global_pvals$Var2 = mlt_ceres$Var2
+
+#tmp = dcast(global_pvals, 
+#                        formula=Var1~Var2, 
+#                        value.var=global_pvals)
+#rownames(tmp) = tmp$Var1
+#tmp$Var1 = NULL
+```
+
+```{r}
 pvals = global_pvals
 pvals = data.matrix(pvals)
 ```
@@ -115,6 +124,23 @@ What we need to do is map it to the following:
   * Cancer Cell Line
   * Cancer Cell Line Tissue Lineage
   * Entrez ID
+
+First, we'll get relevant meta data
+```{r}
+# Linux
+#metapath = "~/Data/CRISPR/sample_info.csv"
+
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
+meta_data = read_csv(metapath)
+meta_data = meta_data[, c("DepMap_ID", 
+                        "stripped_cell_line_name", 
+                        "primary_or_metastasis",
+                        "lineage",
+                        "lineage_subtype")]
+```
 
 ## Filter the data to get only NSCLC
 Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
@@ -190,18 +216,17 @@ recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
 recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
 
 data_entrez = data_entrez[, unique(recon1_match$entrez)]
-data_entrez$DepMap_ID = ids
 
 pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-pvalue_entrez$DepMap_ID = ids
+rownames(pvalue_entrez) = rownames(data_entrez)
 ```
 
 # 6. Merge metadata to metabolic p-values and CERES scores
 Finally, we can the NSCLC data back to RECON1 genes.
 ```{r}
 # Entrez IDs
-merged_lung = merge(lung_meta_data, data_entrez, by='DepMap_ID')
-merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID')
+merged_lung = merge(lung_meta_data, data_entrez, by.x='DepMap_ID', by.y='row.names')
+merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID', by.y='row.names')
 
 # Gene Symbols
 merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
@@ -219,6 +244,7 @@ tmp$ceres = lung_ceres$value
 ```
 
 Now actually plot the p-values and CERES scores.
+  * Note this doesn't look right.
 ```{r}
 # Plot p-value distribution
 ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
@@ -238,6 +264,29 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
        y="Frequency") +
   theme(legend.position="none")
 ```
+# 7. A549-specific p-values
+```{r}
+a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
+tmp = as.numeric(a549_ceres[, 6:ncol(a549_ceres)])
+mu = mean(tmp, na.rm=TRUE)
+stdev = sd(tmp, na.rm=TRUE)
+a549_pvals = pnorm(tmp, 
+                     mean=mu, 
+                     sd=stdev,
+                     lower.tail=TRUE)
+a549_data = data.frame(tmp)
+a549_data$pval = a549_pvals
+a549_data$entrez = colnames(a549_ceres[, 6:ncol(a549_ceres)]) 
+
+
+xname = data.frame(entrez=colnames(a549_ceres[, 6:ncol(a549_ceres)]))
+tmp = merge(xname, recon1_match, by='entrez')
+tmp[, 3:4] = NULL
+tmp = unique(tmp)
+a549_data$Symbol = tmp$symbol
+sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
+```
+
 
 # 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
