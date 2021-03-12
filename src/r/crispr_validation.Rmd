@@ -28,6 +28,7 @@ library(ggVennDiagram)
 library(rrcov)
 library(data.table)
 library(stats)
+library(ggpubr)
 ```
 
 # 2. Read in data
@@ -37,7 +38,7 @@ savepath = "D:/Analysis/EMT/ceres_robpca.RData"
 load(savepath)
 ```
 
-# 4. Compute P-values from CERES Score
+# 3. Compute P-values from CERES Score
 ```{r}
 mlt_ceres = reshape2::melt(ceres)
 x = as.numeric(mlt_ceres$value)
@@ -116,7 +117,7 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
   theme(legend.position="none")
 ```
 
-# 5. Map the CERES scores back to CCLE
+# 4. Map the CERES scores back to CCLE
 The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
 
 What we need to do is map it to the following:
@@ -221,7 +222,7 @@ pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
 rownames(pvalue_entrez) = rownames(data_entrez)
 ```
 
-# 6. Merge metadata to metabolic p-values and CERES scores
+# 5. Merge metadata to metabolic p-values and CERES scores
 Finally, we can the NSCLC data back to RECON1 genes.
 ```{r}
 # Entrez IDs
@@ -264,7 +265,7 @@ ggplot(tmp, aes(x=ceres, fill=col)) +
        y="Frequency") +
   theme(legend.position="none")
 ```
-# 7. A549-specific p-values
+# 6. A549-specific p-values
 ```{r}
 a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
 tmp = as.numeric(a549_ceres[, 6:ncol(a549_ceres)])
@@ -395,10 +396,58 @@ unique_genes = sig_a549_ceres[!sig_a549_ceres$Symbol %in% ubiq_genes$Symbol, ]
 write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-
-
-# 10. Get differentially expressed genes across all NSCLC cell lines
+# 10. Identify where the predicted knockouts are in the CERES distribution
+First, let's load the model predictions
 ```{r}
-tmp = merged_pval[, -c(1:5)]
-tmp2 = merged_lung[, -c(1:5)]
+recon1_prediction = "D:/Analysis/EMT/EMT_RECON1_KO_PRED.xlsx"
+pred = read_excel(recon1_prediction)
+a549_ceres$is_pred = rownames(a549_ceres) == pred$Entrez
+a549_ceres$category = "A549"
+sum(a549_ceres$is_pred)
+```
+
+Now let's create the histogram
+```{r}
+# Create histogram of reaction distribution
+p1 = ggplot(a549_ceres, aes(x=CERES, fill=is_pred)) +
+  geom_histogram(bins=100, show.legend=TRUE) +
+  theme_minimal() +
+  theme(legend.position="none") +
+  xlim(-0.5, 0.5) +
+  theme(plot.title = element_text(size=10),
+              legend.text=element_text(size=8),
+              axis.title.x=element_text(size=10),
+              axis.title.y=element_text(size=10),
+              axis.text.x=element_blank(),
+              axis.text.y=element_text(size=8),
+              legend.box="vertical",
+              legend.margin=margin()) +
+  labs(title="",
+       x=element_blank(),
+       y="Frequency") + 
+     scale_color_manual(values=c("TRUE" = "red", 
+                                 "FALSE" = "gray"),
+                        aesthetics = c("colour", "fill"))
+```
+
+Let's create the scatter plot
+```{r}
+p2 = ggplot(a549_ceres, aes(x=CERES, y=category, color=is_pred)) +
+     geom_point(show.legend=FALSE, alpha=0.01) +
+     geom_jitter() +
+     theme_minimal() + 
+     theme(legend.position="none") +
+     xlim(-0.5, 0.5) +
+     labs(x="CERES Score",
+          y=element_blank()) + 
+     scale_color_manual(values=c("TRUE" = "red", 
+                                 "FALSE" = "gray"),
+                        aesthetics = c("colour", "fill"))
+```
+
+Finally construct the figure.
+```{r}
+figure = ggarrange(p1, p2,
+                   ncol = 1, nrow = 2)
+figure
 ```
