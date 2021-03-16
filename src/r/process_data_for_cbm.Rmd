@@ -7,16 +7,11 @@ output: html_notebook
 # Summary
 This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
 
-# Download all dependencies
+# 1. Load Libraries
 
 First, we'll download several dependencies for data processing and data visualization.
 
 ```{r, include=FALSE}
-#pkgLst = c("Seurat", "dplyr", "viridis", 
-#           "matrixStats", "UpSetR", 
-#           "mgcv", "tidyverse", "reshape2", "ggplot2")
-#install.packages(pkgLst)
-
 library(mgcv)
 library(splines)
 library(Seurat)
@@ -35,6 +30,7 @@ Next, we'll load the A549 dataset, which is the lung cancer cell line investigat
 
 ```{r, include=FALSE}
 a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
+
 ```
 
 # Differential expression

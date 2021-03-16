@@ -29,35 +29,80 @@ library(matrixStats)
 library(UpSetR)
 library(reshape2)
 library(ggplot2)
+library(Rmagic)
+
 ```
 
-### A549
+# 2. Load A549 TGF-B dataset
 First, let's load up the data from A549.
 ```{r, include=TRUE}
 rm(list=ls())
 #datapath = "C:/Users/scott/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds"
 datapath = "D:/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds"
+a549_tgfb = readRDS(datapath)
+unique(a549_tgfb@meta.data$Time)
+```
+## Filter genes
+Let's filter out some low quality genes.
+```{r}
+genes_filter = rownames(a549_tgfb[["RNA"]]@data)[rowSums(as.matrix(a549_tgfb[["RNA"]]@data)) > 0]
+a549_tgfb = subset(a549_tgfb, features=genes_filter)
+```
 
+## Regress out cell cycle
+We can regress some biological variance out, including cell cycle genes.
+```{r}
 genes_to_regress = "D:/Data/scRNASeq/GSE147405/regev_lab_cell_cycle_genes.txt"
 cc.genes = readLines(con=genes_to_regress)
 s.genes  = cc.genes[1:43]
 g2m.genes = cc.genes[44:97]
-
-a549_tgfb = readRDS(datapath)
-unique(a549_tgfb@meta.data$Time)
-
-genes_filter = rownames(a549_tgfb[["RNA"]]@data)[rowSums(as.matrix(a549_tgfb[["RNA"]]@data)) > 0]
-
-a549_tgfb = subset(a549_tgfb, features=genes_filter)
-
 a549_tgfb = CellCycleScoring(a549_tgfb, 
                              s.features=s.genes,
                              g2m.features=g2m.genes, 
                              set.ident=FALSE)
+```
 
+## Subset time points of interest
+Finally, let's subset out some of the cells.
+```{r}
 a549_tgfb = subset(a549_tgfb, subset = Time==c("0d", "8h", "3d", "1d", "7d"))
 ```
 
+## Preprocess data for MAGIC
+Now, we'll run MAGIC on the dataset.
+```{r}
+data = data.frame(a549_tgfb@assays$RNA@counts)
+data = t(data)
+```
+
+Ensure our initial filtering worked.
+```{R}
+# keep genes expressed in at least 10 cells
+keep_cols = colSums(data > 0) > 10
+data = data[,keep_cols]
+```
+
+Plot the data distribution.
+```{r}
+# look at the distribution of library sizes
+ggplot() +
+  geom_histogram(aes(x=rowSums(data)), bins=50) +
+  geom_vline(xintercept = 1000, color='red')
+```
+
+Normalize by library size and take square root.
+```{r}
+data = library.size.normalize(data)
+data = sqrt(data)
+```
+
+After this, all we have to do is run the dataset through MAGIC in Python.
+```{r}
+write.table(data, file="D:/Analysis/EMT/a549_tgfb_preprocessed_for_magic.csv", 
+            row.names=TRUE, col.names=TRUE)
+```
+
+# 3. Data preprocessing
 ```{r, results='hide'}
 find_subpopulations = function(gene_obj){
   
@@ -70,14 +115,6 @@ find_subpopulations = function(gene_obj){
                               x.high.cutoff=Inf,
                               y.cutoff=Inf,
                               nfeatures = 2000)
-  
-  # Log normalize data
-  #gene_obj = NormalizeData(gene_obj, 
-  #                     normalization.method='LogNormalize', 
-  #                     scale.factor=10000)
-  
-  # Scale data
-  #gene_obj = ScaleData(gene_obj)
   
   gene_obj <- SCTransform(gene_obj,
                          do.correct.umi=T,
