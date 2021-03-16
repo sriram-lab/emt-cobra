@@ -89,5 +89,111 @@ merged_df[is.na(merged_df)] = 0
 ```{r}
 datapath="D:/Analysis/EMT/drive_robpca.RData"
 load(datapath)
+```
 
+```{r}
+mlt_data = reshape2::melt(data)
+x = as.numeric(mlt_data$value)
+```
+
+## Global p-value
+Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
+```{r}
+mu = mean(x, na.rm=TRUE)
+stdev = sd(x, na.rm=TRUE)
+global_pvals = pnorm(x, 
+                     mean=mu, 
+                     sd=stdev,
+                     lower.tail=TRUE)
+#rm("x")
+```
+
+```{r}
+pvals = global_pvals
+pvals = data.matrix(pvals)
+```
+
+Because we are testing several hypotheses, we should control using the FDR.
+```{r}
+# Perform FDR Adjustment
+adjusted_pval = p.adjust(pvals, method="fdr")
+pvals = adjusted_pval
+rm(list=c("adjusted_pval", "global_pvals"))
+```
+
+## Plot the data distribution
+
+Preprocess data
+```{r}
+tmp = data.frame(pvals)
+tmp$col = as.factor(tmp$pvals < 0.05)
+mlt_data = reshape2::melt(data)
+tmp$drive = mlt_data$value
+```
+
+Now let's plot the data distribution.
+```{r}
+# Plot p-value distribution
+ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="siRNA FDR distribution (all)", 
+       x="FDR Adjusted P-values (left-sided)", 
+       y="Frequency") +
+  theme(legend.position="none")
+
+# Plot siRNA distribution
+ggplot(tmp, aes(x=drive, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="siRNA LFC distribution (all)", 
+       x="siRNA LFC", 
+       y="Frequency") +
+  theme(legend.position="none")
+```
+## Filter the data to get only NSCLC
+Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
+```{r}
+# Lung data needs to be NSCLC and we need to know whether it's from the primary site or if it is metastatic
+lung_meta_data = meta_data[meta_data["lineage_subtype"]=="NSCLC",]
+lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]
+``` 
+
+## Separate entrez and gene symbol identifiers
+We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.
+```{r}
+# Save gene symbols
+orig_colnames = colnames(data)
+all_symbol = as.character(sapply(strsplit(orig_colnames, " "), '[', 1))
+#all_symbol = all_symbol[-1]
+
+# Save Entrez ID 
+all_entrez = as.character(sapply(strsplit(orig_colnames, " "), '[', -1))
+all_entrez = str_remove(all_entrez, "[( )]")
+all_entrez = str_remove(all_entrez, "[( )]")
+all_entrez[1] = all_symbol[1]
+```
+
+Combine all the identifiers into a single dataframe.
+```{r}
+# All identifiers
+all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
+all_ids = all_ids[-1, ]
+```
+
+### Map dataset to Entrez IDs
+Map everything to Entrez IDs
+```{r}
+# Create dataset with gene symbols as ID
+data_entrez = ceres
+colnames(data_entrez) = all_entrez
+
+# Create pvalue dataframe
+pvals = as.matrix(pvals)
+data_dims = dim(ceres)
+pvalue_entrez = matrix(pvals, 
+                   nrow=data_dims[1], 
+                   ncol=data_dims[2])
+pvalue_entrez = data.frame(pvalue_entrez)
+colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
 ```

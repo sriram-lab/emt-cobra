@@ -7,16 +7,11 @@ output: html_notebook
 # Summary
 This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
 
-# Download all dependencies
+# 1. Load Libraries
 
 First, we'll download several dependencies for data processing and data visualization.
 
 ```{r, include=FALSE}
-#pkgLst = c("Seurat", "dplyr", "viridis", 
-#           "matrixStats", "UpSetR", 
-#           "mgcv", "tidyverse", "reshape2", "ggplot2")
-#install.packages(pkgLst)
-
 library(mgcv)
 library(splines)
 library(Seurat)
@@ -27,123 +22,86 @@ library(matrixStats)
 library(UpSetR)
 library(reshape2)
 library(ggplot2)
+library(readxl)
+library(biomaRt)
 ```
 
-# Load scRNASeq datasets
+# 2. Load scRNASeq datasets
 
-Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the $TGF \beta 1$ sample, since this was the way EMT was induced in many bulk experiments.
-
+Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. 
 ```{r, include=FALSE}
-a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
+# Linux
+#a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
+
+# Dell
+magic_datapath = "D:/Analysis/EMT/a549_magic.xlsx"
+a549_zscore = read_excel(magic_datapath, sheet="Zscore")
+a549_pvalue = read_excel(magic_datapath, sheet="pvalue")
 ```
 
-# Differential expression
-
-This code block gets differentially expressed genes from the preprocessed Seurat object.
-
-## Bulk scRNASeq across time points
-
-Cook et al performed a GAM with loess on the time covariate for differential expression. Below is the modified `diffExp` function that takes in the Seurat object to get the result.
-
+Load Seurat object
 ```{r}
-diffExp = function(seurat_object){
-  cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in%                                        c("8h_rm", "1d_rm", "3d_rm"))]
-  subset_seurat = subset(seurat_object, cells=cells_keep)
-  subset_seurat$Timepoint = as.numeric(gsub("[^0-9.-]", "",                                                       subset_seurat$Time))
-  subset_seurat$Timepoint[subset_seurat$Timepoint==8] = 0.33 
-  
-  exp = as.matrix(GetAssayData(subset_seurat, slot="data")) 
-  
-  # Fit natural splines to the dataset
-  gam = apply(exp, 1, function(x){
-    data = data.frame(exp=x, timepoint=subset_seurat$Timepoint)
-    temp = gam(exp ~ ns(timepoint, df=3), data=data)
-    res = data.frame(Intercept=temp$coefficients[1],
-                      Spline_1=temp$coefficients[2],
-                      Spline_2=temp$coefficients[3],
-                      Spline_3=temp$coefficients[4],
-                      pval=summary(temp)$p.table[,4])
-  })
-  
-  # Compute adjusted P-value using FDR
-  results <- do.call("rbind", gam)
-  results$qval <- p.adjust(results$pval, method="fdr")
-  results$Gene <- rownames(results)
-  return(results)
-}
+seuratobj_path = "D:/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds"
+a549_tgfb = readRDS(seuratobj_path)
+a549_tgfb = subset(a549_tgfb, subset = Time==c("0d", "8h", "3d", "1d", "7d"))
 ```
 
-Compute DGE for A549 TGF treatment and save it to a csv file.
+# 3. Map dataset 
+
+## Map to time and clusters
 ```{r}
-# Perform DEA
-a549_tgfb1_dge = diffExp(a549)
-
-# Write to file
-filepath = "~/Data/Expression/GSE147405/dge_a549_tgfb1.csv"
-write.csv(a549_tgfb1_dge, file=filepath, quote=F)
-
+ids = a549_zscore[, 1]
+ids$time = a549_tgfb@meta.data$Time
+ids$cluster = a549_tgfb@active.ident
 ```
 
-Let's now get a list of significant genes
-
+## Map to gene identifiers
+Use BiomaRt to get Ensembl IDs map
 ```{r}
-a549_tgfb1_sig <- filter(a549_tgfb1_dge, qval <= 0.05)
-
-# Write to file
-filepath = "~/Data/Expression/GSE147405/a549_tgfb1_sig.csv"
-write.csv(a549_tgfb1_sig, file=filepath, quote=F)
-
+ensembl = useMart("ensembl", dataset="hsapiens_gene_ensembl")
+gene_ids = data.frame(colnames(a549_zscore))
+names(gene_ids) = "Gene"
+human_ids = getBM(attributes=c('ensembl_gene_id',
+                               'entrezgene_id',
+                               'hgnc_symbol'), 
+                  values=gene_ids,
+                  mart=ensembl)
+mapped_ids = merge(gene_ids, human_ids, 
+                   by.x='Gene', by.y='hgnc_symbol')
 ```
 
-
+## Construct Ensembl Map
+Now let's merge the MAGIC imputed data with the gene identifiers.
 ```{r}
-library(preprocessCore)
-exp = as.matrix(GetAssayData(a549, slot="scale.data"))
-exp = exp - median(exp)
-exp$Symbol = rownames(exp)
-```
-## Pseudotime analysis
+a549_zscore = data.frame(a549_zscore)
+a549_pvalue = data.frame(a549_pvalue)
 
-```{r}
-plot_data <- a549@meta.data
-plot_data$UMAP1 <- Embeddings(a549, "umap_pseudo")[,1]
-plot_data$UMAP2 <- Embeddinginstall.packages(c("reshape2", "ggplot2"))
-plot_data$UMAP2 <- Embeddings(a549, "umap_pseudo")[,2]
+rownames(a549_zscore) = a549_zscore[, 1]
+rownames(a549_pvalue) = a549_pvalue[, 1]
 
-```
+a549_zscore[, 1] = NULL
+a549_pvalue[, 1] = NULL
 
-```{r}
-PRGn <- rev(RColorBrewer::brewer.pal(11, "PRGn"))
-color_ramp <- c(PRGn[1], PRGn[2], PRGn[3], PRGn[4], "grey50", PRGn[7], PRGn[8], PRGn[9])
+a549_zscore = t(a549_zscore)
+a549_pvalue = t(a549_pvalue)
+
+colnames(a549_zscore) = ids$time
+colnames(a549_pvalue) = ids$time
 ```
 
-
+Merge the data with gene identifiers
 ```{r}
-# Actual time points
-timepoint_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
-  geom_point(size=2, alpha=0.75, aes(color=Sample),
-             shape=16) +
-  scale_color_manual(values=color_ramp) +
-  theme_void() +
-  theme(legend.position="none")
-
-# Pseudotime
-pseudo_plot <- ggplot(plot_data, aes(x=UMAP1, y=UMAP2)) +
-  geom_point(size=2, alpha=0.75, aes(color=Pseudotime),
-             shape=16) +
-  scale_color_viridis(option="D") +
-  theme_void() +
-  theme(legend.title=element_blank(),
-        legend.text=element_blank())
+merged_zscore = merge(mapped_ids, a549_zscore, 
+                      by.x='Gene', by.y="row.names")
+merged_pvalue = merge(mapped_ids, a549_pvalue, 
+                      by.x='Gene', by.y="row.names")
 ```
 
+# 4. Save data
 ```{r}
-timepoint_plot
-pseudo_plot
-```
-
-```{r}
-mlt <- melt(exp)
-ggplot(data = mlt, aes(x=Var1, y=Var2, fill=value)) + 
-  geom_tile()
+savepath = "D:/Analysis/EMT/mapped_magic_a549.xlsx"
+writexl::write_xlsx(
+  x=list(zscore = merged_zscore,
+         pvalue = merged_pvalue),
+  path=savepath)
 ```
