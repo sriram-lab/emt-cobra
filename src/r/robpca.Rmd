@@ -262,28 +262,43 @@ removeOutliers = function(data, id){
 ```
 
 ## Perform PCA
+Run PCA
 ```{r}
 pca_obj = prcomp(data, scale=FALSE)
 ```
 
+Run PCA 
 ```{r}
-scores = PCA(data, graph = FALSE)
+scores = PCA(data, scale.unit=TRUE, graph=FALSE)
+eigval = get_eigenvalue(scores)
 res = HCPC(scores, graph=FALSE)
+```
+
+## Scree plot
+Get scree plot
+```{r}
+fviz_eig(scores, addlabels=TRUE)
+```
+
+Get variable contribution
+```{r}
+fviz_contrib(scores, choice = "var", axes = 1, top = 100)
 ```
 
 Visualize a dendrogram from hierarchical clustering
 ```{r}
 # Dendrogram
-fviz(res,
-     cex=0.7,                     # Label size
-     palette="jco",               # Color palette see ?ggpubr::ggpar
-     rect=TRUE, rect_fill=TRUE, # Add rectangle around groups
-     rect_border="jco",           # Rectangle color
-     labels_track_height=0.8      # Augment the room for labels
-    )
+#fviz(res,
+#     cex=0.7,                     # Label size
+#     palette="jco",               # Color palette see ?ggpubr::ggpar
+#     rect=TRUE, rect_fill=TRUE, # Add rectangle around groups
+#     rect_border="jco",           # Rectangle color
+#     labels_track_height=0.8      # Augment the room for labels
+#    )
 ```
 
-Visualize the factor map
+## Scores plot with K-means cluster
+Visualize the factor map via K-nearest neighbors
 ```{r}
 # Factor map
 fviz_cluster(res,
@@ -293,13 +308,16 @@ fviz_cluster(res,
              ggtheme=theme_minimal(),
              main="Factor map"
              )
+
 ```
 
 ## Visualize PCA Scores Plot
 Let's visualize the original PCA dimension reduction.
 ```{r}
-scores = data.frame(pca_obj[["x"]])
-ggplot(scores, aes(x=PC1, y=PC2)) +  
+ids = data.frame(ids)
+robpca_drive = removeOutliers(data, ids)
+rob_scores = data.frame(robpca_drive@robpca$scores)
+ggplot(rob_scores, aes(x=PC1, y=PC2)) +  
   geom_point() +
   labs(title="Project DRIVE siRNA LFC Scores Plot", 
        x="PC1", 
@@ -398,20 +416,21 @@ ggplot(data=tmp,
 ```
 ## Repeat ROBPCA filter for genes
 ```{r}
-tmp = robpca_ceres@data
-tmpid = robpca_ceres@id
+tmp = robpca_drive@data
+tmpid = robpca_drive@id
 rownames(tmp) = tmpid
 tmp = t(tmp)
 tmpid = data.frame(rownames(tmp))
-robpca_ceres = removeOutliers(tmp, tmpid)
+robpca_drive = removeOutliers(tmp, tmpid)
 ```
 
 ## Construction final dataset for downstream analysis
 We'll use the ceres data from the Robust PCA analysis.
 ```{r}
-ceres = t(robpca_ceres@data)
-ids = rownames(ceres)
+data = t(robpca_drive@data)
+ids = rownames(data)
 rm(list=c("pca_obj", "robpca_ceres", "robscores", "scores"))
-save(list=c("ceres", "ids"), file=savepath)
+savepath="D:/Analysis/EMT/drive_robpca.RData"
+save(list=c("data", "ids"), file=savepath)
 load(savepath)
 ```

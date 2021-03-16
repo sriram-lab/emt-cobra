@@ -84,3 +84,10 @@ merged_df = merged_df[, !(names(merged_df) %in% to_remove)]
 ```{r}
 merged_df[is.na(merged_df)] = 0
 ```
+
+## Load pre-processed Drive data
+```{r}
+datapath="D:/Analysis/EMT/drive_robpca.RData"
+load(datapath)
+
+```
