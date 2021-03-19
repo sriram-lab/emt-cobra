@@ -225,6 +225,65 @@ load(savepath)
 ```
 
 # 4. Dimension reduction with Project DRIVE
+```{r}
+# Get data
+datapath = 'D:/Data/siRNA/depmap.csv'
+data = read_csv(datapath)
+gene_ids = data.matrix(data$X1)
+data = data.matrix(data)
+
+# Get row names
+rownames(data) = gene_ids
+data = subset(data, select=-c(X1))
+
+# Transpose for consistency
+data = t(data)
+```
+
+# 3. Data preprocessing
+
+## Data mapping
+We need to map to DepMapIDs. First let's load the meta data
+```{r}
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
+meta_data = read_csv(metapath)
+meta_data = meta_data[, c("DepMap_ID", 
+                          "CCLE_Name",
+                          "stripped_cell_line_name", 
+                          "primary_or_metastasis",
+                          "lineage",
+                          "lineage_subtype")]
+```
+
+## Merge to new identifiers
+Now merge by data
+```{r}
+# Get merged dataset
+merged_df = merge(data, meta_data, 
+                  by.x='row.names', by.y='CCLE_Name')
+
+# Set cell identity
+x = merged_df$DepMap_ID
+rownames(merged_df) = x
+merged_df$'Row.names' = NULL
+rm("data")
+
+# Set meta data
+meta_data = merged_df[(ncol(merged_df)-4):ncol(merged_df)]
+
+# Remove irrelevant data
+to_remove = as.character(colnames(meta_data))
+merged_df = merged_df[, !(names(merged_df) %in% to_remove)]
+```
+
+## Fill in NAs with zero
+```{r}
+merged_df[is.na(merged_df)] = 0
+```
+
 First, we'll grab the CERES Scores.
 ```{r}
 ids = row.names(merged_df)
