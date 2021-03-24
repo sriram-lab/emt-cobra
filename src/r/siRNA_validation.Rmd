@@ -27,25 +27,6 @@ library(ggpubr)
 
 # 2. Load data
 ```{r}
-# Get data
-datapath = 'D:/Data/siRNA/depmap.csv'
-data = read_csv(datapath)
-gene_ids = data.matrix(data$X1)
-data = data.matrix(data)
-
-# Get row names
-rownames(data) = gene_ids
-data = subset(data, select=-c(X1))
-
-# Transpose for consistency
-data = t(data)
-```
-
-# 3. Data preprocessing
-
-## Data mapping
-We need to map to DepMapIDs. First let's load the meta data
-```{r}
 # Dell
 metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
 
@@ -57,32 +38,6 @@ meta_data = meta_data[, c("DepMap_ID",
                           "primary_or_metastasis",
                           "lineage",
                           "lineage_subtype")]
-```
-
-## Merge to new identifiers
-Now merge by data
-```{r}
-# Get merged dataset
-merged_df = merge(data, meta_data, 
-                  by.x='row.names', by.y='CCLE_Name')
-
-# Set cell identity
-x = merged_df$DepMap_ID
-rownames(merged_df) = x
-merged_df$'Row.names' = NULL
-rm("data")
-
-# Set meta data
-meta_data = merged_df[(ncol(merged_df)-4):ncol(merged_df)]
-
-# Remove irrelevant data
-to_remove = as.character(colnames(meta_data))
-merged_df = merged_df[, !(names(merged_df) %in% to_remove)]
-```
-
-## Fill in NAs with zero
-```{r}
-merged_df[is.na(merged_df)] = 0
 ```
 
 ## Load pre-processed Drive data
@@ -97,14 +52,14 @@ x = as.numeric(mlt_data$value)
 ```
 
 ## Global p-value
-Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
+Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity). The data is the Z-score of the log fold change between siRNA tx / control. But we'll compute a two-sided p-value.
 ```{r}
 mu = mean(x, na.rm=TRUE)
 stdev = sd(x, na.rm=TRUE)
-global_pvals = pnorm(x, 
+global_pvals = 2*pnorm(x, 
                      mean=mu, 
                      sd=stdev,
-                     lower.tail=TRUE)
+                     lower.tail=FALSE)
 #rm("x")
 ```
 
@@ -113,11 +68,11 @@ pvals = global_pvals
 pvals = data.matrix(pvals)
 ```
 
-Because we are testing several hypotheses, we should control using the FDR.
+Because we are testing several hypotheses, we should control using the FDR, but in the DEMETER2 paper, they didn't do it.
 ```{r}
 # Perform FDR Adjustment
-adjusted_pval = p.adjust(pvals, method="fdr")
-pvals = adjusted_pval
+#adjusted_pval = p.adjust(pvals, method="fdr")
+#pvals = adjusted_pval
 rm(list=c("adjusted_pval", "global_pvals"))
 ```
 
@@ -185,15 +140,221 @@ all_ids = all_ids[-1, ]
 Map everything to Entrez IDs
 ```{r}
 # Create dataset with gene symbols as ID
-data_entrez = ceres
+data_entrez = data
 colnames(data_entrez) = all_entrez
 
 # Create pvalue dataframe
 pvals = as.matrix(pvals)
-data_dims = dim(ceres)
+data_dims = dim(data)
 pvalue_entrez = matrix(pvals, 
                    nrow=data_dims[1], 
                    ncol=data_dims[2])
 pvalue_entrez = data.frame(pvalue_entrez)
 colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
+```
+
+### Map dataset to Gene Symbols
+Map everything to Gene Symbols
+```{r}
+# Create dataset with gene symbols as ID
+data_symbol = data
+colnames(data_symbol) = all_symbol
+
+# Create pvalue dataframe
+pvals = as.matrix(pvals)
+data_dims = dim(data)
+pvalue_symbol = matrix(pvals, 
+                   nrow=data_dims[1], 
+                   ncol=data_dims[2])
+pvalue_symbol = data.frame(pvalue_symbol)
+colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
+pvalue_symbol$DepMap_ID = ids
+```
+
+## Filter metabolic genes only
+Map it back to the human metabolic reconstruction.
+```{r}
+recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
+recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
+recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
+
+data_entrez = data_entrez[, unique(recon1_match$entrez)]
+
+pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
+rownames(pvalue_entrez) = rownames(data_entrez)
+```
+
+# 5. Merge metadata to metabolic p-values and CERES scores
+Finally, we can the NSCLC data back to RECON1 genes.
+```{r}
+# Entrez IDs
+merged_lung = merge(lung_meta_data, data_entrez, by.x='DepMap_ID', by.y='row.names')
+merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID', by.y='row.names')
+
+# Gene Symbols
+#merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
+#merged_pval = merge(lung_meta_data, pvalue_symbol, by='DepMap_ID')
+
+```
+## Visualize the NSCLC CRISPR-Cas9 metabolism data mapped to RECON1
+Let's construct the data object used for the visualization.
+```{r}
+tmp = merged_pval[, 6:ncol(merged_pval)]
+tmp = reshape2::melt(data.frame(tmp))
+tmp$col = as.factor(tmp$value < 0.05)
+lung_drive = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
+tmp$drive = lung_drive$value
+```
+
+Now actually plot the p-values and CERES scores.
+  * Note this doesn't look right.
+```{r}
+# Plot p-value distribution
+ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="siRNA NSCLC p-value distribution", 
+       x="P-values (left-sided)", 
+       y="Frequency") +
+  theme(legend.position="none")
+
+# Plot CERES distribution
+ggplot(tmp, aes(x=drive, fill=col)) +  
+  geom_histogram(bins=100) +
+  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
+  labs(title="siRNA NSCLC distribution", 
+       x="siRNA LFC", 
+       y="Frequency") +
+  theme(legend.position="none")
+```
+# 6. A549-specific p-values
+```{r}
+a549_data = a549_data[-1, ]
+a549_data = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
+tmp = as.numeric(a549_data[, 6:ncol(a549_data)])
+mu = mean(tmp, na.rm=TRUE)
+stdev = sd(tmp, na.rm=TRUE)
+a549_pvals = pnorm(tmp, 
+                     mean=mu, 
+                     sd=stdev,
+                     lower.tail=TRUE)
+a549_data = data.frame(tmp)
+a549_data$pval = a549_pvals
+a549_data$entrez = colnames(a549_data[, 6:ncol(a549_data)]) 
+
+
+xname = data.frame(entrez=colnames(a549_data[, 6:ncol(a549_data)]))
+tmp = merge(xname, recon1_match, by='entrez')
+tmp[, 3:4] = NULL
+tmp = unique(tmp)
+a549_drive$Symbol = tmp$symbol
+sig_a549_data = a549_data[a549_data$PValue < 0.05, ]
+```
+
+# 8. Get gene list that are universally lethal across all cell lines
+This gene list was determined from Project Score. Specifically, I defined universally lethal genes that are lethal in more than 50% of the cancer cell lines out of > 300. 
+```{r}
+project_score_file = "D:/Data/CRISPR/Score/41586_2019_1103_MOESM4_ESM/Supplementary Table 3 - Core-Fitness and Context-Specificity Summary_v2.xlsx"
+sheet_name = "Filter Genes"
+
+project_score = read_excel(project_score_file, sheet_name)
+genes_to_filter = project_score[project_score$`Dependency Score` > 50, ]
+```
+
+# 9. Get differentially expressed genes for A549 from CERES score
+First, we'll get the row corresponding to the cancer cell line A549.
+```{r}
+a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
+a549_ceres[2, ] = merged_pval[merged_pval$stripped_cell_line_name=="A549",]
+a549_ceres = a549_ceres[, 6:ncol(a549_ceres)]
+a549_ceres = t(a549_ceres)
+a549_ceres = data.frame(a549_ceres)
+colnames(a549_ceres) = c("CERES", "PValue")
+```
+
+Now, let's grab the metabolic genes that are in RECON1
+```{r}
+xname = data.frame(entrez=rownames(a549_ceres))
+tmp = merge(xname, recon1_match, by='entrez')
+tmp[, 3:4] = NULL
+tmp = unique(tmp)
+a549_ceres$Symbol = tmp$symbol
+```
+
+## Plot Venn Diagram
+```{r}
+gene_overlap = list(
+  A549_specific = sig_a549_ceres$Symbol,
+  Core_fitness = genes_to_filter$`HGNC Symbol`
+)
+ggVennDiagram(gene_overlap)
+```
+
+Finally, we'll grab the genes that have a left-tailed p-value less than 0.05
+```{r}
+sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
+genes_to_filter = genes_to_filter$`Entrez ID`
+genes_to_filter = data.frame(genes_to_filter)
+ubiq_genes = merge(genes_to_filter, 
+                   sig_a549_ceres, 
+                   by.x='genes_to_filter', 
+                   by.y="row.names")
+unique_genes = sig_a549_ceres[!sig_a549_ceres$Symbol %in% ubiq_genes$Symbol, ]
+write.table(sig_a549_ceres, "clipboard", sep="\t", col.names=TRUE)
+```
+
+# 10. Identify where the predicted knockouts are in the CERES distribution
+First, let's load the model predictions
+```{r}
+recon1_prediction = "D:/Analysis/EMT/EMT_RECON1_KO_PRED.xlsx"
+pred = read_excel(recon1_prediction)
+a549_ceres$is_pred = rownames(a549_ceres) == pred$Entrez
+a549_ceres$category = "A549"
+sum(a549_ceres$is_pred)
+```
+
+Now let's create the histogram
+```{r}
+# Create histogram of reaction distribution
+p1 = ggplot(a549_ceres, aes(x=CERES, fill=is_pred)) +
+  geom_histogram(bins=100, show.legend=TRUE) +
+  theme_minimal() +
+  theme(legend.position="none") +
+  xlim(-0.5, 0.5) +
+  theme(plot.title = element_text(size=10),
+              legend.text=element_text(size=8),
+              axis.title.x=element_text(size=10),
+              axis.title.y=element_text(size=10),
+              axis.text.x=element_blank(),
+              axis.text.y=element_text(size=8),
+              legend.box="vertical",
+              legend.margin=margin()) +
+  labs(title="",
+       x=element_blank(),
+       y="Frequency") + 
+     scale_color_manual(values=c("TRUE" = "red", 
+                                 "FALSE" = "gray"),
+                        aesthetics = c("colour", "fill"))
+```
+
+Let's create the scatter plot
+```{r}
+p2 = ggplot(a549_ceres, aes(x=CERES, y=category, color=is_pred)) +
+     geom_point(show.legend=FALSE, alpha=0.01) +
+     geom_jitter() +
+     theme_minimal() + 
+     theme(legend.position="none") +
+     xlim(-0.5, 0.5) +
+     labs(x="CERES Score",
+          y=element_blank()) + 
+     scale_color_manual(values=c("TRUE" = "red", 
+                                 "FALSE" = "gray"),
+                        aesthetics = c("colour", "fill"))
+```
+
+Finally construct the figure.
+```{r}
+figure = ggarrange(p1, p2,
+                   ncol = 1, nrow = 2)
+figure
 ```
