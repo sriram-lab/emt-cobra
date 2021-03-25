@@ -49,8 +49,14 @@ pfba = true;
 % A. Setting up parallel computations
 % We can set the number of CPUs to use for our calculations.
 
-%workers = 4;
-parpool("local", workers);
+%%%%  Initialize the Umich Cluster profiles
+setupUmichClusters
+
+%%%%  We get from the environment the number of processors
+NP = str2num(getenv('SLURM_NTASKS'));
+
+%%%%  Create the pool for parfor to use
+thePool = parpool('current', NP);
 % B. Initiate data structures
 % We'll use the RECON1 metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
