@@ -105,9 +105,12 @@ parfor j = 1:size(ensembl_zdata, 2)
     scGeneKO(j, :) = geneKO
     scRxnFx(j, :)  = soln;
     
-    save(filename, ...
-         "scGeneKO", "scRxnFx", "j", ...
-         "-append"); 
+    % Save data using save_data accessory function (needed in parfor loop)
+    scRxnKO(j, :)  = rxnKO;
+    scGeneKO(j, :) = geneKO
+    scRxnFx(j, :)  = soln;
+    save_data(filename, scRxnKO, scGeneKO, scRxnFx, j); 
+    
 end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 

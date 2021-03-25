@@ -2,7 +2,7 @@
 #SBATCH --job-name=recon1_emt_a549_1
 #SBATCH --mail-user=scampit@umich.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --licenses=gurobi@slurmdb:1
+#SBATCH --licenses=gurobi@slurmdb:8
 #SBATCH --output=./recon1_output.log
 #SBATCH --error=./recon1_error.err
 #SBATCH --nodes=1
