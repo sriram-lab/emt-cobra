@@ -46,13 +46,14 @@ pfba = true;
 % We can set the number of CPUs to use for our calculations.
 
 %%%%  Initialize the Umich Cluster profiles
-setupUmichClusters
+%setupUmichClusters
 
 %%%%  We get from the environment the number of processors
-NP = str2num(getenv('SLURM_NTASKS'));
+%NP = str2num(getenv('SLURM_NTASKS'));
 
 %%%%  Create the pool for parfor to use
-thePool = parpool('current', NP);
+%thePool = parpool('current', NP);
+parpool;
 % B. Initiate data structures
 % We'll use the iHUMAN metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
@@ -78,8 +79,8 @@ save(filename, 'scRxnFx', 'scGeneKO');
 parfor j = 1:size(ensembl_zdata, 2)
     
     cell_data = ensembl_zdata(:, j);
-    up_idx    = ensembl_zdata > 0;
-    down_idx  = ensembl_zdata < 0;
+    up_idx    = cell_data > 0;
+    down_idx  = cell_data < 0;
         
     % Get up- and down-regulated genes
     upgenes    = ensembl(up_idx);
