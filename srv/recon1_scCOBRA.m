@@ -102,14 +102,11 @@ parfor j = 1:size(entrez_zdata, 2)
         pfba);
     [geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
     
-    % Save data
+    % Save data using save_data accessory function (needed in parfor loop)
     scRxnKO(j, :)  = rxnKO;
     scGeneKO(j, :) = geneKO
     scRxnFx(j, :)  = soln;
-    
-    save(filename, ...
-            "scRxnKO", "scGeneKO", "scRxnFx", "j", ...
-            "-append"); 
+    save_data(filename, scRxnKO, scGeneKO, scRxnFx, j); 
 end
 % Bulk simulation
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
