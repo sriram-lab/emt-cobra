@@ -2,6 +2,7 @@
 #SBATCH --job-name=ihuman_emt_a549_1
 #SBATCH --mail-user=scampit@umich.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --licenses=gurobi@slurmdb:1
 #SBATCH --output=./ihuman_output.log
 #SBATCH --error=./ihuman_error.err
 #SBATCH --nodes=1
