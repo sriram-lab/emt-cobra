@@ -100,7 +100,7 @@ parfor j = 1:size(entrez_zdata, 2)
         eps, ...
         isgenes, ...
         pfba);
-    [geneKO, rxnKO]  = knockOut(mdl, 'All');
+    [geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
     
     % Save data
     scRxnKO(:, j)  = rxnKO;
