@@ -79,19 +79,18 @@ save(filename, 'scRxnFx', 'scGeneKO');
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
-parfor j = 1:length(scDE)
-    expt = scDE{j};
-            
+parfor j = 1:size(entrez_zdata, 2)
+    
+    cell_data = entrez_zdata(:, j);
+    up_idx    = entrez_zdata > 0;
+    down_idx  = entrez_zdata < 0;
+        
     % Get up- and down-regulated genes
-    upgenes    = expt.up;
-    downgenes  = expt.down;
+    upgenes    = ensembl(up_idx);
+    downgenes  = ensembl(down_idx);
     
-    upgenes(ismissing(upgenes)) = [];
-    downgenes(ismissing(upgenes)) = [];
-    model.genes = cellstr(model.genes);
-    
-    upgenes = cellstr(upgenes);
-    downgenes = cellstr(downgenes);
+    % Force rho to be 10
+    rho = repelem(10, length(upgenes));
     
     % Fit models and get 
     [soln, ~, ~, cell_mdl] = constrain_flux_regulation(model, ...
@@ -103,7 +102,7 @@ parfor j = 1:length(scDE)
     [geneKO, rxnKO]  = knockOut(mdl, 'All');
     
     % Save data
-    scRxnKO(:, j)  = rxnKO;
+    %scRxnKO(:, j)  = rxnKO;
     scGeneKO(:, j) = geneKO
     scRxnFx(:, j)  = soln;
     
