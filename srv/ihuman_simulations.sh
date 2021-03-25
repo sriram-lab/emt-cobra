@@ -13,4 +13,5 @@
 #SBATCH --partition=standard
 
 module load matlab/R2020a
+module load gurobi
 matlab -nodisplay -r "run('/home/scampit/Turbo/scampit/Software/emt/srv/ihuman_scCOBRA.m'); exit"
