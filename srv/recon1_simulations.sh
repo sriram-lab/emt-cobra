@@ -13,4 +13,4 @@
 #SBATCH --partition=standard
 
 module load matlab/R2020a
-matlab -nodisplay -r "run('/home/scampit/Turbo/scampit/Software/emt/src/recon1_scCOBRA.m'); exit"
+matlab -nodisplay -r "run('/home/scampit/Turbo/scampit/Software/emt/srv/recon1_scCOBRA.m'); exit"
