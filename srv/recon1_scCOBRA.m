@@ -103,9 +103,9 @@ parfor j = 1:size(entrez_zdata, 2)
     [geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
     
     % Save data
-    scRxnKO(:, j)  = rxnKO;
-    scGeneKO(:, j) = geneKO
-    scRxnFx(:, j)  = soln;
+    scRxnKO(j, :)  = rxnKO;
+    scGeneKO(j, :) = geneKO
+    scRxnFx(j, :)  = soln;
     
     save(filename, ...
             "scRxnKO", "scGeneKO", "scRxnFx", "j", ...
