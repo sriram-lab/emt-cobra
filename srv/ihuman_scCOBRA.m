@@ -8,6 +8,7 @@
 
 % Initialize metabolic modeling components
 clear all;
+addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
 initCobraToolbox(false); changeCobraSolver('cplex', 'all');
 % B. Load iHUMAN reconstruction and gene expression dataset
 % First, we'll load the A549 MAGIC-imputed gene expression dataset and the iHUMAN 

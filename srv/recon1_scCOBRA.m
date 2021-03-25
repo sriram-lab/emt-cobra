@@ -8,6 +8,7 @@
 
 % Initialize metabolic modeling components
 clear all;
+addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
 initCobraToolbox(false); changeCobraSolver('gurobi', 'all');
 % B. Load RECON1 reconstruction and gene expression dataset
 % This loads the data for RECON1.
