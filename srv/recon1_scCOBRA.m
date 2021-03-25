@@ -64,7 +64,7 @@ parpool;
 
 scRxnFx  = zeros(length(time_course), length(model.rxns));
 scGeneKO = zeros(length(time_course), length(model.genes));
-%scRxnKO  = zeros(length(time_course), length(model.rxns));
+scRxnKO  = zeros(length(time_course), length(model.rxns));
 
 % Linux
 %filename = "~/Analysis/EMT/scRNASeq_recon1_profiles.mat";
@@ -76,7 +76,7 @@ filename = "~/Turbo/scampit/Analysis/EMT/scRNASeq_recon1_profiles.mat";
 %filename = "D:/Analysis/EMT/scRNASeq_recon1_profiles.mat";
 
 % Save it
-save(filename, 'scRxnFx', 'scGeneKO');
+save(filename, 'scRxnFx', 'scGeneKO', 'scRxnKO');
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
@@ -87,8 +87,8 @@ parfor j = 1:size(entrez_zdata, 2)
     down_idx  = cell_data < 0;
         
     % Get up- and down-regulated genes
-    upgenes    = ensembl(up_idx);
-    downgenes  = ensembl(down_idx);
+    upgenes    = entrez(up_idx);
+    downgenes  = entrez(down_idx);
     
     % Force rho to be 10
     rho = repelem(10, length(upgenes));
@@ -103,7 +103,7 @@ parfor j = 1:size(entrez_zdata, 2)
     [geneKO, rxnKO]  = knockOut(mdl, 'All');
     
     % Save data
-    %scRxnKO(:, j)  = rxnKO;
+    scRxnKO(:, j)  = rxnKO;
     scGeneKO(:, j) = geneKO
     scRxnFx(:, j)  = soln;
     

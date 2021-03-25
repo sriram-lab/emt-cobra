@@ -53,7 +53,8 @@ pfba = true;
 
 %%%%  Create the pool for parfor to use
 %thePool = parpool('current', NP);
-parpool;
+poolobj = parpool;
+addAttachedFiles(poolobj, {})
 % B. Initiate data structures
 % We'll use the iHUMAN metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
