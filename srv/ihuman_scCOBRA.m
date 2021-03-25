@@ -9,7 +9,7 @@
 % Initialize metabolic modeling components
 clear all;
 addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
-initCobraToolbox(false); changeCobraSolver('cplex', 'all');
+initCobraToolbox(false); changeCobraSolver('gurobi', 'all');
 % B. Load iHUMAN reconstruction and gene expression dataset
 % First, we'll load the A549 MAGIC-imputed gene expression dataset and the iHUMAN 
 % metabolic reconstruction. 
@@ -78,8 +78,8 @@ save(filename, 'scRxnFx', 'scGeneKO');
 parfor j = 1:size(ensembl_zdata, 2)
     
     cell_data = ensembl_zdata(:, j);
-    up_idx    = cell_data > 0;
-    down_idx  = cell_data < 0;
+    up_idx    = ensembl_zdata > 0;
+    down_idx  = ensembl_zdata < 0;
         
     % Get up- and down-regulated genes
     upgenes    = ensembl(up_idx);
@@ -99,7 +99,7 @@ parfor j = 1:size(ensembl_zdata, 2)
     [geneKO, ~] = knockOut(cell_mdl, 'GeneKO');
     
     % Save data
-    scRxnKO(j, :)  = rxnKO;
+    %scRxnKO(j, :)  = rxnKO;
     scGeneKO(j, :) = geneKO
     scRxnFx(j, :)  = soln;
     
