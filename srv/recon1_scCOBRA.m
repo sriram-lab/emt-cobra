@@ -69,7 +69,7 @@ parpool
 % This codeblock is for running this script locally.
 
 %workers = 4;
-parpool("local", workers);
+%parpool("local", workers);
 % B. Initiate data structures
 % We'll use the RECON1 metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
