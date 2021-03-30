@@ -59,8 +59,9 @@ pfba = true;
 
 %%%%  Create the pool for parfor to use
 %thePool = parpool('current', NP);
-poolobj = parpool;
-addAttachedFiles(poolobj, {})
+%poolobj = parpool;
+%addAttachedFiles(poolobj, {})
+parpool
 %% 
 % The code block below is for running this script locally.
 
