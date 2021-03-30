@@ -85,7 +85,7 @@ basepath = "~/Turbo/scampit/Analysis/EMT/recon1/";
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
-parfor j = 1:length(entrez_zdata)
+parfor j = 1:size(entrez_zdata, 2)
     cell_data = entrez_zdata(:, j);
     up_idx    = cell_data > 0;
     down_idx  = cell_data < 0;
