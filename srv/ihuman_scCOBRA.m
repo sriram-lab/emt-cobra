@@ -109,7 +109,7 @@ parfor j = 1:size(ensembl_zdata, 2)
     cobra_cell.id     = time_course{j}
     cobra_cell.geneko = geneKO;
     cobra_cell.flux   = soln;
-    save(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j'); 
+    parsave(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j'); 
 end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 

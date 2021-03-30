@@ -112,7 +112,7 @@ parfor j = 1:size(entrez_zdata, 2)
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
-    save(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j');   
+    parsave(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j');   
 end
 % Bulk simulation
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
