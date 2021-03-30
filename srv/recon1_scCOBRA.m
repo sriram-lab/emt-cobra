@@ -8,7 +8,10 @@
 
 % Initialize metabolic modeling components
 clear all;
+
+% Needed to load COBRA onto Great lakes
 addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
+
 initCobraToolbox(false); changeCobraSolver('gurobi', 'all');
 % B. Load RECON1 reconstruction and gene expression dataset
 % This loads the data for RECON1.
@@ -48,40 +51,40 @@ pfba = true;
 % genes using the iMAT algorithm (|constrain_flux_regulation.m|).
 % A. Setting up parallel computations
 % We can set the number of CPUs to use for our calculations.
+% 
+% The code below is for running this script on Great Lakes
 
-%%%%  Initialize the Umich Cluster profiles
+% Initialize the Umich Cluster profiles
 %setupUmichClusters
 
-%%%%  We get from the environment the number of processors
+% We get from the environment the number of processors
 %NP = str2num(getenv('SLURM_NTASKS'));
 
-%%%%  Create the pool for parfor to use
+% Create the pool for parfor to use
 %thePool = parpool('current', NP);
-parpool;
+poolobj = parpool;
+addAttachedFiles(poolobj, {})
+%% 
+% This codeblock is for running this script locally.
+
+%workers = 4;
+parpool("local", workers);
 % B. Initiate data structures
 % We'll use the RECON1 metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
 
-scRxnFx  = zeros(length(time_course), length(model.rxns));
-scGeneKO = zeros(length(time_course), length(model.genes));
-scRxnKO  = zeros(length(time_course), length(model.rxns));
-
-% Linux
-%filename = "~/Analysis/EMT/scRNASeq_recon1_profiles.mat";
+% ACLX
+%basepath = "~/Analysis/EMT/recon1/";
 
 % NFS
-filename = "~/Turbo/scampit/Analysis/EMT/scRNASeq_recon1_profiles.mat";
+basepath = "~/Turbo/scampit/Analysis/EMT/recon1/";
 
 % DELL
-%filename = "D:/Analysis/EMT/scRNASeq_recon1_profiles.mat";
-
-% Save it
-save(filename, 'scRxnFx', 'scGeneKO', 'scRxnKO');
+%basepath = "D:/Analysis/EMT/recon1/";
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
-parfor j = 1:size(entrez_zdata, 2)
-    
+parfor j = 1:length(entrez_zdata)
     cell_data = entrez_zdata(:, j);
     up_idx    = cell_data > 0;
     down_idx  = cell_data < 0;
@@ -102,11 +105,13 @@ parfor j = 1:size(entrez_zdata, 2)
                                                        pfba);
     [geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
     
-    % Save data using save_data accessory function (needed in parfor loop)
-    scRxnKO(j, :)  = rxnKO;
-    scGeneKO(j, :) = geneKO
-    scRxnFx(j, :)  = soln;
-    save_data(filename, scRxnKO, scGeneKO, scRxnFx, j); 
+    % Save data as individual files
+    cobra_cell        = struct();
+    cobra_cell.id     = time_course{j}
+    cobra_cell.geneko = geneKO;
+    cobra_cell.rxnko  = rxnKO;
+    cobra_cell.flux   = soln;
+    save(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j');   
 end
 % Bulk simulation
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
