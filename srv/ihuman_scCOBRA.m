@@ -8,8 +8,12 @@
 
 % Initialize metabolic modeling components
 clear all;
+
+% Needed to load COBRA onto Great lakes
 addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
-initCobraToolbox(false); changeCobraSolver('gurobi', 'all');
+
+initCobraToolbox(false); 
+changeCobraSolver('gurobi', 'all');
 % B. Load iHUMAN reconstruction and gene expression dataset
 % First, we'll load the A549 MAGIC-imputed gene expression dataset and the iHUMAN 
 % metabolic reconstruction. 
@@ -44,6 +48,8 @@ pfba = true;
 % genes using the iMAT algorithm (|constrain_flux_regulation.m|).
 % A. Setting up parallel computations
 % We can set the number of CPUs to use for our calculations.
+% 
+% The code block below is for running this script on Great Lakes
 
 %%%%  Initialize the Umich Cluster profiles
 %setupUmichClusters
@@ -55,30 +61,27 @@ pfba = true;
 %thePool = parpool('current', NP);
 poolobj = parpool;
 addAttachedFiles(poolobj, {})
+%% 
+% The code block below is for running this script locally.
+
+%workers = 4;
+%parpool("local", workers);
 % B. Initiate data structures
 % We'll use the iHUMAN metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
 
-scRxnFx  = zeros(length(time_course), length(model.rxns));
-scGeneKO = zeros(length(time_course), length(model.genes));
-%scRxnKO  = zeros(length(time_course), length(model.rxns));
-
 % ACLX
-%filename = "~/Analysis/EMT/scRNASeq_ihuman_profiles.mat";
+%basepath = "~/Analysis/EMT/human1/";
 
 % NFS
-filename = "~/Turbo/scampit/Analysis/EMT/scRNASeq_ihuman_profiles.mat";
+basepath = "~/Turbo/scampit/Analysis/EMT/human1/";
 
 % DELL
-%filename = "D:/Analysis/EMT/scRNASeq_ihuman_profiles.mat";
-
-% Save it
-save(filename, 'scRxnFx', 'scGeneKO');
+%basepath = "D:/Analysis/EMT/human1/";
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
 parfor j = 1:size(ensembl_zdata, 2)
-    
     cell_data = ensembl_zdata(:, j);
     up_idx    = cell_data > 0;
     down_idx  = cell_data < 0;
@@ -99,18 +102,13 @@ parfor j = 1:size(ensembl_zdata, 2)
                                                        pfba);
     
     [geneKO, ~] = knockOut(cell_mdl, 'GeneKO');
-    
-    % Save data
-    %scRxnKO(j, :)  = rxnKO;
-    scGeneKO(j, :) = geneKO
-    scRxnFx(j, :)  = soln;
-    
-    % Save data using save_data accessory function (needed in parfor loop)
-    scRxnKO(j, :)  = rxnKO;
-    scGeneKO(j, :) = geneKO
-    scRxnFx(j, :)  = soln;
-    save_data(filename, scRxnKO, scGeneKO, scRxnFx, j); 
-    
+
+    % Save data as individual files
+    cobra_cell = struct();
+    cobra_cell.id     = time_course{j}
+    cobra_cell.geneko = geneKO;
+    cobra_cell.flux   = soln;
+    save(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j'); 
 end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 
