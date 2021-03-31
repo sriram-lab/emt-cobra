@@ -62,13 +62,14 @@ pfba = true;
 
 % Create the pool for parfor to use
 %thePool = parpool('current', NP);
-poolobj = parpool;
-addAttachedFiles(poolobj, {})
+%poolobj = parpool;
+%addAttachedFiles(poolobj, {})
+parpool
 %% 
 % This codeblock is for running this script locally.
 
-workers = 4;
-parpool("local", workers);
+%workers = 4;
+%parpool("local", workers);
 % B. Initiate data structures
 % We'll use the RECON1 metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
