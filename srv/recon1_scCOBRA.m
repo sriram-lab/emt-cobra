@@ -62,14 +62,13 @@ pfba = true;
 
 % Create the pool for parfor to use
 %thePool = parpool('current', NP);
-%poolobj = parpool;
-%addAttachedFiles(poolobj, {})
-parpool
+poolobj = parpool;
+addAttachedFiles(poolobj, {})
 %% 
 % This codeblock is for running this script locally.
 
-%workers = 4;
-%parpool("local", workers);
+workers = 4;
+parpool("local", workers);
 % B. Initiate data structures
 % We'll use the RECON1 metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
@@ -85,7 +84,7 @@ basepath = "~/Turbo/scampit/Analysis/EMT/recon1/";
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
-parfor j = 1:size(entrez_zdata, 2)
+parfor j = 1:1%size(entrez_zdata, 2)
     cell_data = entrez_zdata(:, j);
     up_idx    = cell_data > 0;
     down_idx  = cell_data < 0;
@@ -112,7 +111,7 @@ parfor j = 1:size(entrez_zdata, 2)
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
-    parsave(sprintf(strcat(basepath, '%d.mat'), j), 'cobra_cell', 'j');   
+    parsave(sprintf(strcat(basepath, '%d.mat'), j), cobra_cell, j);   
 end
 % Bulk simulation
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
