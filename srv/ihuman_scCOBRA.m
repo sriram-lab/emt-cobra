@@ -82,7 +82,17 @@ basepath = "~/Turbo/scampit/Analysis/EMT/human1/";
 % C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
-parfor j = 1:size(ensembl_zdata, 2)
+cell_idx = 1:size(ensembl_zdata, 2);
+ran_sims = fileread("~/Turbo/scampit/Software/emt/srv/finished_ihuman.txt");
+to_remove = textscan(ran_sims, '%s', 'Delimiter', '\n');
+to_remove = string(to_remove{:});
+fclose(ran_sims);
+to_remove = regexprep(string(to_remove), '.mat', '');
+to_remove = str2double(to_remove);
+cell_idx = setdiff(cell_idx, to_remove);
+
+parfor i = 1:length(cell_idx)
+    j = cell_idx(i);
     cell_data = ensembl_zdata(:, j);
     up_idx    = cell_data > 0;
     down_idx  = cell_data < 0;
