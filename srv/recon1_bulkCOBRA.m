@@ -85,7 +85,7 @@ parfor j = 1:size(entrez_zdata, 2)
     
     % Save data as individual files
     cobra_cell        = struct();
-    cobra_cell.id     = time_course{j}
+    cobra_cell.id     = filenames(j);
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
@@ -130,7 +130,7 @@ parfor j = 1:size(entrez_zdata, 2)
     
     % Save data as individual files
     cobra_cell        = struct();
-    cobra_cell.id     = time_course{j}
+    cobra_cell.id     = filenames(j);
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
@@ -181,7 +181,7 @@ parfor j = 1:size(entrez_zdata, 2)
     
     % Save data as individual files
     cobra_cell        = struct();
-    cobra_cell.id     = time_course{j}
+    cobra_cell.id     = filenames(j);
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
