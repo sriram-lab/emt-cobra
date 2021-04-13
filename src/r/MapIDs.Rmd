@@ -14,28 +14,29 @@ This script performs several preprocessing steps for the GSE17518 EMT dataset, i
 The following codeblock installs the requisite libraries used for querying and mapping datasets.
 
 ```{r, warning=FALSE, message=FALSE}
-install.packages("BiocManager")
+#install.packages("BiocManager")
 library(BiocManager)
 
 lst = c("Biobase", "GEOquery", "limma", "affy", "BiocManager")
-BiocManager::install(version = '3.12')
-BiocManager::install(lst, version="devel", quietly=TRUE, clean=TRUE)
+#BiocManager::install(version = '3.12')
+#BiocManager::install(lst, version="devel", quietly=TRUE, clean=TRUE)
+#BiocManager::install('biomart')
 
 library(Biobase)
-library(GEOquery)
+#library(GEOquery)
 library(limma)
-library(affy)
+#library(affy)
+library(biomaRt)
 
 BiocManager::install(c("hgu133plus2.db", "org.Hs.eg.db"))
 library(hgu133plus2.db)
 library(org.Hs.eg.db)
 
 # Data processing
-install.packages(c('data.table', 'openxlsx', 'readxl'))
+#install.packages(c('data.table', 'openxlsx', 'readxl'))
 library(data.table)
 library(openxlsx)
 library(readxl)
-
 ```
 
 ## Map RNASeq datasets
@@ -138,6 +139,9 @@ map = select(hgu133plus2.db,
                          'ENTREZID', 
                          'SYMBOL')
 )
+```
+
+```{r}
 
 # Map the data
 mapped_lst = merge(map, df, by.x="PROBEID", by.y="rn")
@@ -161,75 +165,67 @@ write.xlsx(final_df, filename)
 
 ### Garcia proteomics data
 This dataset has 4 time points. The first column has UNIPROT IDs. I will use the same mapping procedure above to get these IDs.
-
 ```{r}
+# LINUX
+#filepath = '/home/scampit/Data/Expression/Proteomics/Garcia/raw/time-course-EMT.xlsx'
 
-# Read in data
-filepath = '/home/scampit/Data/Expression/Proteomics/Garcia/raw/time-course-EMT.xlsx'
-sheet_name = 'TS_Proteomics'
-data = read_excel(filepath, sheet=sheet_name, 
+# DELL
+filepath = "D:/Data/Proteomics/Garcia/raw/time-course-EMT.xlsx"
+
+sheet_name = 'Sheet1'
+data = readxl::read_excel(filepath, sheet=sheet_name, 
                   col_names=TRUE, col_types='text')
+data = data[-1, ]
+```
 
-colnames(data) = c("Symbol", 
-                   "0A", "0A", "0A", 
-                   "0B", "0B", "0B", 
-                   "5min", "5min", "5min", 
-                   "1hr", "1hr", "1hr", 
-                   "24hr", "24hr", "24hr", 
-                   "48hr", "48hr", "48hr")
-
+Now we'll turn the mouse gene symbols to "human" ones by changing to the uppercase and get the unique gene symbols.
+```{r}
 # Turn mouse ID to ID that resembles human gene symbols
 data = apply(data, 2, toupper)
 
-# Remove rows with NaN
-data = na.omit(data)
-
 # Remove duplicate rows
-tmp = unique(data, by='Symbol')
+data = unique(data, by='Symbol')
+```
 
-data = data.frame(tmp)
+Now we need to map to Entrez IDs
+```{r}
+#data = data.frame(tmp)
 
-data = data[!data$Symbol == "TMPO", ]
-data = data[!data$Symbol == "TOR1AIP2", ]
+#data = data[!data$Symbol == "TMPO", ]
+#data = data[!data$Symbol == "TOR1AIP2", ]
 
-row.names(data) = data$Symbol
+row.names(data) = data[, 'Majority Gene name']
+probes          = rownames(data)
+data            = data.frame(data)
+data            = data.table::setDT(data, keep.rownames=TRUE)
+```
 
-data = subset(data, select=-c(Symbol))
-
-probes = rownames(data)
-data = setDT(data, keep.rownames=TRUE)
+Now we'll map to identifiers in biomaRt.
+```{r}
+mart = biomaRt::useMart(biomart="ensembl", 
+                        dataset="hsapiens_gene_ensembl")
 
 # Create a map of the probes to Entrez and gene symbols
-map = mapIds(org.Hs.eg.db, probes, 'ENTREZID', 'SYMBOL')
-map = as.data.frame(map)
+human_ids = getBM(attributes=c('ensembl_gene_id',
+                               'entrezgene_id',
+                               'hgnc_symbol'), 
+                  values=probes,
+                  mart=mart)
+```
 
+
+```{r}
 # Map the data
-mapped_lst = merge(map, data, by.x="row.names", by.y="rn")
-tmp = subset(mapped_lst, select=-c(Row.names, map))
+mapped_lst = merge(human_ids, data, by.x="hgnc_symbol", by.y="rn")
+mapped_lst$ensembl_gene_id = NULL
+mapped_lst = mapped_lst[!duplicated(mapped_lst),]
 
-library(dplyr)
-library(magrittr)
-tmp %<>% mutate_if(is.character,as.numeric)
+# LINUX
+#savepath = "~/Data/Expression/Proteomics/Garcia/processed/processed_garcia.xlsx"
 
-tmp = setNames(tmp, c("0.1", "0.1", "0.1", 
-                   "0.2", "0.2", "0.2", 
-                   "5", "5", "5", 
-                   "1", "1", "1", 
-                   "24", "24", "24", 
-                   "48", "48", "48")
-)
-
-avg_df = as.data.frame(
-  sapply(
-    unique(names(tmp)), function(col) rowMeans(tmp[, names(tmp)==col])
-  )
-)
-
-# Get final dataframe with map
-final_df = cbind(map, avg_df)
-final_df = cbind(rownames(map), final_df)
-filename = "~/Data/Expression/Proteomics/Garcia/processed/processed_garcia.xlsx"
-write.xlsx(final_df, filename)
+# DELL
+savepath = "D:/Data/Proteomics/Garcia/processed/garcia.xlsx" 
+write.xlsx(mapped_lst, savepath)
 ```
 
 ### scRNASeq data
