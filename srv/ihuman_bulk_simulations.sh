@@ -3,8 +3,8 @@
 #SBATCH --mail-user=scampit@umich.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --licenses=gurobi@slurmdb:8
-#SBATCH --output=./ihuman_output.log
-#SBATCH --error=./ihuman_error.err
+#SBATCH --output=./ihuman_bulk_output.log
+#SBATCH --error=./ihuman_bulk_error.err
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=8
 #SBATCH --mem-per-cpu=4g
