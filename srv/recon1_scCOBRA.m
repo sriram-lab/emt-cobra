@@ -114,67 +114,7 @@ parfor j = 1:size(entrez_zdata, 2)
     cobra_cell.flux   = soln;
     parsave(sprintf(strcat(basepath, '%d.mat'), j), cobra_cell, j);   
 end
-% Bulk simulation
-% Now let's perform some knockouts. I will perform gene knockouts to save time.
 
-% rxnko  = cell(length(scDE), 1);
-% flux   = cell(length(scDE), 1);
-% geneko = cell(length(scDE), 1);
-%% 
-% This is the save file path.
-
-% % Linux
-% %filename = "~/Analysis/EMT/bulk_RNASeq_recon1_profiles.mat";
-% 
-% % NFS
-% filename = "~/Turbo/scampit/Analysis/EMT/bulk_RNASeq_recon1_profiles.mat";
-% 
-% % DELL
-% %filename = "D:/Analysis/EMT/bulk_RNASeq_recon1_profiles.mat";
-% 
-% % Save it
-% save(filename, 'rxnko', 'flux', 'geneko');
-%% 
-% This simultaneously computes metabolic fluxes, gene KO and reaction KO data.
-
-% parfor j = 1:length(scDE)
-%     
-%     expt = scDE{j};
-%             
-%     % Get up- and down-regulated genes
-%     upgenes    = expt.up;
-%     downgenes  = expt.down;
-%     
-%     upgenes(ismissing(upgenes)) = [];
-%     downgenes(ismissing(upgenes)) = [];
-%     model.genes = cellstr(model.genes);
-%     
-%     upgenes = cellstr(upgenes);
-%     downgenes = cellstr(downgenes);
-%     
-%     % Force rho to be 10
-%     rho = repelem(10, length(upgenes));
-%     
-%     % Fit models and get flux distribution
-%     [soln, ~, ~, cell_mdl] = constrain_flux_regulation(model, ...
-%         upgenes, downgenes, ...
-%         kap, rho, ...
-%         eps, ...
-%         isgenes, ...
-%         pfba);
-%     
-%     [geneKO, rxnKO] = knockOut(cell_mdl, 'All');
-%     
-%     % Save data for each time point as a single matrix
-%     flux(j, :) = soln;
-%     geneko(j, :) = geneKO;
-%     rxnko(j, :) = rxnKO;
-%     
-%     save(filename, ...
-%             "flux", "geneko", "rxnko", "j", ...
-%             "-append"); 
-%     
-% end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 
 % get differentially active or differentially sensitive metabolic reactions, you 
