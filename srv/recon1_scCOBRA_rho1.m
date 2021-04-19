@@ -78,7 +78,7 @@ parpool
 %basepath = "~/Analysis/EMT/recon1/";
 
 % NFS
-basepath = "~/Turbo/scampit/Analysis/EMT/recon1/";
+basepath = "~/Turbo/scampit/Analysis/EMT/gse147405/rho01/recon1/";
 
 % DELL
 %basepath = "D:/Analysis/EMT/recon1/";
