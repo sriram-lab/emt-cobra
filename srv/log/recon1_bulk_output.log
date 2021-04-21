@@ -1,0 +1,135 @@
+
+                            < M A T L A B (R) >
+                  Copyright 1984-2020 The MathWorks, Inc.
+              R2020a Update 3 (9.8.0.1396136) 64-bit (glnxa64)
+                                May 27, 2020
+
+ 
+To get started, type doc.
+For product information, visit www.mathworks.com.
+ 
+
+
+      _____   _____   _____   _____     _____     |
+     /  ___| /  _  \ |  _  \ |  _  \   / ___ \    |   COnstraint-Based Reconstruction and Analysis
+     | |     | | | | | |_| | | |_| |  | |___| |   |   The COBRA Toolbox - 2021
+     | |     | | | | |  _  { |  _  /  |  ___  |   |
+     | |___  | |_| | | |_| | | | \ \  | |   | |   |   Documentation:
+     \_____| \_____/ |_____/ |_|  \_\ |_|   |_|   |   http://opencobra.github.io/cobratoolbox
+                                                  | 
+
+ > Checking if git is installed ...  Done (version: 1.8.3.).
+ > Checking if the repository is tracked using git ...  Done.
+git config --global http.sslVerify false: Signal 127
+error: could not lock config file /home/scampit/.gitconfig: File exists
+[Warning: Your global git configuration could not be changed.] 
+[> In initCobraToolbox (line 180)
+  In recon1_bulkCOBRA (line 16)
+  In run (line 91)] 
+ > Checking if curl is installed ...  Done.
+ > Checking if remote can be reached ...  (unsuccessful - no internet connection).
+ > Submodules exist but cannot be updated (remote cannot be reached).
+ > Adding all the files of The COBRA Toolbox ...  Done.
+ > Define CB map output... set to svg.
+ > TranslateSBML is installed and working properly.
+ > Configuring solver environment variables ...
+   - [----] ILOG_CPLEX_PATH: --> set this path manually after installing the solver ( see https://opencobra.github.io/cobratoolbox/docs/solvers.html )
+   - [-*--] GUROBI_PATH: /sw/arc/centos7/gurobi/gurobi911/linux64/matlab
+   - [----] TOMLAB_PATH: --> set this path manually after installing the solver ( see https://opencobra.github.io/cobratoolbox/docs/solvers.html )
+   - [----] MOSEK_PATH: --> set this path manually after installing the solver ( see https://opencobra.github.io/cobratoolbox/docs/solvers.html )
+   Done.
+ > Checking available solvers and solver interfaces ...gurobi
+ibm_cplex
+tomlab_cplex
+glpk
+mosek
+matlab
+pdco
+quadMinos
+dqqMinos
+cplex_direct
+cplexlp
+qpng
+tomlab_snopt
+lp_solve
+ Done.
+ > Setting default solvers ... Done.
+ > Saving the MATLAB path ...[Warning: Unable to save path to file
+'/sw/arcts/centos7/matlab/R2020a/toolbox/local/pathdef.m'. You can save your
+path to a different location by calling SAVEPATH with an input argument that
+specifies the full path. For MATLAB to use that path in future sessions, save
+the path to 'pathdef.m' in your MATLAB startup folder.] 
+[> In savepath (line 176)
+  In initCobraToolbox (line 492)
+  In recon1_bulkCOBRA (line 16)
+  In run (line 91)] 
+ Done.
+   - The MATLAB path was saved as ~/pathdef.m.
+
+ > Summary of available solvers and solver interfaces
+
+			Support 	   LP 	 MILP 	   QP 	 MIQP 	  NLP
+	----------------------------------------------------------------------
+	gurobi       	active        	    1 	    1 	    1 	    1 	    -
+	ibm_cplex    	active        	    0 	    0 	    0 	    0 	    -
+	tomlab_cplex 	active        	    0 	    0 	    0 	    0 	    -
+	glpk         	active        	    1 	    1 	    - 	    - 	    -
+	mosek        	active        	    0 	    - 	    0 	    - 	    -
+	matlab       	active        	    1 	    - 	    - 	    - 	    1
+	pdco         	active        	    1 	    - 	    1 	    - 	    -
+	quadMinos    	active        	    1 	    - 	    - 	    - 	    -
+	dqqMinos     	active        	    1 	    - 	    1 	    - 	    -
+	cplex_direct 	active        	    0 	    0 	    0 	    - 	    -
+	cplexlp      	active        	    0 	    - 	    - 	    - 	    -
+	qpng         	passive       	    - 	    - 	    1 	    - 	    -
+	tomlab_snopt 	passive       	    - 	    - 	    - 	    - 	    0
+	lp_solve     	legacy        	    1 	    - 	    - 	    - 	    -
+	----------------------------------------------------------------------
+	Total        	-             	    7 	    2 	    4 	    1 	    1
+
+ + Legend: - = not applicable, 0 = solver not compatible or not installed, 1 = solver installed.
+
+
+ > You can solve LP problems using: 'gurobi' - 'glpk' - 'pdco' - 'quadMinos' 
+ > You can solve MILP problems using: 'gurobi' - 'glpk' 
+ > You can solve QP problems using: 'gurobi' - 'pdco' 
+ > You can solve MIQP problems using: 'gurobi' 
+ > You can solve NLP problems using: 
+
+> Checking for available updates ... skipped
+
+ > changeCobraSolver: Gurobi interface added to MATLAB path.
+ > The compatibility can only be evaluated on Linux Ubuntu.
+ > The solver compatibility is not tested with MATLAB R2020a.
+ > changeCobraSolver: Solver for LP problems has been set to gurobi.
+
+ > changeCobraSolver: Gurobi interface added to MATLAB path.
+ > The compatibility can only be evaluated on Linux Ubuntu.
+ > The solver compatibility is not tested with MATLAB R2020a.
+ > changeCobraSolver: Solver for MILP problems has been set to gurobi.
+
+ > changeCobraSolver: Gurobi interface added to MATLAB path.
+ > The compatibility can only be evaluated on Linux Ubuntu.
+ > The solver compatibility is not tested with MATLAB R2020a.
+ > changeCobraSolver: Solver for QP problems has been set to gurobi.
+
+ > changeCobraSolver: Gurobi interface added to MATLAB path.
+ > The compatibility can only be evaluated on Linux Ubuntu.
+ > The solver compatibility is not tested with MATLAB R2020a.
+ > changeCobraSolver: Solver for MIQP problems has been set to gurobi.
+ > changeCobraSolver: Solver gurobi not supported for problems of type NLP. No solver set for this problemtype 
+Starting parallel pool (parpool) using the 'local' profile ...
+Connected to the parallel pool (number of workers: 8).
+
+ans = 
+
+ ProcessPool with properties: 
+
+            Connected: true
+           NumWorkers: 8
+              Cluster: local
+        AttachedFiles: {}
+    AutoAddClientPath: true
+          IdleTimeout: 30 minutes (30 minutes remaining)
+          SpmdEnabled: true
+
