@@ -4,6 +4,8 @@
 % This script computes the reaction knockouts and metabolic fluxes for the scCOBRA 
 % models.
 %% 1. Load up COBRA Toolbox
+% This code block loads up the COBRA Toolbox for constraint-based metabolic 
+% modeling.
 
 % Initialize metabolic modeling components
 clear all;
@@ -36,14 +38,17 @@ eps = [];       eps2 = [];
 %thePool = parpool('current', NP);
 %poolobj = parpool;
 %addAttachedFiles(poolobj, {})
-parpool
 %% 
 % This codeblock is for running this script locally.
 
 %workers = 4;
 %parpool("local", workers);
+parpool
 % B. Perform bulk simulations
+% This code block will perform flux balance analysis and knockout analysis for 
+% the three bulk datasets.
 % i. Garcia
+% This is the EMT proteomics dataset from the Garcia lab.
 
 % DELL
 %load D:/Analysis/EMT/data/Garcia.mat
@@ -52,7 +57,7 @@ parpool
 load           ~/Turbo/scampit/Analysis/EMT/data/Garcia.mat
 garcia_path = "~/Turbo/scampit/Analysis/EMT/garcia/recon1/";
 %% 
-% First, extract the datasets
+% First, extract the datasets.
 
 entrez_zdata = data;
 entrez       = geneids;
@@ -62,19 +67,22 @@ entrez       = geneids;
 filenames = ["fc05min.mat", "fc60min.mat", ...
              "fc24hr.mat", "fc48hr.mat"];
 
+recon1.genes = recon1.geneEntrezID;
+
 parfor j = 1:size(entrez_zdata, 2)
+    % Grab indicies for significant differentially regulated genes
     cell_data = entrez_zdata(:, j);
     up_idx    = cell_data > 0;
     down_idx  = cell_data < 0;
         
-    % Get up- and down-regulated genes
+    % Get up- and down-regulated gene identifiers
     upgenes    = entrez(up_idx);
     downgenes  = entrez(down_idx);
     
     % Force rho to be 10
     rho = repelem(10, length(upgenes));
     
-    % Fit models and get 
+    % Fit models and get data
     [soln, ~, ~, cell_mdl] = constrain_flux_regulation(recon1, ...
                                                        upgenes, downgenes, ...
                                                        kap, rho, ...
@@ -85,13 +93,14 @@ parfor j = 1:size(entrez_zdata, 2)
     
     % Save data as individual files
     cobra_cell        = struct();
-    cobra_cell.id     = filenames(j);
+    cobra_cell.id     = Garcia.fcid{j};
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
     parsave(strcat(garcia_path, filenames(j)), cobra_cell, j);   
 end
 % ii. GSE17518
+% This is EMT RNASeq data from Thannickal et al.
 
 % DELL
 %load D:/Analysis/EMT/data/GSE17518.mat
@@ -107,36 +116,34 @@ entrez       = geneids;
 %% 
 % Then run the flux and knockout simulations.
 
-parfor j = 1:size(entrez_zdata, 2)
-    cell_data = entrez_zdata(:, j);
-    up_idx    = cell_data > 0;
-    down_idx  = cell_data < 0;
-        
-    % Get up- and down-regulated genes
-    upgenes    = entrez(up_idx);
-    downgenes  = entrez(down_idx);
+cell_data = entrez_zdata;
+up_idx    = cell_data > 0;
+down_idx  = cell_data < 0;
     
-    % Force rho to be 10
-    rho = repelem(10, length(upgenes));
-    
-    % Fit models and get 
-    [soln, ~, ~, cell_mdl] = constrain_flux_regulation(recon1, ...
-                                                       upgenes, downgenes, ...
-                                                       kap, rho, ...
-                                                       eps, ...
-                                                       isgenes, ...
-                                                       pfba);
-    [geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
-    
-    % Save data as individual files
-    cobra_cell        = struct();
-    cobra_cell.id     = filenames(j);
-    cobra_cell.geneko = geneKO;
-    cobra_cell.rxnko  = rxnKO;
-    cobra_cell.flux   = soln;
-    
-    parsave(strcat(gse17518_path, "fc72.mat"), cobra_cell, j);   
-end
+% Get up- and down-regulated genes
+upgenes    = entrez(up_idx);
+downgenes  = entrez(down_idx);
+
+% Force rho to be 10
+rho = repelem(10, length(upgenes));
+
+% Fit models and get 
+[soln, ~, ~, cell_mdl] = constrain_flux_regulation(recon1, ...
+                                                   upgenes, downgenes, ...
+                                                   kap, rho, ...
+                                                   eps, ...
+                                                   isgenes, ...
+                                                   pfba);
+[geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
+
+% Save data as individual files
+cobra_cell        = struct();
+cobra_cell.id     = GSE17518.fcid{1};
+cobra_cell.geneko = geneKO;
+cobra_cell.rxnko  = rxnKO;
+cobra_cell.flux   = soln;
+
+parsave(strcat(gse17518_path, "fc72.mat"), cobra_cell, j);   
 % iii. GSE17708
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
@@ -181,7 +188,7 @@ parfor j = 1:size(entrez_zdata, 2)
     
     % Save data as individual files
     cobra_cell        = struct();
-    cobra_cell.id     = filenames(j);
+    cobra_cell.id     = GSE17708.fcid{j}
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
