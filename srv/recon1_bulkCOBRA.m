@@ -143,6 +143,7 @@ cobra_cell.geneko = geneKO;
 cobra_cell.rxnko  = rxnKO;
 cobra_cell.flux   = soln;
 
+j = 1;
 parsave(strcat(gse17518_path, "fc72.mat"), cobra_cell, j);   
 % iii. GSE17708
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
@@ -188,11 +189,11 @@ parfor j = 1:size(entrez_zdata, 2)
     
     % Save data as individual files
     cobra_cell        = struct();
-    cobra_cell.id     = GSE17708.fcid{j}
+    cobra_cell.id     = GSE17708.fcid{j};
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
-    parsave(strcat(gse17518_path, filenames(j)), cobra_cell, j);   
+    parsave(strcat(gse17708_path, filenames(j)), cobra_cell, j);   
 end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 

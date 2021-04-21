@@ -186,7 +186,7 @@ parsave(strcat(gse17518_path, "fc72.mat"), cobra_cell, j);
 %     cobra_cell.geneko = geneKO;
 %     cobra_cell.rxnko  = rxnKO;
 %     cobra_cell.flux   = soln;
-%     parsave(strcat(gse17518_path, filenames(j)), cobra_cell, j);   
+%     parsave(strcat(gse17708_path, filenames(j)), cobra_cell, j);   
 % end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 
