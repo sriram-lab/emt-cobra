@@ -95,49 +95,49 @@ parpool;
 % end
 % ii. GSE17518
 
-% DELL
-%load D:/Analysis/EMT/data/GSE17518.mat
-
-% NFS
-load             ~/Turbo/scampit/Analysis/EMT/data/GSE17518.mat
-gse17518_path = "~/Turbo/scampit/Analysis/EMT/gse17518/ihuman/";
+% % DELL
+% %load D:/Analysis/EMT/data/GSE17518.mat
+% 
+% % NFS
+% load             ~/Turbo/scampit/Analysis/EMT/data/GSE17518.mat
+% gse17518_path = "~/Turbo/scampit/Analysis/EMT/gse17518/ihuman/";
 %% 
 % First, extract the datasets
 
-entrez_zdata = data;
-entrez       = geneids;
+% entrez_zdata = data;
+% entrez       = geneids;
 %% 
 % Then run the flux and knockout simulations.
 
-cell_data = entrez_zdata;
-up_idx    = cell_data > 0;
-down_idx  = cell_data < 0;
-    
-% Get up- and down-regulated genes
-upgenes    = entrez(up_idx);
-downgenes  = entrez(down_idx);
-
-% Force rho to be 10
-rho = repelem(10, length(upgenes));
-
-% Fit models and get 
-[soln, ~, ~, cell_mdl] = constrain_flux_regulation(ihuman, ...
-                                                   upgenes, downgenes, ...
-                                                   kap, rho, ...
-                                                   eps, ...
-                                                   isgenes, ...
-                                                   pfba);
-[geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
-
-% Save data as individual files
-cobra_cell        = struct();
-cobra_cell.id     = GSE17518.fcid{1};
-cobra_cell.geneko = geneKO;
-cobra_cell.rxnko  = rxnKO;
-cobra_cell.flux   = soln;
-
-j = 1;
-parsave(strcat(gse17518_path, "fc72.mat"), cobra_cell, j);   
+% cell_data = entrez_zdata;
+% up_idx    = cell_data > 0;
+% down_idx  = cell_data < 0;
+%     
+% % Get up- and down-regulated genes
+% upgenes    = entrez(up_idx);
+% downgenes  = entrez(down_idx);
+% 
+% % Force rho to be 10
+% rho = repelem(10, length(upgenes));
+% 
+% % Fit models and get 
+% [soln, ~, ~, cell_mdl] = constrain_flux_regulation(ihuman, ...
+%                                                    upgenes, downgenes, ...
+%                                                    kap, rho, ...
+%                                                    eps, ...
+%                                                    isgenes, ...
+%                                                    pfba);
+% [geneKO, rxnKO]  = knockOut(cell_mdl, 'All');
+% 
+% % Save data as individual files
+% cobra_cell        = struct();
+% cobra_cell.id     = GSE17518.fcid{1};
+% cobra_cell.geneko = geneKO;
+% cobra_cell.rxnko  = rxnKO;
+% cobra_cell.flux   = soln;
+% 
+% j = 1;
+% parsave(strcat(gse17518_path, "fc72.mat"), cobra_cell, j);   
 % iii. GSE17708
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
