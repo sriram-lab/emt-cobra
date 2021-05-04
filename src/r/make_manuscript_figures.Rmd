@@ -19,7 +19,7 @@ library(extrafont)
 library(ComplexHeatmap)
 library(circlize)
 #font_import()
-loadfonts(device = "win")
+#loadfonts(device = "win")
 ```
 
 ## 1. Bulk Fluxes
@@ -37,7 +37,9 @@ top50 = data[1:50, ]
 rxn_labels = top50[, 2]
 bardata = top50[, 4]
 expt_data = top50[, 5]
-unique(top50$`KEGG Subsystem`)
+top50$name = paste0(top50$`Reaction Name`, 
+                    ', ',
+                    top50$`KEGG Subsystem`)
 ```
 
 #### i. Reformat the data
@@ -49,20 +51,20 @@ mid2_data = top50[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")]
 late_data = top50[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
                        "Keshamouni_72hrs", "GSE147405_72hrs")]
 reformat_data = cbind(early_data, mid1_data, mid2_data, late_data)
-reformat_data = log(abs(reformat_data))
+reformat_data = abs(reformat_data)
 ```
 
 #### ii. Create the column annotation bar for each time-point
 ```{r}
 all_col = HeatmapAnnotation(EMT=c("01hr", "01hr",
-                                    "08hrs", "08hrs",
-                                    "24hrs", "24hrs", "24hrs",
-                                    "72hrs", "72hrs", "72hrs", "72hrs", "72hrs"),
+                              "08hrs", "08hrs",
+                              "24hrs", "24hrs", "24hrs",
+                              "72hrs", "72hrs", "72hrs", "72hrs", "72hrs"),
                             col=list(EMT=c("01hr"="#CAC4CE", 
                                            "08hrs"="#8D86C9",
                                            "24hrs"="#725AC1",
                                            "72hrs"="#242038")),
-                            annotation_name_side="left")
+                            gp = gpar(col = NA))
 ```
 
 #### iii. Create the barplot that shows the priority score
@@ -76,7 +78,390 @@ bp = rowAnnotation(
 
 #### iv. Create a heatmap showing the number of experiments for each reaction
 ```{r, fig.width=10, fig.height=7.5}
-hm = Heatmap(expt_data,
+hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("#FFFFFF", "#95C623")),
+             heatmap_legend_param=list(title="Expts",
+                                       color_bar="discrete"))
+```
+#### v. Create a annotation bar for KEGG subsystems
+```{r}
+tmp = unique(pathway)
+kegg_subsys = rowAnnotation(Pathway=pathway,
+                            col=list(EMT=c("NA"="#484041", 
+                                           "Taurine and hypotaurine metabolism"="#434371",
+                                           "Galactose metabolism"="#79AEA3",
+                                           "Glutamate metabolism"="#70EE9C",
+                                           "R Group Synthesis"="#B5F44A",
+                                           "Fatty acid activation"="#004777",
+                                           "Pyrimidine Catabolism"="#A30000",
+                                           "Nucleotides"="#FF7700",
+                                           "Citric Acid Cycle"="#EFD28D",
+                                           "Propanoate Metabolism"="#00AFB5",
+                                           "Pyruvate Metabolism"="#FFC800",
+                                           "Glycolysis/Gluconeogenesis"="#1E212B",
+                                           "Transport, Mitochondrial"="#AF3E4D",
+                                           "Pentose Phosphate Pathway"="#56E39F",
+                                           "Transport, Extracellular"="#2A1F2D",
+                                           "Alanine and Aspartate Metabolism"="#B81365",
+                                           "Fatty acid elongation"="#055864",
+                                           "Methionine Metabolism"="#B9BAA3",
+                                           "Carnitine shuttle"="#484041")
+                                     )
+                            )
+```
+
+
+#### vi. Create the Heatmap with additional figures
+```{r}
+# OPTIONAL: CHANGE THE TEXT FORMAT
+#ht_opt(heatmap_column_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_row_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_column_title_gp = gpar(fontfamily = "TT Arial"),
+#       heatmap_row_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_labels_gp = gpar(fontfamily = "TT Arial"))
+final_data = as.matrix(reformat_data)
+rownames(final_data) = top50$name
+ht = Heatmap(row_names_side="left",
+             final_data, 
+             bottom_annotation=all_col,
+             cluster_columns=FALSE,
+             cluster_rows=FALSE,
+             col = colorRamp2(c(0, 20), 
+                              c("white", "red")),
+             heatmap_legend_param=list(title="Flux")) +
+     hm + 
+     bp
+```
+
+#### vi. Save the figure to file
+```{r, fig.height=10, fig.width=10}
+png(filename="D:/Analysis/EMT/figures/RECON1_flux_heatmap.png",
+       width=10,
+       height=10,
+       units='in',
+    res=1200)
+ht
+dev.off()
+  
+```
+
+### C. Visualize Glycolytic Reactions
+Now let's specifically get reactions related to Glycolysis.
+
+#### i. Reformat the data
+```{r}
+idx = (pathway == "Glycolysis/Gluconeogenesis")
+idx[is.na(idx)] = FALSE
+glycolysis_data = reformat_data[idx, ]
+glycolysis_labels = top50[idx, 2]
+bardata = top50[idx, 4]
+bardata[is.na(bardata)] = 0
+expt_data = top50[idx, 5]
+```
+
+#### ii. Create the barplot that shows the priority score
+```{r}
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("#FFFFFF", "#95C623")),
+             heatmap_legend_param=list(title="Expts",
+                                       color_bar="discrete"))
+```
+
+#### v. Create the Heatmap with additional figures
+```{r}
+# OPTIONAL: CHANGE THE TEXT FORMAT
+#ht_opt(heatmap_column_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_row_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_column_title_gp = gpar(fontfamily = "TT Arial"),
+#       heatmap_row_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_labels_gp = gpar(fontfamily = "TT Arial"))
+final_data = as.matrix(glycolysis_data)
+rownames(final_data) = top50$`Reaction Name`[idx]
+ht = Heatmap(final_data, 
+             top_annotation=all_col,
+             cluster_columns=FALSE,
+             cluster_rows=TRUE,
+             col = colorRamp2(c(0, 20), c("white", "red")),
+             heatmap_legend_param=list(title="Flux")) + 
+     rowAnnotation(rn = anno_text(rownames(final_data))) +
+     hm + 
+     bp
+```
+
+#### vi. Save the figure to file
+```{r}
+png(filename="D:/Analysis/EMT/figures/glycolysis_flux_heatmap.png",
+       width=10,
+       height=5,
+       units='in',
+    res=1200)
+ht
+dev.off()
+```
+
+### D. Visualize Pentose Phosphate Pathway Reactions
+Now let's specifically get reactions related to Glycolysis.
+
+#### i. Reformat the data
+```{r}
+idx = (pathway == "Pentose Phosphate Pathway")
+idx[is.na(idx)] = FALSE
+ppp_data = reformat_data[idx, ]
+ppp_labels = top50[idx, 2]
+bardata = top50[idx, 4]
+bardata[is.na(bardata)] = 0
+expt_data = top50[idx, 5]
+```
+
+#### ii. Create the barplot that shows the priority score
+```{r}
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("#FFFFFF", "#95C623")),
+             heatmap_legend_param=list(title="Expts",
+                                       color_bar="discrete"))
+```
+
+#### v. Create the Heatmap with additional figures
+```{r}
+# OPTIONAL: CHANGE THE TEXT FORMAT
+#ht_opt(heatmap_column_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_row_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_column_title_gp = gpar(fontfamily = "TT Arial"),
+#       heatmap_row_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_labels_gp = gpar(fontfamily = "TT Arial"))
+final_data = as.matrix(ppp_data)
+rownames(final_data) = top50$`Reaction Name`[idx]
+ht = Heatmap(final_data, 
+             top_annotation=all_col,
+             cluster_columns=FALSE,
+             cluster_rows=TRUE,
+             col = colorRamp2(c(0, 20), c("white", "red")),
+             heatmap_legend_param=list(title="Flux")) + 
+     rowAnnotation(rn = anno_text(rownames(final_data))) +
+     hm + 
+     bp
+```
+
+#### vi. Save the figure to file
+```{r}
+png(filename="D:/Analysis/EMT/figures/ppp_flux_heatmap.png",
+       width=10,
+       height=5,
+       units='in',
+    res=1200)
+ht
+dev.off()
+```
+
+### E. Visualize Specific Reactions
+Now let's specifically get reactions that are unique to each state.
+
+#### i. Reformat the data
+```{r}
+reactions_of_interest = c("ribulose 5-phosphate 3-epimerase",
+                          "Biotin transport via sodium symport",
+                          "Biotin reversible transport via proton symport",
+                          "NADH dehydrogenase, mitochondrial",
+                          "L-lactate dehydrogenase")
+idx = data$`BiGG Reaction ID`
+idx = idx %in% reactions_of_interest
+specific_data = data[idx, ]
+
+# Split by hours
+early_data = specific_data[, c("GSE17708_1hr", "Garcia_1hrs")]
+mid1_data = specific_data[, c("GSE17708_8hrs", "GSE147405_8hrs")]
+mid2_data = specific_data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")]
+late_data = specific_data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                       "Keshamouni_72hrs", "GSE147405_72hrs")]
+tmp_data = cbind(early_data, mid1_data, mid2_data, late_data)
+tmp_data = abs(tmp_data)
+
+
+
+specific_labels = specific_data[, 2]
+bardata = specific_data[, 4]
+bardata[is.na(bardata)] = 0
+expt_data = specific_data[, 5]
+```
+
+#### ii. Create the barplot that shows the priority score
+```{r}
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("#FFFFFF", "#95C623")),
+             heatmap_legend_param=list(title="Expts",
+                                       color_bar="discrete"))
+```
+
+#### v. Create the Heatmap with additional figures
+```{r}
+# OPTIONAL: CHANGE THE TEXT FORMAT
+#ht_opt(heatmap_column_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_row_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_column_title_gp = gpar(fontfamily = "TT Arial"),
+#       heatmap_row_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_labels_gp = gpar(fontfamily = "TT Arial"))
+final_data = as.matrix(tmp_data)
+rownames(final_data) = specific_data$`Reaction Name`
+ht = Heatmap(final_data, 
+             top_annotation=all_col,
+             cluster_columns=FALSE,
+             cluster_rows=TRUE,
+             col = colorRamp2(c(0, 20), c("white", "red")),
+             heatmap_legend_param=list(title="Flux")) + 
+     rowAnnotation(rn = anno_text(rownames(final_data))) +
+     hm + 
+     bp
+```
+
+#### vi. Save the figure to file
+```{r}
+png(filename="D:/Analysis/EMT/figures/specific_flux_heatmap.png",
+       width=10,
+       height=5,
+       units='in',
+    res=1200)
+ht
+dev.off()
+```
+
+## 2. Bulk Reaction KOs
+```{r}
+rm(list=ls())
+```
+
+
+```{r}
+filename = "D:/Analysis/EMT/data/Bulk Reaction KO Intersection.csv"
+data = read_csv(filename)
+```
+
+### A. Grab high confidence reactions (2 or more in same sample)
+
+```{r}
+reactions_of_interest = c("alpha-ketoglutarate/malate transporter",
+                          "carnitine O-acetyltransferase")
+```
+
+```{r}
+reactions_of_interest = c("enolase",
+                          "fatty-acyl-CoA elongation (n-C20:4CoA)",
+                          "fatty acyl-CoA synthase (n-C10:0CoA)",
+                          "fatty-acyl-CoA synthase (n-C12:0CoA)",
+                          "fatty-acyl-CoA synthase (n-C14:0CoA)",
+                          "hydroxymethylglutaryl-CoA lyase",
+                          "dGTP transport via ATP antiport",
+                          "UDPglucose 4-epimerase",
+                          "adenosine kinase",
+                          "pantetheine-phosphate adenylyltransferase",
+                          " 4-Hydroxyphenylpyruvate:oxygen oxidoreductase",
+                          "fumarylacetoacetase",
+                          "Homogentisate:oxygen 1,2-oxidoreductase (decyclizing)",
+                          "maleylacetoacetate isomerase",
+                          "Malate:sulfite antiport, mitochondrial",
+                          "chondroitin 6-sulfotransferase, Golgi apparatus",
+                          "nicotinate-nucleotide adenylyltransferase",
+                          "malate dehydrogenase",
+                          "Norepinephrine uniport",
+                          "Hydroxymethylglutaryl-CoA reversible mitochondrial transport",
+                          "carnitine-acetylcarnitine carrier, peroxisomal",
+                          "carnitine O-acetyltransferase, reverse direction, peroxisomal",
+                          "UDP-GlcNAc:betaGal beta-1,3-N-acetylglucosaminyltransferase 1",
+                          "UDP-GlcNAc:betaGal beta-1,3-N-acetylglucosaminyltransferase 3, Golgi apparatus",
+                          "Hydroxymethylglutaryl CoA synthase (ir)",
+                          "citrate transport, mitochondrial",
+                          "Aconitate hydratase",
+                          "ATP-Citrate lyase",
+                          "fumarase, mitochondrial",
+                          "triose-phosphate isomerase",
+                          "acetone monooxygenase",
+                          "fructose-bisphosphatase",
+                          "ornithine transaminase reversible (m)",
+                          "succinate dehydrogenase",
+                          "carnitine O-aceyltransferase, mitochondrial",
+                          "citrate synthase",
+                          "Isocitrate dehydrogenase (NADP+)",
+                          "L-lactate dehydrogenase")
+```
+
+```{r}
+idx = data$`BiGG Reaction ID`
+idx = idx %in% reactions_of_interest
+specific_data = data[idx, ]
+
+# Split by hours
+# Split by hours
+early_data = specific_data[, c("GSE17708_1hour", "Garcia_1hour")]
+mid2_data = specific_data[, c("GSE17708_24hours", "Garcia_24hours", "GSE147405_24hours")]
+late_data = specific_data[, c("GSE17708_72hours", "GSE17518_72hours", "Keshamouni_72hours")]
+reformat_data = cbind(early_data, mid2_data, late_data)
+reformat_data = abs(reformat_data)
+
+
+
+specific_labels = specific_data[, 2]
+bardata = specific_data[, 4]
+bardata[is.na(bardata)] = 0
+expt_data = specific_data[, 5]
+```
+
+#### ii. Create the column annotation bar for each time-point
+```{r}
+all_col = HeatmapAnnotation(EMT=c("01hr", "01hr",
+                                    "24hrs", "24hrs", "24hrs",
+                                    "72hrs", "72hrs", "72hrs"),
+                            col=list(EMT=c("01hr"="#CAC4CE", 
+                                           "24hrs"="#725AC1",
+                                           "72hrs"="#242038")),
+                            annotation_name_side="left")
+```
+
+#### ii. Create the barplot that shows the priority score
+```{r}
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(expt_data),
              col = colorRamp2(c(1,5), 
                               c("#FFFFFF", "#95C623")),
              heatmap_legend_param=list(title="Expts",
@@ -93,12 +478,12 @@ hm = Heatmap(expt_data,
 #       legend_title_gp = gpar(fontfamily = "TT Arial"),
 #       legend_labels_gp = gpar(fontfamily = "TT Arial"))
 final_data = as.matrix(reformat_data)
-rownames(final_data) = top50$`Reaction Name`
+rownames(final_data) = specific_data$`Reaction Name`
 ht = Heatmap(final_data, 
              top_annotation=all_col,
              cluster_columns=FALSE,
              cluster_rows=TRUE,
-             col = colorRamp2(c(0, 20), c("white", "red")),
+             col = colorRamp2(c(0, 1, 3), c("blue", "white", "red")),
              heatmap_legend_param=list(title="Flux")) + 
      rowAnnotation(rn = anno_text(rownames(final_data))) +
      hm + 
@@ -107,29 +492,229 @@ ht = Heatmap(final_data,
 
 #### vi. Save the figure to file
 ```{r}
-png(filename="D:/Analysis/EMT/figures/RECON1_flux_heatmap.png",
+png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_high_priority_heatmap.png",
        width=10,
+       height=2.5,
+       units='in',
+    res=1200)
+ht
+dev.off()
+```
+
+## 3. Barplot for lethal reactions
+```{r}
+tmp = colSums(data[, 6:ncol(data)] < 0.99)
+tmp2 = c(sum(tmp[1:2]), sum(tmp[3:5]), sum(tmp[6:9]))
+
+tmp3 = data.frame(Time=c("Hour 1", "Hour 24", "Hour 72"),
+                  Rxns=tmp2)
+
+bp = ggplot(data=tmp3, aes(x=Time, y=Rxns)) +
+  geom_bar(stat="identity", fill=c("#2B3A67",
+                                   "#B3AF8F",
+                                   "#FFC482")) +
+  labs(x="Time",
+       y="Number of lethal reactions",
+       title="Lethal Reactions Predicted from RECON1") +
+  theme_minimal()
+
+png(filename="D:/Analysis/EMT/figures/lethal_rxn_ko.png",
+       width=5,
+       height=5,
+       units='in',
+    res=1200)
+bp
+dev.off()
+```
+
+## 4. Get Specific Reactions
+```{r}
+rm(list=ls())
+```
+
+
+```{r}
+filename = "D:/Analysis/EMT/data/Bulk Reaction KO Intersection.csv"
+data = read_csv(filename)
+```
+
+### B. Grab the top 50 reactions
+```{r}
+top50 = data[1:50, ]
+rxn_labels = top50[, 2]
+bardata = top50[, 4]
+expt_data = top50[, 5]
+pathway = top50$`KEGG Subsystem`
+```
+
+#### i. Reformat the data
+```{r}
+# Split by hours
+early_data = top50[, c("GSE17708_1hour", "Garcia_1hour")]
+mid2_data = top50[, c("GSE17708_24hours", "Garcia_24hours", "GSE147405_24hours")]
+late_data = top50[, c("GSE17708_72hours", "GSE17518_72hours", "Keshamouni_72hours", "GSE147405_72hours")]
+reformat_data = cbind(early_data, mid2_data, late_data)
+reformat_data = abs(reformat_data)
+```
+
+#### ii. Create the column annotation bar for each time-point
+```{r}
+all_col = HeatmapAnnotation(EMT=c("01hr", "01hr",
+                                    "24hrs", "24hrs", "24hrs",
+                                    "72hrs", "72hrs", "72hrs", "72hrs"),
+                            col=list(EMT=c("01hr"="#CAC4CE", 
+                                           "24hrs"="#725AC1",
+                                           "72hrs"="#242038")),
+                            annotation_name_side="left")
+```
+
+#### iii. Create the barplot that shows the priority score
+```{r}
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("#FFFFFF", "#95C623")),
+             heatmap_legend_param=list(title="Expts",
+                                       color_bar="discrete"))
+```
+#### v. Create a annotation bar for KEGG subsystems
+```{r}
+tmp = unique(pathway)
+kegg_subsys = rowAnnotation(Pathway=pathway,
+                            col=list(EMT=c("NA"="#484041", 
+                                           "Glycolysis/Gluconeogenesis"="#434371",
+                                           "Transport, Mitochondrial"="#79AEA3",
+                                           "Lysine Metabolism"="#70EE9C",
+                                           "Alanine and Aspartate Metabolism"="#B5F44A",
+                                           "Nucleotides"="#004777",
+                                           "NAD Metabolism"="#A30000",
+                                           "Tryptophan metabolism"="#FF7700",
+                                           "R Group Synthesis"="#EFD28D",
+                                           "Taurine and hypotaurine metabolism"="#00AFB5",
+                                           "Cysteine Metabolism"="#FFC800",
+                                           "Transport, Extracellular"="#1E212B",
+                                           "Valine, Leucine, and Isoleucine Metabolism"="#AF3E4D",
+                                           "Folate Metabolism"="#56E39F")
+                                     )
+                            )
+```
+
+
+#### vi. Create the Heatmap with additional figures
+```{r}
+# OPTIONAL: CHANGE THE TEXT FORMAT
+#ht_opt(heatmap_column_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_row_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_column_title_gp = gpar(fontfamily = "TT Arial"),
+#       heatmap_row_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_labels_gp = gpar(fontfamily = "TT Arial"))
+final_data = as.matrix(reformat_data)
+rownames(final_data) = top50$`Reaction Name`
+ht = Heatmap(final_data, 
+             top_annotation=all_col,
+             left_annotation=kegg_subsys,
+             cluster_columns=FALSE,
+             cluster_rows=TRUE,
+             col = colorRamp2(c(0, 1, 3), c("blue", "white", "red")),
+             heatmap_legend_param=list(title="Normalized Growth Score")) + 
+     rowAnnotation(rn = anno_text(rownames(final_data))) +
+     hm + 
+     bp
+```
+
+## 6. Single-Cell Reaction KOs
+```{r}
+rm(list=ls())
+```
+
+
+```{r}
+filename = "D:/Analysis/EMT/data/scRNASeq Reaction KO.csv"
+data = read_csv(filename)
+pathway = data[, 3]
+unq_path = unique(pathway)
+```
+### B. Grab the top 50 reactions
+```{r}
+tmp = data[, c("Average_All",	"Average_Day0",
+               "Average_Hour8",	"Average_Day1",
+               "Average_Day3",	"Average_Day7")]
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(data[, "Std_All"]),
+             col = colorRamp2(c(0, 0.4), 
+                              c("#FFFFFF", "orange")),
+             heatmap_legend_param=list(title="Average Std",
+                                       color_bar="continuous"))
+```
+#### v. Create a annotation bar for KEGG subsystems
+```{r}
+as.character(unq_path)
+kegg_subsys = rowAnnotation(Pathway=as.matrix(pathway),
+                            col=list(EMT=c("NA"="#484041", 
+                                           "beta-Alanine metabolism"="#434371",
+                                           "Transport, Mitochondrial"="#79AEA3",
+                                           "Propanoate Metabolism"="#70EE9C",
+                                           "Pyruvate Metabolism"="#B5F44A",
+                                           "Glycolysis/Gluconeogenesis"="#004777",
+                                           "Glycine, Serine, and Threonine Metabolism"="#A30000",
+                                           "Glutamate metabolism"="#FF7700",
+                                           "Urea cycle/amino group metabolism"="#EFD28D",
+                                           "Tetrahydrobiopterin"="#00AFB5",
+                                           "Valine, Leucine, and Isoleucine Metabolism"="#FFC800",
+                                           "Nucleotides"="#1E212B",
+                                           "Folate Metabolism"="#AF3E4D",
+                                           "Histidine Metabolism"="#56E39F",
+                                           "Cysteine Metabolism"="#550527",
+                                           "Taurine and hypotaurine metabolism"="#688E26",
+                                           "Alanine and Aspartate Metabolism"="#FAA613",
+                                           "Pentose Phosphate Pathway"="#F44708",
+                                           "Methionine Metabolism"="#A10702")
+                                     )
+                            )
+```
+
+
+#### vi. Create the Heatmap with additional figures
+```{r}
+# OPTIONAL: CHANGE THE TEXT FORMAT
+#ht_opt(heatmap_column_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_row_names_gp = gpar(fontfamily = "TT Arial"), 
+#       heatmap_column_title_gp = gpar(fontfamily = "TT Arial"),
+#       heatmap_row_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_title_gp = gpar(fontfamily = "TT Arial"),
+#       legend_labels_gp = gpar(fontfamily = "TT Arial"))
+final_data = as.matrix(tmp)
+rownames(final_data) = data$`Reaction Name`
+ht = Heatmap(final_data, 
+             left_annotation=kegg_subsys,
+             cluster_columns=FALSE,
+             cluster_rows=TRUE,
+             col = colorRamp2(c(0.5, 1, 1.1), c("blue", "white", "red")),
+             heatmap_legend_param=list(title="Normalized Growth Score")) + 
+     rowAnnotation(rn = anno_text(rownames(final_data))) +
+     hm 
+```
+
+```{r}
+png(filename="D:/Analysis/EMT/figures/scRNASeq_avg_rxn_ko.png",
+       width=7.5,
        height=10,
        units='in',
     res=1200)
 ht
 dev.off()
-  
-```
-
-### C. Visualize Glycolytic Reactions
-Now let's specifically get reactions related to Glycolysis.
-
-## 2. Bulk Reaction KOs
-```{r}
-filename = "D:/Analysis/EMT/data/Bulk Reaction KO Intersection.csv"
-
-```
-
-## 3. Single-Cell Reaction KOs
-```{r}
-filename = "D:/Analysis/EMT/data/scRNASeq Reaction KO.csv"
-
 ```
 
 ## Conclusion
