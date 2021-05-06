@@ -1,31 +1,42 @@
 # Modeling the metabolic changes of the epithelial-to-mesenchymal transition 
-This repo contains code that analyzes the metabolic changes occuring in the epithelial-to-mesenchymal transition (EMT). There are three main operations performed in this analysis:
 
-  1. Meta-analysis of multiple -omics modalities (Bulk RNA-Seq, single-cell RNA-Seq, Proteomics)
-  2. Differential gene expression analysis across several datasets
-  3. Constraint-based metabolic modeling for hypothesis generation  
-  
-**Performed so far:**
-  * Differentially expressed genes and proteins for 2 bulk RNASeq datasets, 2 proteomics datasets, and 1 single-cell RNASeq dataset.
-  * Parameter sensitivity analysis for these different models under 5 different parameters
-  * Differential reaction sensitivity analysis (DRSA) for these datasets
+## Summary
+This repository identifies metabolic enzymes that are essential to the epithelial-to-mesenchymal transition (EMT) in the context of lung adenocarcinoma. 
 
-**To do:**
-  - [ ] Create a comprehensive EMT database
-  - [ ] Create a pipeline that can analyzes and perform differential expression analysis / enrichment for metabolic genes
-  - [ ] Tie with either literature curation and/or pathway level enrichment
+**Three analyses are performed:**
+
+  1. Enrichment and differential expression of multiple lung adenocarcinoma omics datasets (Bulk RNA-Seq, single-cell RNA-Seq, Proteomics, and more)
+  2. Constraint-based metabolic reconstruction and analysis for metabolic flux analysis and fitness evaluation from gene and reaction knockouts.
+  3. Hypothesis generation from differential flux and growth sensitivty analysis  
   
-## Installation
-MATLAB, R, and Python scripts are available in this repository. The R programming language was used mainly to perform bioinformatics analysis. MATLAB was used for constraint-based metabolic modeling. Python was used to build the interactive explorer. 
-  
-### Dependencies
-There are several software dependencies required to run different analyses for each language. A shortlist of each dependency is located in each subdirectory as the file name `requirements.txt`. 
-  
+## Programming languages used in this analysis
+
+  * MATLAB version R2020b Update 4
+  * R version 4.03
+  * Python version 3.8.6
+
+## Getting Started
+
+
+## TO DO:
+- [ ] Create Docker container for dependencies
+- [ ] Clean up all code base further
+- [ ] Edit all notebooks
+
 ## Usage
-Notebooks are available that walk through each step of the analyses in more detail, and the README documents the sequence to run each file, as well as a description of what each livescript does. An object-oriented implementation written in Python is also available, if this analysis needs to be integrated into a single pipeline.
+COMING SOON
   
 ## Contributing
-Contributions are always welcome! If there are any bugs/questions, please raise them in the `Issues` tab. For adding new documentation, feature enhancements, and other new additions, feel free to submit a pull request, and our team will get to it within 1-2 business days.
-  
+Contributions to make this analysis better, more robust, and easier to follow are greatly appreciated. Here are the steps we ask of you:
+  1. Fork the project
+  2. Create a new branch
+  3. Make your changes
+  4. Commit your changes
+  5. Push to the branch
+  6. Open a pull request
+
 ## License
-This work is submitted under the MIT license
+Distributed under the GNU License. See `LICENSE` for more information.
+
+## Contact
+For questions regarding the code deposited in this repository, please reach out to Scott Campit via email at: scampit [at] umich [dot] edu or via Twitter at @secampit.
