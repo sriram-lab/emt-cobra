@@ -22,6 +22,7 @@ This repository identifies metabolic enzymes that are essential to the epithelia
 - [ ] Create Docker container for dependencies
 - [ ] Clean up all code base further
 - [ ] Edit all notebooks
+- [ ] Update static website for short and graphical representation of paper
 
 ## Usage
 COMING SOON
