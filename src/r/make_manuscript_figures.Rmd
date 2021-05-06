@@ -185,7 +185,7 @@ final_figure
 dev.off()
 ```
 #### vii. Create the accessory function
-This accessory function `pathway_heatmap` will create a heatmap for specific metabolic pathways using the `data` variable constructed in the previous code blocks. You can also subset a data frame manually and visualize it that way.
+This accessory function `flux_heatmap` will create a heatmap for specific metabolic pathways using the `data` variable constructed in the previous code blocks. You can also subset a data frame manually and visualize it that way.
 
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 flux_heatmap = function(df, pathway){
@@ -210,6 +210,7 @@ flux_heatmap = function(df, pathway){
   mid2_data  = abs(data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")])
   late_data  = abs(data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
                                      "Keshamouni_72hrs", "GSE147405_72hrs")])
+  tmp = cbind(early_data, mid1_data, mid2_data, late_data)
   
   # Create column annotation bars
   h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
@@ -246,7 +247,10 @@ flux_heatmap = function(df, pathway){
   )
   
   # Construct the heatmaps
-  col_fun = colorRamp2(c(0, median(data), max(data)), 
+  col_fun = colorRamp2(c(0, 
+                         median(as.matrix(tmp), 
+                                   na.rm=TRUE), 
+                         max(as.matrix(tmp), na.rm=TRUE)), 
                        c("Gray", "#FD7470", "#DC1C13"))
   h1 = Heatmap(row_labels=data$name,
                row_names_side="left",
@@ -388,7 +392,7 @@ ko_heatmap = function(df, pathway){
   mid2_data  = data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")] - 1
   late_data  = data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
                                      "Keshamouni_72hrs", "GSE147405_72hrs")] - 1
-  tmp = cbind(early_data, mid1_data, mid2_data, late_data) - 1
+  tmp = cbind(early_data, mid1_data, mid2_data, late_data)
   
   # Create column annotation bars
   h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
@@ -411,7 +415,7 @@ ko_heatmap = function(df, pathway){
   # Construct experiment heatmap annotation
   hm = Heatmap(as.matrix(expt_data),
              col = colorRamp2(c(1, 5), 
-                              c("Gray", "#95C623")),
+                              c("#FFFFFF", "#5BC0BE", "#3A506B", "#1C2541", "#0B132B")),
              heatmap_legend_param=list(title="Experiments",
                                        color_bar="discrete"), 
              rect_gp = gpar(col="black", 
@@ -427,7 +431,7 @@ ko_heatmap = function(df, pathway){
   )
   
   # Construct the heatmaps
-  col_fun = colorRamp2(c(min(tmp), 0, max(tmp)), 
+  col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
                        c("#073B4C", "#FFFFFF", "#EF476F"))
   h1 = Heatmap(row_labels=data$name,
                row_names_side="left",
@@ -472,7 +476,7 @@ ko_heatmap = function(df, pathway){
                width = ncol(late_data)*unit(5, "mm"), 
                height = nrow(late_data)*unit(5, "mm"),
                heatmap_legend_param=list(title="Normalized KO Growth Score",
-                                       at = c(min(tmp), 0, max(tmp)),
+                                       at = c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))),
                                        labels = c("Decr. Fitness", "No change", "Incr. fitness")))
   
   # Return the final figure
@@ -482,7 +486,7 @@ ko_heatmap = function(df, pathway){
 }
 ```
 
-### B. Plot the top 50 reactions based on priority score.
+### C. Plot the top 50 reactions based on priority score.
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 # Sort data by priority score
 data = data[order(data$`Absolute Effect * N expts`, decreasing=TRUE), ]
@@ -504,7 +508,7 @@ dev.off
 top50_figures
 ```
 
-### C. Grab high confidence reactions (2 or more in same sample)
+### D. Grab high confidence reactions (2 or more in same sample)
 There's not that much for high confidence reactions.
 
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
@@ -530,7 +534,7 @@ specific_figures
 
 ```
 
-### D. Grab low confidence reactions (1 in same sample)
+### E. Grab low confidence reactions (1 in same sample)
 The list of low confidence reactions I'd like to visualize is high.
 
 ```{r}
@@ -634,6 +638,9 @@ hm = Heatmap(as.matrix(data[, "Std_All"]),
 ### D. Create the Heatmap with additional figures
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 final_data = as.matrix(tmp)
+col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
+                       c("#073B4C", "#FFFFFF", "#EF476F"))
+
 ht = Heatmap(row_labels=data$name,
              final_data, 
              row_names_side="left",
@@ -641,10 +648,9 @@ ht = Heatmap(row_labels=data$name,
                             lwd = 1),
              cluster_columns=FALSE,
              cluster_rows=FALSE,
-             col = colorRamp2(c(-0.5, 0, 0.1), 
-                              c("blue", "white", "red")),
+             col = col_fun,
              heatmap_legend_param=list(title="Normalized KO Growth Score",
-                                       at = c(-0.6, 0, 0.2),
+                                       at = c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))),
                                        labels = c("Decr. Fitness", "No change", "Incr. fitness")),
              width = ncol(final_data)*unit(5, "mm"), 
              height = nrow(final_data)*unit(5, "mm")) +
@@ -652,11 +658,11 @@ ht = Heatmap(row_labels=data$name,
 
 ht
 ```
-
+Save figures
 ```{r}
 png(filename="D:/Analysis/EMT/figures/scRNASeq_avg_rxn_ko.png",
-       width=7.5,
-       height=10,
+       width=20,
+       height=12.5,
        units='in',
     res=1200)
 ht
