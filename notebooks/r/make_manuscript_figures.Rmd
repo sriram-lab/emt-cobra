@@ -1,0 +1,672 @@
+---
+title: "EMT Manuscript Figures"
+output: html_notebook
+author: "Scott"
+---
+
+## Summary
+This notebook makes several figures for the COBRA EMT publication.
+
+```{r}
+rm(list=ls())
+```
+
+## Load Libraries
+Let's load some plotting libraries.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(extrafont)
+library(ComplexHeatmap)
+library(circlize)
+#font_import()
+#loadfonts(device = "win")
+```
+
+## 1. Visualize Bulk Fluxes
+
+### A. Load Data
+First, let's load the data
+```{r}
+filename = "D:/Analysis/EMT/data/Bulk Flux Intersection.csv"
+data = read_csv(filename)
+```
+
+### B. Visualize the top 50 reaction knockouts from bulk/aggreggated studies
+Here's a description of each variable created:
+  * `top50`: Top 50 reactions ranked by priority score
+  * `bardata`: data used in Bar Plot
+  * `expt_data`: data used in discrete heatmap
+  
+```{r}
+# Sort data by priority score
+data = data[order(data$`Absolute Effect * N expts`, decreasing=TRUE), ]
+
+# Create new variable for row names
+data$name = paste0(data$`BiGG Reaction ID`, 
+                    ', ',
+                    data$`KEGG Subsystem`)
+
+# Grab top 50
+top50 = data[1:50, ]
+
+# Create new data for barplots and discrete heatmap
+bardata = top50[, 4]
+expt_data = top50[, 5]
+```
+
+#### i. Reformat the data
+We're going to grab selected time points that have replicate values across multiple studies and tell the EMT story. The selected time points will be stored 4 separate dataframes corresponding to each time point.
+
+```{r}
+# Split by hours
+early_data = abs(top50[, c("GSE17708_1hrs", "Garcia_1hrs")])
+mid1_data  = abs(top50[, c("GSE17708_8hrs", "GSE147405_8hrs")])
+mid2_data  = abs(top50[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")])
+late_data  = abs(top50[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                       "Keshamouni_72hrs", "GSE147405_72hrs")])
+```
+
+#### ii. Create the column annotation heatmap for each time-point
+This creates individual annotation bars for each of the corresponding time points.
+
+```{r}
+h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
+                                      labels=c("Early"), 
+                                      labels_gp=gpar(col="black", 
+                                                     fontsize=10)))
+h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
+                                      labels=c("Int. 1"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
+                                      labels=c("Int. 2"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
+                                      labels=c("Late"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+```
+
+#### iii. Create the barplot that shows the priority score
+The annotation barplot will show the priority scores on the righthand side.
+
+```{r}
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+```
+
+#### iv. Create a heatmap showing the number of experiments for each reaction
+We'll also create an annotation heatmap corresponding to the number of experiments for each reaction.
+
+```{r, fig.width=10, fig.height=7.5}
+hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("Gray", "#95C623")),
+             heatmap_legend_param=list(title="Experiments",
+                                       color_bar="discrete"),
+             rect_gp = gpar(col="black", 
+                              lwd=1),
+             width = ncol(expt_data)*unit(5, "mm"), 
+             height = nrow(expt_data)*unit(5, "mm"))
+```
+
+#### v. Create the figure
+Finally, we'll create the entire figure.
+
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+col_fun = colorRamp2(c(0, 5, 20), 
+                     c("Gray", "#FD7470", "#DC1C13"))
+h1 = Heatmap(row_labels=top50$name,
+             row_names_side="left",
+             early_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h1_col, 
+             width = ncol(early_data)*unit(5, "mm"), 
+             height = nrow(early_data)*unit(5, "mm"))
+h2 = Heatmap(mid1_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h2_col, 
+             width = ncol(mid1_data)*unit(5, "mm"), 
+             height = nrow(mid1_data)*unit(5, "mm"))
+h3 = Heatmap(mid2_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h3_col, 
+             width = ncol(mid2_data)*unit(5, "mm"), 
+             height = nrow(mid2_data)*unit(5, "mm"))
+h4 = Heatmap(late_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=TRUE,
+             bottom_annotation=h4_col,
+             width = ncol(late_data)*unit(5, "mm"), 
+             height = nrow(late_data)*unit(5, "mm"),
+             heatmap_legend_param=list(title="Absolute Flux"))
+
+final_figure = h1+h2+h3+h4+hm+bp
+final_figure
+```
+
+#### vi. Save the figure
+Finally, we'll save the entire figure with high resolution.
+
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+png(filename="D:/Analysis/EMT/figures/RECON1_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+final_figure
+dev.off()
+```
+#### vii. Create the accessory function
+This accessory function `flux_heatmap` will create a heatmap for specific metabolic pathways using the `data` variable constructed in the previous code blocks. You can also subset a data frame manually and visualize it that way.
+
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+flux_heatmap = function(df, pathway){
+  
+  # If pathway variable is missing, just visualize everything
+  if(missing(pathway)){
+    data = df
+  }else{
+    idx = (df$`KEGG Subsystem` == pathway)
+    idx[is.na(idx)] = FALSE
+    data = df[idx, ]
+  }
+
+  # Create new data for barplots and discrete heatmap
+  bardata = data[, 4]
+  bardata[is.na(bardata)] = 0
+  expt_data = data[, 5]
+  
+  # Split by hours
+  early_data = abs(data[, c("GSE17708_1hrs", "Garcia_1hrs")])
+  mid1_data  = abs(data[, c("GSE17708_8hrs", "GSE147405_8hrs")])
+  mid2_data  = abs(data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")])
+  late_data  = abs(data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                                     "Keshamouni_72hrs", "GSE147405_72hrs")])
+  tmp = cbind(early_data, mid1_data, mid2_data, late_data)
+  
+  # Create column annotation bars
+  h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
+                                        labels=c("Early"), 
+                                        labels_gp=gpar(col="black", 
+                                                       fontsize=10)))
+  h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
+                                        labels=c("Int. 1"), 
+                                        labels_gp=gpar(col="white", 
+                                                       fontsize=10)))
+  h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
+                                        labels=c("Int. 2"), 
+                                        labels_gp=gpar(col="white", 
+                                                       fontsize=10)))
+  h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
+                                        labels=c("Late"), 
+                                        labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+  
+  # Construct experiment heatmap annotation
+  hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1,5), 
+                              c("Gray", "#95C623")),
+             heatmap_legend_param=list(title="Experiments",
+                                       color_bar="discrete"), 
+             width = ncol(expt_data)*unit(5, "mm"), 
+             height = nrow(expt_data)*unit(5, "mm"))
+  
+  # Construct priority score barplot annotation
+  bp = rowAnnotation(
+    Priority=anno_barplot(
+      bardata
+    )
+  )
+  
+  # Construct the heatmaps
+  col_fun = colorRamp2(c(0, 
+                         median(as.matrix(tmp), 
+                                   na.rm=TRUE), 
+                         max(as.matrix(tmp), na.rm=TRUE)), 
+                       c("Gray", "#FD7470", "#DC1C13"))
+  h1 = Heatmap(row_labels=data$name,
+               row_names_side="left",
+               early_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=FALSE,
+               bottom_annotation=h1_col, 
+               width = ncol(early_data)*unit(5, "mm"), 
+               height = nrow(early_data)*unit(5, "mm"))
+  h2 = Heatmap(mid1_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=FALSE,
+               bottom_annotation=h2_col, 
+               width = ncol(mid1_data)*unit(5, "mm"), 
+               height = nrow(mid1_data)*unit(5, "mm"))
+  h3 = Heatmap(mid2_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=FALSE,
+               bottom_annotation=h3_col, 
+               width = ncol(mid2_data)*unit(5, "mm"), 
+               height = nrow(mid2_data)*unit(5, "mm"))
+  h4 = Heatmap(late_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=TRUE,
+               bottom_annotation=h4_col,
+               width = ncol(late_data)*unit(5, "mm"), 
+               height = nrow(late_data)*unit(5, "mm"),
+               heatmap_legend_param=list(title="Absolute flux (gDW/mmol*hr)"))
+  
+  # Return the final figure
+  final_figure = h1+h2+h3+h4+hm+bp
+  return(final_figure)
+    
+}
+```
+
+### C. Visualize Glycolytic Reactions
+Now let's specifically get reactions related to Glycolysis.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+glycolysis_figures = flux_heatmap(data, pathway="Glycolysis/Gluconeogenesis")
+png(filename="D:/Analysis/EMT/figures/glycolysis_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+glycolysis_figures
+dev.off()
+```
+
+### D. Visualize Pentose Phosphate Pathway Reactions
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+ppp_figures = flux_heatmap(data, pathway="Pentose Phosphate Pathway")
+png(filename="D:/Analysis/EMT/figures/ppp_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+ppp_figures
+dev.off()
+```
+
+
+### E. Visualize Specific Reactions
+Now let's specifically get reactions that are unique to each state.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+# Manually subset reactions
+reactions_of_interest = c("ribulose 5-phosphate 3-epimerase",
+                          "Biotin transport via sodium symport",
+                          "Biotin reversible transport via proton symport",
+                          "NADH dehydrogenase, mitochondrial",
+                          "L-lactate dehydrogenase")
+idx = data$`BiGG Reaction ID` %in% reactions_of_interest
+specific_data = data[idx, ]
+
+# Create figures
+specific_figures = flux_heatmap(specific_data)
+png(filename="D:/Analysis/EMT/figures/specific_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+specific_figures
+dev.off()
+```
+
+## 2. Visualize the Bulk Reaction KOs
+```{r}
+rm(list=setdiff(ls(), "flux_heatmap"))
+```
+
+### A. Load Data
+```{r}
+filename = "D:/Analysis/EMT/data/Bulk Reaction KO Intersection.csv"
+data = read_csv(filename)
+
+# Create new variable for row names
+data$name = paste0(data$`BiGG Reaction ID`, 
+                    ', ',
+                    data$`KEGG Subsystem`)
+```
+
+### B. Create accessory function
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+ko_heatmap = function(df, pathway){
+  
+  # If pathway variable is missing, just visualize everything
+  if(missing(pathway)){
+    data = df
+  }else{
+    idx = (df$`KEGG Subsystem` == pathway)
+    idx[is.na(idx)] = FALSE
+    data = df[idx, ]
+  }
+
+  # Create new data for barplots and discrete heatmap
+  bardata = data[, 4]
+  bardata[is.na(bardata)] = 0
+  expt_data = data[, 5]
+  
+  # Split by hours
+  early_data = data[, c("GSE17708_1hrs", "Garcia_1hrs")] - 1
+  mid1_data  = data[, c("GSE17708_8hrs", "GSE147405_8hrs")] - 1
+  mid2_data  = data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")] - 1
+  late_data  = data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                                     "Keshamouni_72hrs", "GSE147405_72hrs")] - 1
+  tmp = cbind(early_data, mid1_data, mid2_data, late_data)
+  
+  # Create column annotation bars
+  h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
+                                        labels=c("Early"), 
+                                        labels_gp=gpar(col="black", 
+                                                       fontsize=10)))
+  h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
+                                        labels=c("Int. 1"), 
+                                        labels_gp=gpar(col="white", 
+                                                       fontsize=10)))
+  h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
+                                        labels=c("Int. 2"), 
+                                        labels_gp=gpar(col="white", 
+                                                       fontsize=10)))
+  h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
+                                        labels=c("Late"), 
+                                        labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+  
+  # Construct experiment heatmap annotation
+  hm = Heatmap(as.matrix(expt_data),
+             col = colorRamp2(c(1, 5), 
+                              c("#FFFFFF", "#5BC0BE", "#3A506B", "#1C2541", "#0B132B")),
+             heatmap_legend_param=list(title="Experiments",
+                                       color_bar="discrete"), 
+             rect_gp = gpar(col="black", 
+                              lwd=1),
+             width = ncol(expt_data)*unit(5, "mm"), 
+             height = nrow(expt_data)*unit(5, "mm"))
+  
+  # Construct priority score barplot annotation
+  bp = rowAnnotation(
+    Priority=anno_barplot(
+      bardata
+    )
+  )
+  
+  # Construct the heatmaps
+  col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
+                       c("#073B4C", "#FFFFFF", "#EF476F"))
+  h1 = Heatmap(row_labels=data$name,
+               row_names_side="left",
+               early_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=FALSE,
+               bottom_annotation=h1_col, 
+               width = ncol(early_data)*unit(5, "mm"), 
+               height = nrow(early_data)*unit(5, "mm"))
+  h2 = Heatmap(mid1_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=FALSE,
+               bottom_annotation=h2_col, 
+               width = ncol(mid1_data)*unit(5, "mm"), 
+               height = nrow(mid1_data)*unit(5, "mm"))
+  h3 = Heatmap(mid2_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=FALSE,
+               bottom_annotation=h3_col, 
+               width = ncol(mid2_data)*unit(5, "mm"), 
+               height = nrow(mid2_data)*unit(5, "mm"))
+  h4 = Heatmap(late_data, 
+               col=col_fun, 
+               cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+               cluster_rows=FALSE,
+               show_heatmap_legend=TRUE,
+               bottom_annotation=h4_col,
+               width = ncol(late_data)*unit(5, "mm"), 
+               height = nrow(late_data)*unit(5, "mm"),
+               heatmap_legend_param=list(title="Normalized KO Growth Score",
+                                       at = c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))),
+                                       labels = c("Decr. Fitness", "No change", "Incr. fitness")))
+  
+  # Return the final figure
+  final_figure = h1+h2+h3+h4+hm+bp
+  return(final_figure)
+    
+}
+```
+
+### C. Plot the top 50 reactions based on priority score.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+# Sort data by priority score
+data = data[order(data$`Absolute Effect * N expts`, decreasing=TRUE), ]
+
+# Grab top 50
+top50 = data[1:50, ]
+
+# Create figures
+top50_figures = ko_heatmap(top50)
+png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+top50_figures
+dev.off
+
+# Show
+top50_figures
+```
+
+### D. Grab high confidence reactions (2 or more in same sample)
+There's not that much for high confidence reactions.
+
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+# Subset Reactions
+reactions_of_interest = c("alpha-ketoglutarate/malate transporter",
+                          "carnitine O-acetyltransferase")
+idx = data$`BiGG Reaction ID` %in% reactions_of_interest
+specific_data = data[idx, ]
+
+# Create figures
+specific_figures = ko_heatmap(specific_data)
+png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_high_priority_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+specific_figures
+dev.off()
+
+# Show
+specific_figures
+
+
+```
+
+### E. Grab low confidence reactions (1 in same sample)
+The list of low confidence reactions I'd like to visualize is high.
+
+```{r}
+reactions_of_interest = c("enolase",
+                          "fatty-acyl-CoA elongation (n-C20:4CoA)",
+                          "fatty acyl-CoA synthase (n-C10:0CoA)",
+                          "fatty-acyl-CoA synthase (n-C12:0CoA)",
+                          "fatty-acyl-CoA synthase (n-C14:0CoA)",
+                          "hydroxymethylglutaryl-CoA lyase",
+                          "dGTP transport via ATP antiport",
+                          "UDPglucose 4-epimerase",
+                          "adenosine kinase",
+                          "pantetheine-phosphate adenylyltransferase",
+                          " 4-Hydroxyphenylpyruvate:oxygen oxidoreductase",
+                          "fumarylacetoacetase",
+                          "Homogentisate:oxygen 1,2-oxidoreductase (decyclizing)",
+                          "maleylacetoacetate isomerase",
+                          "Malate:sulfite antiport, mitochondrial",
+                          "chondroitin 6-sulfotransferase, Golgi apparatus",
+                          "nicotinate-nucleotide adenylyltransferase",
+                          "malate dehydrogenase",
+                          "Norepinephrine uniport",
+                          "Hydroxymethylglutaryl-CoA reversible mitochondrial transport",
+                          "carnitine-acetylcarnitine carrier, peroxisomal",
+                          "carnitine O-acetyltransferase, reverse direction, peroxisomal",
+                          "UDP-GlcNAc:betaGal beta-1,3-N-acetylglucosaminyltransferase 1",
+                          "UDP-GlcNAc:betaGal beta-1,3-N-acetylglucosaminyltransferase 3, Golgi apparatus",
+                          "Hydroxymethylglutaryl CoA synthase (ir)",
+                          "citrate transport, mitochondrial",
+                          "Aconitate hydratase",
+                          "ATP-Citrate lyase",
+                          "fumarase, mitochondrial",
+                          "triose-phosphate isomerase",
+                          "acetone monooxygenase",
+                          "fructose-bisphosphatase",
+                          "ornithine transaminase reversible (m)",
+                          "succinate dehydrogenase",
+                          "carnitine O-aceyltransferase, mitochondrial",
+                          "citrate synthase",
+                          "Isocitrate dehydrogenase (NADP+)",
+                          "L-lactate dehydrogenase")
+```
+
+Subset and create the plot.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+idx = data$`BiGG Reaction ID` %in% reactions_of_interest
+specific_data = data[idx, ]
+
+# Create figures
+specific_figures = ko_heatmap(specific_data)
+png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_low_priority_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+specific_figures
+dev.off()
+```
+
+## 3. Single-Cell Reaction KOs
+Finally, let's create a visualization for the single-cell reaction knockouts.
+
+```{r}
+rm(list=ls())
+```
+
+### A. Load Data
+```{r}
+filename = "D:/Analysis/EMT/data/scRNASeq Reaction KO.csv"
+data = read_csv(filename)
+
+# Create new variable for row names
+data$name = paste0(data$`BiGG Reaction ID`, 
+                    ', ',
+                    data$`KEGG Subsystem`)
+```
+### B. Subset the average data columns
+The data has already been averaged across all cells.
+```{r}
+tmp = data[, c("Average_All",	"Average_Day0",
+               "Average_Hour8",	"Average_Day1",
+               "Average_Day3",	"Average_Day7")]
+tmp = tmp-1
+```
+
+### C. Create an annotation heatmap showing the average standard deviation for each reaction across all cells
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+hm = Heatmap(as.matrix(data[, "Std_All"]),
+             rect_gp = gpar(col = "black", 
+                            lwd = 1),
+             col = colorRamp2(c(0, 0.3), 
+                              c("#FFFFFF", "orange")),
+             cluster_columns=FALSE,
+             cluster_rows=FALSE,
+             heatmap_legend_param=list(title="Average Std",
+                                       color_bar="continuous"),
+             width = ncol(data[, "Std_All"])*unit(5, "mm"), 
+             height = nrow(data[, "Std_All"])*unit(5, "mm"))
+```
+
+### D. Create the Heatmap with additional figures
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+final_data = as.matrix(tmp)
+col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
+                       c("#073B4C", "#FFFFFF", "#EF476F"))
+
+ht = Heatmap(row_labels=data$name,
+             final_data, 
+             row_names_side="left",
+             rect_gp = gpar(col = "black", 
+                            lwd = 1),
+             cluster_columns=FALSE,
+             cluster_rows=FALSE,
+             col = col_fun,
+             heatmap_legend_param=list(title="Normalized KO Growth Score",
+                                       at = c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))),
+                                       labels = c("Decr. Fitness", "No change", "Incr. fitness")),
+             width = ncol(final_data)*unit(5, "mm"), 
+             height = nrow(final_data)*unit(5, "mm")) +
+     hm 
+
+ht
+```
+Save figures
+```{r}
+png(filename="D:/Analysis/EMT/figures/scRNASeq_avg_rxn_ko.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+ht
+dev.off()
+```
+
+## Conclusion

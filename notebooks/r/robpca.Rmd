@@ -1,0 +1,495 @@
+---
+title: "Robust PCA data filtering"
+author: "Scott Campit"
+output: html_notebook
+---
+
+# Summary
+
+# 1. Load libraries
+```{r}
+library(tidyr)
+library(readr)
+library(stringr)
+library(ggplot2)
+library(reticulate)
+library(limma)
+library(Glimma)
+library(edgeR)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(readxl)
+library(ggVennDiagram)
+library(rrcov)
+library(factoextra)
+library(FactoMineR)
+```
+
+# 2. Read in data
+```{r}
+rm(list=ls())
+
+# Dell
+datapath = 'D:/Data/CRISPR/Achilles/Achilles_gene_effect.csv'
+
+# Linux
+#datapath = '~/Data/CRISPR/Achilles_gene_effect.csv'
+
+# Read in data
+data = readr::read_csv(datapath)
+```
+## Grab CCLE meta data
+First, we'll get relevant meta data
+```{r}
+# Linux
+#metapath = "~/Data/CRISPR/sample_info.csv"
+
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
+meta_data = read_csv(metapath)
+meta_data = meta_data[, c("DepMap_ID", 
+                        "stripped_cell_line_name", 
+                        "primary_or_metastasis",
+                        "lineage",
+                        "lineage_subtype")]
+```
+
+# 3. Dimension reduction with CERES Scores
+First, we'll grab the CERES Scores.
+```{r}
+ceres = data[, 2:ncol(data)]
+ceres = data.matrix(ceres)
+ceres[is.na(ceres)] = 0
+ceres = as.matrix(ceres)
+ids = data.frame(data[, 1])
+```
+
+First, we'll create a function that can perform ROBPCA on the data.
+```{r}
+# Create a function that filters data using ROBPCA
+removeOutliers = function(data, id){
+  pca_obj = PcaHubert(data)
+  filtered_data = data[pca_obj@flag, ]
+  filtered_id = id[pca_obj@flag,]
+  outlier_data = data[!pca_obj@flag, ]
+  outlier_id = id[!pca_obj@flag,]
+  
+  setClass(Class="geneObj",
+           representation(
+             data="matrix",
+             outlier_data="matrix",
+             id="character",
+             flag="logical",
+             outlier_id="character",
+             robpca='PcaHubert'
+           )
+   )
+   return(new("geneObj",
+          data=filtered_data,
+          outlier_data=outlier_data,
+          id=filtered_id,
+          flag=pca_obj@flag,
+          outlier_id=outlier_id,
+          robpca=pca_obj))
+}
+```
+
+## Perform PCA
+```{r}
+pca_obj = prcomp(ceres, scale=FALSE)
+
+```
+
+## Visualize PCA Scores Plot
+Let's visualize the original PCA dimension reduction.
+```{r}
+scores = data.frame(pca_obj[["x"]])
+ggplot(scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title="CERES Scores Plot", 
+       x="PC1", 
+       y="PC2") +
+  theme(legend.position="none")
+```
+
+## Visualize cell line distribution
+Let's also get the distribution of the data
+```{R}
+outlier_id = data.frame(ids)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x='DepMap_ID',
+                            by.y='DepMap_ID')
+```
+
+Now let's plot it
+```{r}
+# Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %>% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
+
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat='identity',
+           position='dodge') +
+  coord_flip() +
+  labs(y="Number of cell lines per tissue",
+       x="Tissue lineage",
+       title="All intersecting cell lines") + 
+  guides(fill=guide_legend(title="N cell lines")) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9))
+```
+
+## Robust PCA
+Now let's remove some outliers using Robust PCA:
+```{r}
+robpca_ceres = removeOutliers(ceres, ids)
+
+rob_scores = data.frame(robpca_ceres@robpca$scores)
+ggplot(rob_scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title="CERES Robust PCA Scores Plot", 
+       x="PC1", 
+       y="PC2") +
+  theme(legend.position="none")
+```
+
+## Visualize cell lines that are omitted from ROBPCA
+I am curious about what cell lines are omitted.
+```{R}
+outlier_id = data.frame(robpca_ceres@outlier_id)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x='DepMap_ID',
+                            by.y='robpca_ceres.outlier_id')
+```
+
+## Visualize outlier cell line distribution
+Visualize the cell lines that are omitted from downstream analyses.
+```{r}
+# Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %>% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
+
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat='identity',
+           position='dodge') +
+  coord_flip() +
+  labs(y="Number of cell lines removed",
+       x="Tissue lineage",
+       title="Cell lines removed from robust PCA") + 
+  guides(fill=guide_legend(title="N cell lines")) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9), 
+            hjust=-0.25)
+```
+## Repeat ROBPCA filter for genes
+```{r}
+tmp = robpca_ceres@data
+tmpid = robpca_ceres@id
+rownames(tmp) = tmpid
+tmp = t(tmp)
+tmpid = data.frame(rownames(tmp))
+robpca_ceres = removeOutliers(tmp, tmpid)
+```
+
+## Construction final dataset for downstream analysis
+We'll use the ceres data from the Robust PCA analysis.
+```{r}
+ceres = t(robpca_ceres@data)
+ids = rownames(ceres)
+rm(list=c("pca_obj", "robpca_ceres", "robscores", "scores"))
+save(list=c("ceres", "ids"), file=savepath)
+load(savepath)
+```
+
+# 4. Dimension reduction with Project DRIVE
+```{r}
+# Get data
+datapath = 'D:/Data/siRNA/depmap.csv'
+data = read_csv(datapath)
+gene_ids = data.matrix(data$X1)
+data = data.matrix(data)
+
+# Get row names
+rownames(data) = gene_ids
+data = subset(data, select=-c(X1))
+
+# Transpose for consistency
+data = t(data)
+```
+
+# 3. Data preprocessing
+
+## Data mapping
+We need to map to DepMapIDs. First let's load the meta data
+```{r}
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
+meta_data = read_csv(metapath)
+meta_data = meta_data[, c("DepMap_ID", 
+                          "CCLE_Name",
+                          "stripped_cell_line_name", 
+                          "primary_or_metastasis",
+                          "lineage",
+                          "lineage_subtype")]
+```
+
+## Merge to new identifiers
+Now merge by data
+```{r}
+# Get merged dataset
+merged_df = merge(data, meta_data, 
+                  by.x='row.names', by.y='CCLE_Name')
+
+# Set cell identity
+x = merged_df$DepMap_ID
+rownames(merged_df) = x
+merged_df$'Row.names' = NULL
+rm("data")
+
+# Set meta data
+meta_data = merged_df[(ncol(merged_df)-4):ncol(merged_df)]
+
+# Remove irrelevant data
+to_remove = as.character(colnames(meta_data))
+merged_df = merged_df[, !(names(merged_df) %in% to_remove)]
+```
+
+## Fill in NAs with zero
+```{r}
+merged_df[is.na(merged_df)] = 0
+```
+
+First, we'll grab the CERES Scores.
+```{r}
+ids = row.names(merged_df)
+data = as.matrix(merged_df)
+```
+
+First, we'll create a function that can perform ROBPCA on the data.
+```{r}
+# Create a function that filters data using ROBPCA
+removeOutliers = function(data, id){
+  pca_obj = PcaHubert(data)
+  filtered_data = data[pca_obj@flag, ]
+  filtered_id = id[pca_obj@flag,]
+  outlier_data = data[!pca_obj@flag, ]
+  outlier_id = id[!pca_obj@flag,]
+  
+  setClass(Class="geneObj",
+           representation(
+             data="matrix",
+             outlier_data="matrix",
+             id="character",
+             flag="logical",
+             outlier_id="character",
+             robpca='PcaHubert'
+           )
+   )
+   return(new("geneObj",
+          data=filtered_data,
+          outlier_data=outlier_data,
+          id=filtered_id,
+          flag=pca_obj@flag,
+          outlier_id=outlier_id,
+          robpca=pca_obj))
+}
+```
+
+## Perform PCA
+Run PCA
+```{r}
+pca_obj = prcomp(data, scale=FALSE)
+```
+
+Run PCA 
+```{r}
+scores = PCA(data, scale.unit=TRUE, graph=FALSE)
+eigval = get_eigenvalue(scores)
+res = HCPC(scores, graph=FALSE)
+```
+
+## Scree plot
+Get scree plot
+```{r}
+fviz_eig(scores, addlabels=TRUE)
+```
+
+Get variable contribution
+```{r}
+fviz_contrib(scores, choice = "var", axes = 1, top = 100)
+```
+
+Visualize a dendrogram from hierarchical clustering
+```{r}
+# Dendrogram
+#fviz(res,
+#     cex=0.7,                     # Label size
+#     palette="jco",               # Color palette see ?ggpubr::ggpar
+#     rect=TRUE, rect_fill=TRUE, # Add rectangle around groups
+#     rect_border="jco",           # Rectangle color
+#     labels_track_height=0.8      # Augment the room for labels
+#    )
+```
+
+## Scores plot with K-means cluster
+Visualize the factor map via K-nearest neighbors
+```{r}
+# Factor map
+fviz_cluster(res,
+             repel=TRUE,            # Avoid label overlapping
+             show.clust.cent=TRUE, # Show cluster centers
+             palette="jco",         # Color palette see ?ggpubr::ggpar
+             ggtheme=theme_minimal(),
+             main="Factor map"
+             )
+
+```
+
+## Visualize PCA Scores Plot
+Let's visualize the original PCA dimension reduction.
+```{r}
+ids = data.frame(ids)
+robpca_drive = removeOutliers(data, ids)
+rob_scores = data.frame(robpca_drive@robpca$scores)
+ggplot(rob_scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title="Project DRIVE siRNA LFC Scores Plot", 
+       x="PC1", 
+       y="PC2") +
+  theme(legend.position="none")
+```
+
+## Visualize cell line distribution
+Let's also get the distribution of the data
+```{R}
+outlier_id = data.frame(ids)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x='DepMap_ID',
+                            by.y='DepMap_ID')
+```
+
+Now let's plot it
+```{r}
+# Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %>% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
+
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat='identity',
+           position='dodge') +
+  coord_flip() +
+  labs(y="Number of cell lines per tissue",
+       x="Tissue lineage",
+       title="All intersecting cell lines") + 
+  guides(fill=guide_legend(title="N cell lines")) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9))
+```
+
+## Robust PCA
+Now let's remove some outliers using Robust PCA:
+```{r}
+robpca_ceres = removeOutliers(ceres, ids)
+
+rob_scores = data.frame(robpca_ceres@robpca$scores)
+ggplot(rob_scores, aes(x=PC1, y=PC2)) +  
+  geom_point() +
+  labs(title="CERES Robust PCA Scores Plot", 
+       x="PC1", 
+       y="PC2") +
+  theme(legend.position="none")
+```
+
+## Visualize cell lines that are omitted from ROBPCA
+I am curious about what cell lines are omitted.
+```{R}
+outlier_id = data.frame(robpca_ceres@outlier_id)
+filtered_cell_lines = merge(meta_data, 
+                            outlier_id,
+                            by.x='DepMap_ID',
+                            by.y='robpca_ceres.outlier_id')
+```
+
+## Visualize outlier cell line distribution
+Visualize the cell lines that are omitted from downstream analyses.
+```{r}
+# Group by 
+tmp = aggregate(filtered_cell_lines$lineage, 
+                by=list(filtered_cell_lines$lineage), 
+                length)
+tmp = tmp %>% arrange(x)
+tmp$Group.1 = factor(tmp$Group.1,
+                     levels=tmp$Group.1[order(tmp$x, decreasing = TRUE)])
+
+# Plot by tissue
+ggplot(data=tmp, 
+       aes(x=Group.1, 
+           y=x, 
+           fill=x,
+           label=x)) +
+  geom_bar(stat='identity',
+           position='dodge') +
+  coord_flip() +
+  labs(y="Number of cell lines removed",
+       x="Tissue lineage",
+       title="Cell lines removed from robust PCA") + 
+  guides(fill=guide_legend(title="N cell lines")) +
+  geom_text(aes(label=x), 
+            position=position_dodge(width=0.9), 
+            hjust=-0.25)
+```
+## Repeat ROBPCA filter for genes
+```{r}
+tmp = robpca_drive@data
+tmpid = robpca_drive@id
+rownames(tmp) = tmpid
+tmp = t(tmp)
+tmpid = data.frame(rownames(tmp))
+robpca_drive = removeOutliers(tmp, tmpid)
+```
+
+## Construction final dataset for downstream analysis
+We'll use the ceres data from the Robust PCA analysis.
+```{r}
+data = t(robpca_drive@data)
+ids = rownames(data)
+rm(list=c("pca_obj", "robpca_ceres", "robscores", "scores"))
+savepath="D:/Analysis/EMT/drive_robpca.RData"
+save(list=c("data", "ids"), file=savepath)
+load(savepath)
+```
