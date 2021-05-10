@@ -3,4 +3,179 @@ title: "EDA: Integrated Broad/Sanger Institute CRISPR-Cas9 Data"
 output: html_notebook
 ---
 
+# Summary
+This notebook explores the Integrated CRISPR-Cas9 dataset from Pacini, C., Dempster, J. M., Boyle, I., Gonçalves, E., Najgebauer, H., Karakoc, E., ... & Iorio, F. (2021). Integrated cross-study datasets of genetic dependencies in cancer. Nature communications, 12(1), 1-14.
 
+The reason why we're interested in this dataset is because it has been corrected by copy number variation, has been batch corrected for each study and multiple variables, and has greater statistical power due to the combined dataset. 
+
+# 1. Load libraries
+```{r}
+rm(list=ls())
+
+# General libraries
+library(tidyr)
+library(readr)
+library(stringr)
+library(reticulate)
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+library(readxl)
+
+# Visualization
+library(ggplot2)
+library(plotly)
+
+# Bioinformatics libraries
+library(biomaRt)
+library(org.Hs.eg.db)
+```
+
+# 2. Load data
+The dataset from this analysis can be downloaded from this FigShare url: https://figshare.com/collections/Integrated_CRISPR/5289226/1
+
+Note that the final batch correction method used to perform downstream analyses was ComBat + QN + PC1, as it was also used in the Pacini et al., 2021 paper for perform downstream analyses. Additionally, we used the CERES method as the preprocessing method. There are additional batch correction and data preprocessing methods that can be used in lieu of these choices if needed.
+
+```{r}
+datapath = "D:/Data/CRISPR/Integrated2021/13252640/CERES_SQ_Combat_PC1_All_merge_F.Rds"
+data = readRDS(datapath)
+#head(data, 1)
+```
+
+# 3. Data mapping
+The current data matrix is mapped using gene symbols and CCLE identifiers. We should create a data object that can easily map to other gene identifiers and cell line meta data.
+
+## A. Map to CCLE metadata
+First, we'll create a map that maps to essential metadata.
+
+### i. Load CCLE metadata
+The metadata is available in the CCLE data repository: https://portals.broadinstitute.org/ccle.
+
+**We're interested in the following attributes:**
+  * DepMap ID: The cell line identifiers corresponding to the DepMap repository
+  * Stripped Cell Line Name: The common cell line name
+  * Primary or Metastasis: A categorical describing whether or not the cell line was obtained from the primary tissue site or if it is metastatic
+  * Lineage: Tissue of origin
+  * Lineage Subtype: Cancer subclassification for tissue of origin
+  
+```{r}
+# Dell
+metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+
+# Read in meta data
+metadata = read_csv(metapath)
+metadata = metadata[, c("DepMap_ID", 
+                        "stripped_cell_line_name", 
+                        "primary_or_metastasis",
+                        "lineage",
+                        "lineage_subtype")]
+```
+
+### ii. Filter dataset based on column names
+The following code will get the matching metadata `cellmatch` and the matching dataset `match_data`.
+```{r}
+# Get column names
+ids = colnames(data)
+
+# Get match
+idx = metadata$DepMap_ID %in% ids
+cellmatch = metadata[idx, ]
+
+# Remove non-match in dataset
+idx = ids %in% cellmatch$DepMap_ID
+match_data = data[, idx]
+```
+
+## B. Map to gene identifiers
+The following code will match the gene symbols to more robust identifiers: Entrez gene IDs and Ensembl. 
+
+### i. Load up BioMart
+First, we'll use the `hsapiens_gene_ensembl` dataset to map the CCLE data.
+```{r}
+mart = biomaRt::useMart(biomart="ensembl", 
+                        dataset="hsapiens_gene_ensembl")
+```
+
+### ii. Map gene IDs
+Now we can create a map of Ensembl <-> Entrez <-> Symbols. 
+```{r}
+# Create a map of the probes to Entrez and gene symbols
+human_ids = getBM(attributes=c('ensembl_gene_id',
+                               'entrezgene_id',
+                               'hgnc_symbol'), 
+                  values=rownames(match_data),
+                  mart=mart)
+```
+
+We'll have varying dataset sizes for the metabolic gene sets, depending on how much coverage is available for Ensembl and Entrez. 
+
+### iii. Map to RECON1 genes
+First, let's map the data to RECON1, which uses Entrez IDs as the map.
+
+First load the RECON1 genes.
+```{r}
+recon1_map = "D:/Data/Reconstructions/RECON1/RECON1.xlsx"
+recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
+```
+
+Then, we can grab the index that matches between the two datasets
+```{r}
+# Grab map between Entrez and Symbol
+ids = rownames(match_data)
+idx = ids %in% recon1_genes$Symbol
+```
+
+Finally, grab the match. It will still be mapped to symbols for visualization purposes
+```{r}
+recon1_match = match_data[idx, ]
+dim(recon1_match)
+```
+
+### iv. Map to iHUMAN genes
+Then, we'll map the data to iHUMAN, which uses Ensembl IDs as the map.
+
+First, load up the iHUMAN map
+```{r}
+ihuman_map = "D:/Data/Reconstructions/Human1/Human1_SynGO.xlsx"
+ihuman_genes = readxl::read_excel(ihuman_map)
+```
+
+Then, we can grab the index that matches between the two datasets
+```{r}
+# Grab map between Entrez and Symbol
+ids = rownames(match_data)
+idx = ids %in% ihuman_genes$symbol
+```
+
+Finally, grab the match. It will still be mapped to symbols for visualization purposes
+```{r}
+ihuman_match = match_data[idx, ]
+dim(recon1_match)
+```
+
+## C. Save everything
+Let's save everything as an R dataset for other downstream analyses.
+```{r}
+savepath="D:/Analysis/EMT/data/batched_ceres.Rdata"
+save.image(file=savepath)
+```
+
+
+# 4. EDA
+Finally, to gain a better understanding of the dataset, let's plot some simple visualizations.
+
+## A. Data distribution using a histogram
+The left-tailed distribution show is expected from the CERES Score. The more negative the value, the greater the effect gene deletion has on a given gene. 
+
+```{r, fig.height=10, fig.width=15, dpi=100}
+tmp = reshape2::melt(match_data)
+ggplot(tmp, aes(x=value, fill=value)) +
+  geom_histogram(bins=100) +
+  geom_vline(xintercept=0) +
+  labs(x="CERES Score", 
+       y="Frequency", 
+       title="Batch normalized CERES score distribution (matched)")
+```
+
+# Summary
+This 
