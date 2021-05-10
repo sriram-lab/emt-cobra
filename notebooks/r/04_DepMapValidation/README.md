@@ -1,5 +1,8 @@
 # DepMap Analysis
 
+## TODO:
+  * Make notebooks more readable
+
 ## Summary
 This directory contains DepMap-related analyses used to validate and benchmark COnstraint-Based Reconstruction and Analysis (COBRA) predictions. We analyzed the following omics data:
   * CRISPR-Cas9 essentiality scores
@@ -15,3 +18,5 @@ For this analysis, run the notebooks in the following order. A short description
 
 ## Data availability
 Data can be loaded through the FigShare portal and the Zenodo data portal. 
+
+
