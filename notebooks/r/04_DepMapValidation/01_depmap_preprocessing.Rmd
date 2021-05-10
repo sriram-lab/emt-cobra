@@ -1,10 +1,14 @@
 ---
-title: "Robust PCA data filtering"
+title: "DepMap Preprocessing"
 author: "Scott Campit"
 output: html_notebook
 ---
 
 # Summary
+This notebook performs essential data preprocessing on the DepMap datasets. 
+
+Related notebooks include:
+  * 
 
 # 1. Load libraries
 ```{r}
@@ -473,6 +477,7 @@ ggplot(data=tmp,
             position=position_dodge(width=0.9), 
             hjust=-0.25)
 ```
+
 ## Repeat ROBPCA filter for genes
 ```{r}
 tmp = robpca_drive@data

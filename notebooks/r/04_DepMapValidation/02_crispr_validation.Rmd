@@ -12,30 +12,37 @@ This notebook does the following analysis:
 
 # 1. Load libraries
 ```{r}
+# Essential libraries
 library(tidyr)
 library(readr)
 library(stringr)
 library(ggplot2)
 library(reticulate)
-library(limma)
-library(Glimma)
-library(edgeR)
 library(tidyverse)
 library(dplyr)
 library(reshape2)
 library(readxl)
-library(ggVennDiagram)
-library(rrcov)
 library(data.table)
+
+# Bioinformatics libraries
+library(limma)
+library(Glimma)
+library(edgeR)
+
+# Data visualization libraries
+library(ggVennDiagram)
 library(stats)
 library(ggpubr)
+
+# Statistics / DS libraries
+library(rrcov)
 ```
 
 # 2. Read in data
 ```{r}
 rm(list=ls())
-savepath = "D:/Analysis/EMT/ceres_robpca.RData"
-load(savepath)
+datapath = "D:/Analysis/EMT/ceres_robpca.RData"
+load(datapath)
 ```
 
 # 3. Compute P-values from CERES Score
