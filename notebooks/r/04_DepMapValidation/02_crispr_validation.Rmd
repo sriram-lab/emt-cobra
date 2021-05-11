@@ -320,8 +320,55 @@ top50_nsclc
 
 Now that we have a sense of what metabolic genes are generally essential between the metastatic and primary cell lines, we'll see which ones intersect between the model predictions and the bottom 50 data.
 
-# 5. Get intersecting data with RECON1 predictions
-This section visualizes metabolic genes that 
+# 5. Get intersecting data with RECON1 simulations
+This section visualizes the metabolic genes that are predicted to be sensitive from gene or reaction knockout, and that have high metabolic activity.
+
+Note that to translate reaction IDs --> gene IDs, I used the `findGenesFromRxns` function in the COBRA Toolbox.
+
+## A. Bulk Reaction KO Sensitive Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the bulk reaction KOs.
+
+### i. Load Data
+```{r}
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+```
+
+### iii. Visualize heatmap
+```{r}
+```
+
+## B. Bulk Overactive Metabolic Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the overactive metabolic reactions.
+
+### i. Load Data
+```{r}
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+```
+
+### iii. Visualize heatmap
+```{r}
+```
+
+## C. Single-Cell KO Sensitive Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the single-cell reaction knockouts.
+
+### i. Load Data
+```{r}
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+```
+
+### iii. Visualize heatmap
+```{r}
+```
 
 # 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
