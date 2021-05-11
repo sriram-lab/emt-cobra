@@ -178,4 +178,4 @@ ggplot(tmp, aes(x=value, fill=value)) +
 ```
 
 # Summary
-This 
+This data is used for downstream data analyses and validation of the RECON1 metabolic model simulations.

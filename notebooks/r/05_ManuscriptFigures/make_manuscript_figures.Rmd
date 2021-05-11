@@ -74,19 +74,19 @@ This creates individual annotation bars for each of the corresponding time point
 
 ```{r}
 h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
-                                      labels=c("Early"), 
+                                      labels=c("1Hr"), 
                                       labels_gp=gpar(col="black", 
                                                      fontsize=10)))
 h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
-                                      labels=c("Int. 1"), 
+                                      labels=c("8Hrs"), 
                                       labels_gp=gpar(col="white", 
                                                      fontsize=10)))
 h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
-                                      labels=c("Int. 2"), 
+                                      labels=c("24Hrs"), 
                                       labels_gp=gpar(col="white", 
                                                      fontsize=10)))
 h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
-                                      labels=c("Late"), 
+                                      labels=c("48-72Hrs"), 
                                       labels_gp=gpar(col="white", 
                                                      fontsize=10)))
 ```

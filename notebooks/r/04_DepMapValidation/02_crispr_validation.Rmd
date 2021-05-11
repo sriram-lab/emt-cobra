@@ -11,6 +11,7 @@ This notebook does the following analysis:
   3. Compare it to current iteration of metabolic reactions and genes predicted by COBRA
 
 # 1. Load libraries
+First, let's load some essential libraries.
 ```{r}
 # Essential libraries
 library(tidyr)
@@ -33,223 +34,280 @@ library(edgeR)
 library(ggVennDiagram)
 library(stats)
 library(ggpubr)
+require(gridExtra)
+library(extrafont)
+library(ComplexHeatmap)
+library(circlize)
 
 # Statistics / DS libraries
 library(rrcov)
 ```
 
-# 2. Read in data
+# 2. Read in CRISPR Essentiality Data
+There are two datasets we can read in:
+  A. Robust PCA dataset performed on CERES Scores
+  B. Batch normalized CERES Scores
+
+Either way, the downstream analyses will be the same.
+
+## A. Load the Robust PCA CERES Scores
+This data was filtered based on outliers: data points that contain high leverage and orthogonal distance. This analysis used the `rrcov` library. 
+
+More technical information about this analysis can be found in this paper: Hubert, M., Rousseeuw, P. J., & Vanden Branden, K. (2005). ROBPCA: a new approach to robust principal component analysis. Technometrics, 47(1), 64-79.
 ```{r}
 rm(list=ls())
-datapath = "D:/Analysis/EMT/ceres_robpca.RData"
+datapath = "D:/Analysis/EMT/data/ceres_robpca.RData"
 load(datapath)
 ```
 
-# 3. Compute P-values from CERES Score
+## B. Load the Batch Normalized CERES Scores
+This data was obtained from Pacini, C., Dempster, J. M., Boyle, I., Gonçalves, E., Najgebauer, H., Karakoc, E., ... & Iorio, F. (2021). Integrated cross-study datasets of genetic dependencies in cancer. Nature communications, 12(1), 1-14. They combined the CERES Scores from the Broad and Sanger Institute after batch normalization. 
+
 ```{r}
-mlt_ceres = reshape2::melt(ceres)
-x = as.numeric(mlt_ceres$value)
+rm(list=ls())
+datapath = "D:/Analysis/EMT/data/batched_ceres.RData"
+load(datapath)
 ```
 
-## Global p-value
+# 3. Compute P-values from the CERES Score data distribution
+To compute the P-values, there are two ways we can look at the data:
+  A. Given the entire dataset, we can see how far the data is from the mean (e.g., a Z-score like metric)
+  B. Given two conditions (Primary verus. Metastatic), we can compare the two conditions.
+  
+## A. Compute P-value across entire data distribution
 Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
+
+### i. Compute left-tailed p-value
+This codeblock computes the left tailed p-value. I also tried computing an FDR adjusted p-value, but none of the genes turn out to be significant.
 ```{r}
-mu = mean(x, na.rm=TRUE)
-stdev = sd(x, na.rm=TRUE)
-global_pvals = pnorm(x, 
-                     mean=mu, 
-                     sd=stdev,
-                     lower.tail=TRUE)
-#rm("x")
+x       = match_data
+mu      = mean(x, na.rm=TRUE)
+stdev   = sd(x, na.rm=TRUE)
+pvalmat = apply(x, 2, function(x) pnorm(x, 
+                                        mean=mu,
+                                        sd=stdev,
+                                        lower.tail=TRUE))
+padjmat = apply(pvalmat, 2, function(x) p.adjust(x, method="fdr"))
+sum(padjmat < 0.05, na.rm=TRUE)
 ```
 
-Now let's recast the dataframe.
+### ii. SANITY CHECK: Plot the data distribution
+First, we'll preprocess data for a histogram
 ```{r}
-#global_pvals = matrix(global_pvals, 
-#                      nrow=dim(ceres)[1], 
-#                      ncol=dim(ceres)[2],
-#                      byrow=TRUE)
-#global_pvals = data.frame(global_pvals)
-#global_pvals$Var1 = mlt_ceres$Var1
-#global_pvals$Var2 = mlt_ceres$Var2
-
-#tmp = dcast(global_pvals, 
-#                        formula=Var1~Var2, 
-#                        value.var=global_pvals)
-#rownames(tmp) = tmp$Var1
-#tmp$Var1 = NULL
+mlt_pval = reshape2::melt(padjmat)
+mlt_pval$col = as.factor(mlt_pval$value < 0.05)
+mlt_score = reshape2::melt(x)
+mlt_score$col = as.factor(mlt_pval$value < 0.05)
 ```
 
-```{r}
-pvals = global_pvals
-pvals = data.matrix(pvals)
-```
-
-Because we are testing several hypotheses, we should control using the FDR.
-```{r}
-# Perform FDR Adjustment
-adjusted_pval = p.adjust(pvals, method="fdr")
-pvals = adjusted_pval
-rm(list=c("adjusted_pval", "global_pvals"))
-```
-
-## Plot the data distribution
-
-Preprocess data
-```{r}
-tmp = data.frame(pvals)
-tmp$col = as.factor(tmp$pvals < 0.05)
-mlt_ceres = reshape2::melt(ceres)
-tmp$ceres = mlt_ceres$value
-```
-
-Now let's plot the data distribution.
-```{r}
+Now let's plot the data distribution. Note that we'll be plotting the FDR, which has ~ 325413 significant data points in total.
+```{r, fig.height=7.5, fig.width=10, dpi=100}
 # Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
+p1 = ggplot(mlt_pval, aes(x=value, fill=col)) +  
   geom_histogram(bins=100) +
   scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
   labs(title="CERES FDR distribution (all)", 
-       x="FDR Adjusted P-values (left-sided)", 
+       x="FDR Adjusted P-values (left-sided; alpha=0.05)", 
        y="Frequency") +
   theme(legend.position="none")
 
 # Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
+p2 = ggplot(mlt_score, aes(x=value, fill=col)) +  
   geom_histogram(bins=100) +
   scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES distribution (all)", 
-       x="CERES", 
+  labs(title="CERES distribution (Batch corrected)", 
+       x="CERES Score (Batch Corrected)", 
        y="Frequency") +
   theme(legend.position="none")
+
+grid.arrange(p1, p2)
 ```
 
-# 4. Map the CERES scores back to CCLE
-The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
+# 4. Grab NSCLC Lung Cancer Cell Line Data
+The `cellmatch` dataframe contains the metadata for the `match_data`. We're interested in specifically analyzing NSCLC data.
 
-What we need to do is map it to the following:
-
-  * Cancer Cell Line
-  * Cancer Cell Line Tissue Lineage
-  * Entrez ID
-
-First, we'll get relevant meta data
+## A. Subset the Data
 ```{r}
-# Linux
-#metapath = "~/Data/CRISPR/sample_info.csv"
-
-# Dell
-metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
-
-# Read in meta data
-meta_data = read_csv(metapath)
-meta_data = meta_data[, c("DepMap_ID", 
-                        "stripped_cell_line_name", 
-                        "primary_or_metastasis",
-                        "lineage",
-                        "lineage_subtype")]
-```
-
-## Filter the data to get only NSCLC
-Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
-```{r}
-# Lung data needs to be NSCLC and we need to know whether it's from the primary site or if it is metastatic
-lung_meta_data = meta_data[meta_data["lineage"]=="lung",]
-lung_meta_data = lung_meta_data[lung_meta_data["lineage_subtype"]=="NSCLC",]
-lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]
+NSCLC_meta = cellmatch[cellmatch["lineage_subtype"]=="NSCLC", ]
+NSCLC_meta = NSCLC_meta[!is.na(NSCLC_meta$primary_or_metastasis), ]
 ``` 
 
-## Separate entrez and gene symbol identifiers
-We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.
+## B. Visualize Primary V. Metastatic
+Let's visualize how many cells are primary site versus metastatic cancers. First, let's get the counts.
 ```{r}
-# Save gene symbols
-orig_colnames = colnames(ceres)
-all_symbol = as.character(sapply(strsplit(orig_colnames, " "), '[', 1))
-#all_symbol = all_symbol[-1]
-
-# Save Entrez ID 
-all_entrez = as.character(sapply(strsplit(orig_colnames, " "), '[', -1))
-all_entrez = str_remove(all_entrez, "[( )]")
-all_entrez = str_remove(all_entrez, "[( )]")
-all_entrez[1] = all_symbol[1]
+unique(NSCLC_meta$primary_or_metastasis)
+tmp = NSCLC_meta %>%
+  group_by(primary_or_metastasis) %>%
+  count()
 ```
 
-Combine all the identifiers into a single dataframe.
+Now let's make the barplot.
+```{r, fig.width=5, fig.height=5, dpi=100}
+p3 = ggplot(data=tmp, aes(x=primary_or_metastasis, 
+                          y=n, 
+                          fill=primary_or_metastasis)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values = c("Metastasis"="#EF476F", "Primary"="#073B4C")) +
+  labs(title="NSCLC cell line distribution", 
+       x="Type of NSCLC cell line", 
+       y="Frequency") +
+  theme(legend.position="none")
+p3
+```
+While the data is not skewed that much, it is still notable that there are more metastatic versus primary site NSCLC cell lines in the data.
+
+## C. Grab NSCLC specific data
+Finally, we'll grab the CERES scores and the FDR associated with each NSCLC cell line.
 ```{r}
-# All identifiers
-all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
-all_ids = all_ids[-1, ]
+NSCLC_ceres = match_data[, colnames(match_data) %in% NSCLC_meta$DepMap_ID]
+NSCLC_fdr = padjmat[,  colnames(padjmat) %in% NSCLC_meta$DepMap_ID]
 ```
 
-### Map dataset to Entrez IDs
-Map everything to Entrez IDs
+## D. Grab RECON1 metabolic reconstruction genes in the NSCLC dataset
+To benchmark RECON1 results, we'll grab the CERES score gene entries that intersect with the metabolic reconstruction.
 ```{r}
-# Create dataset with gene symbols as ID
-data_entrez = ceres
-colnames(data_entrez) = all_entrez
+# Grab map between Entrez and Symbol in RECON1
+ids = rownames(NSCLC_ceres)
+idx = ids %in% recon1_genes$Symbol
 
-# Create pvalue dataframe
-pvals = as.matrix(pvals)
-data_dims = dim(ceres)
-pvalue_entrez = matrix(pvals, 
-                   nrow=data_dims[1], 
-                   ncol=data_dims[2])
-pvalue_entrez = data.frame(pvalue_entrez)
-colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
+recon1_nsclc_ceres = NSCLC_ceres[idx, ]
+recon1_nsclc_fdr = NSCLC_fdr[idx, ]
 ```
 
-### Map dataset to Gene Symbols
-Map everything to Gene Symbols
-```{r}
-# Create dataset with gene symbols as ID
-data_symbol = ceres
-colnames(data_symbol) = all_symbol
+## E. Visualize the data
+Now that we have the entire subset, let's visualize the data by splitting the data between primary and metastatic cell lines. 
 
-# Create pvalue dataframe
-pvals = as.matrix(pvals)
-data_dims = dim(ceres)
-pvalue_symbol = matrix(pvals, 
-                   nrow=data_dims[1], 
-                   ncol=data_dims[2])
-pvalue_symbol = data.frame(pvalue_symbol)
-colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
-pvalue_symbol$DepMap_ID = ids
+First, we'll separate the data into metastatic and primary.
+```{r}
+met_idx = NSCLC_meta$primary_or_metastasis == "Metastasis"
+prim_idx = NSCLC_meta$primary_or_metastasis == "Primary"
 ```
 
-## Filter metabolic genes only
-Map it back to the human metabolic reconstruction.
+Then we'll pre-process some matrices for visualization via heatmap.
 ```{r}
-recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
-recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
-recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
+# Metastatic data
+met_data = recon1_nsclc_ceres[, met_idx]
+met_fdr = recon1_nsclc_fdr[, met_idx]
+met_bin = met_fdr > 0.05
 
-data_entrez = data_entrez[, unique(recon1_match$entrez)]
+# Turn non-significant datapoints into black
+masked_met_data = met_data
+masked_met_data[met_bin] = NA
 
-pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-rownames(pvalue_entrez) = rownames(data_entrez)
+# Primary site data
+prim_data = recon1_nsclc_ceres[, prim_idx]
+prim_fdr = recon1_nsclc_fdr[, prim_idx]
+prim_bin = prim_fdr > 0.05
+
+# Turn non-significant datapoints into black
+masked_prim_data = prim_data
+masked_prim_data[prim_bin] = NA
 ```
 
-# 5. Merge metadata to metabolic p-values and CERES scores
-Finally, we can the NSCLC data back to RECON1 genes.
+### i. Create annotation bar for primary/metastatic
 ```{r}
-# Entrez IDs
-merged_lung = merge(lung_meta_data, data_entrez, by.x='DepMap_ID', by.y='row.names')
-merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID', by.y='row.names')
+h1_col = HeatmapAnnotation(hm1=anno_block(gp=gpar(fill="#EF476F"),
+                                      labels=c("Metastatic"), 
+                                      labels_gp=gpar(col="black", 
+                                                     fontsize=10)))
 
-# Gene Symbols
-merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
-merged_pval = merge(lung_meta_data, pvalue_symbol, by='DepMap_ID')
+h2_col = HeatmapAnnotation(hm2=anno_block(gp=gpar(fill="#073B4C"),
+                                      labels=c("Primary"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+```
+
+### ii. Visualize all data
+```{r, fig.width=12.5, fig.height=40, fig.align='right', dpi=100}
+# Metastatic heatmap
+hm1 = Heatmap(as.matrix(met_data),
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=TRUE,
+              bottom_annotation=h1_col, 
+              #width = ncol(met_data)*unit(3, "mm"), 
+              #height = nrow(met_data)*unit(3, "mm"),
+              show_heatmap_legend=FALSE)
+idx = row_order(hm1)
+
+
+
+# Primary heatmap
+hm2 = Heatmap(as.matrix(prim_data)[idx, ],
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              bottom_annotation=h2_col, 
+              #width = ncol(prim_data)*unit(3, "mm"), 
+              #height = nrow(prim_data)*unit(3, "mm"),
+              heatmap_legend_param=list(title="CERES Score"))
+
+all_nsclc = hm1 + hm2
+all_nsclc
+```
+
+### iii. Visualize the signficant data only
+```{r, fig.width=12.5, fig.height=40, fig.align='right', dpi=100}
+# Metastatic heatmap
+col_fun = colorRamp2(c(0, median(masked_met_data, na.rm=TRUE), min(masked_met_data, na.rm=TRUE)), 
+                     c("#FFFFF9", "#FFCE03", "#FF0000"))
+hm3 = Heatmap(as.matrix(masked_met_data)[idx, ],
+              na_col = "black",
+              col=col_fun,
+              cluster_columns=FALSE,
+              cluster_rows=FALSE,
+              bottom_annotation=h1_col, 
+              #width = ncol(met_data)*unit(3, "mm"), 
+              #height = nrow(met_data)*unit(3, "mm"),
+              show_heatmap_legend=FALSE)
+
+# Primary heatmap
+hm4 = Heatmap(as.matrix(masked_prim_data)[idx, ],
+              na_col = "black",
+              col=col_fun,
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              bottom_annotation=h2_col, 
+              #width = ncol(prim_data)*unit(3, "mm"), 
+              #height = nrow(prim_data)*unit(3, "mm"),
+              heatmap_legend_param=list(title="CERES Score"))
+
+significant_nsclc_only = hm3 + hm4
+significant_nsclc_only
+```
+
+### iv. Visualize the bottom 50 metabolic genes
+```{r}
+tmp1 = as.matrix(masked_met_data)[idx, ]
+tmp2 = as.matrix(masked_prim_data)[idx, ]
+
+# Metastatic heatmap
+hm5 = Heatmap(as.matrix(tmp1),
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=TRUE,
+              bottom_annotation=h1_col, 
+              #width = ncol(met_data)*unit(3, "mm"), 
+              #height = nrow(met_data)*unit(3, "mm"),
+              show_heatmap_legend=FALSE)
+
+
+
+# Primary heatmap
+hm6 = Heatmap(as.matrix(tmp2,
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              bottom_annotation=h2_col, 
+              #width = ncol(prim_data)*unit(3, "mm"), 
+              #height = nrow(prim_data)*unit(3, "mm"),
+              heatmap_legend_param=list(title="CERES Score"))
+
+all_nsclc = hm1 + hm2
+all_nsclc
 
 ```
-## Visualize the NSCLC CRISPR-Cas9 metabolism data mapped to RECON1
-Let's construct the data object used for the visualization.
-```{r}
-tmp = merged_pval[, 6:ncol(merged_pval)]
-tmp = reshape2::melt(data.frame(tmp))
-tmp$col = as.factor(tmp$value < 0.05)
-lung_ceres = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
-tmp$ceres = lung_ceres$value
-```
+
 
 Now actually plot the p-values and CERES scores.
   * Note this doesn't look right.
