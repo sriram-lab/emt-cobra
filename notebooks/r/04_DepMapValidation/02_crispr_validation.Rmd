@@ -189,6 +189,7 @@ Then we'll pre-process some matrices for visualization via heatmap.
 met_data = recon1_nsclc_ceres[, met_idx]
 met_fdr = recon1_nsclc_fdr[, met_idx]
 met_bin = met_fdr > 0.05
+colnames(met_data) = NSCLC_meta$stripped_cell_line_name[met_idx]
 
 # Turn non-significant datapoints into black
 masked_met_data = met_data
@@ -198,6 +199,7 @@ masked_met_data[met_bin] = NA
 prim_data = recon1_nsclc_ceres[, prim_idx]
 prim_fdr = recon1_nsclc_fdr[, prim_idx]
 prim_bin = prim_fdr > 0.05
+colnames(prim_data) = NSCLC_meta$stripped_cell_line_name[prim_idx]
 
 # Turn non-significant datapoints into black
 masked_prim_data = prim_data
@@ -205,6 +207,7 @@ masked_prim_data[prim_bin] = NA
 ```
 
 ### i. Create annotation bar for primary/metastatic
+Let's create the annotation bars.
 ```{r}
 h1_col = HeatmapAnnotation(hm1=anno_block(gp=gpar(fill="#EF476F"),
                                       labels=c("Metastatic"), 
@@ -218,6 +221,7 @@ h2_col = HeatmapAnnotation(hm2=anno_block(gp=gpar(fill="#073B4C"),
 ```
 
 ### ii. Visualize all data
+This heatmap contains all 1400+ metabolic genes across 44 cell lines.
 ```{r, fig.width=12.5, fig.height=40, fig.align='right', dpi=100}
 # Metastatic heatmap
 hm1 = Heatmap(as.matrix(met_data),
@@ -247,9 +251,10 @@ all_nsclc
 ```
 
 ### iii. Visualize the signficant data only
+We'll black out the non-significant entries based on FDR > 0.05.
 ```{r, fig.width=12.5, fig.height=40, fig.align='right', dpi=100}
 # Metastatic heatmap
-col_fun = colorRamp2(c(0, median(masked_met_data, na.rm=TRUE), min(masked_met_data, na.rm=TRUE)), 
+col_fun = colorRamp2(c(max(masked_met_data, na.rm=TRUE), median(masked_met_data, na.rm=TRUE), min(masked_met_data, na.rm=TRUE)), 
                      c("#FFFFF9", "#FFCE03", "#FF0000"))
 hm3 = Heatmap(as.matrix(masked_met_data)[idx, ],
               na_col = "black",
@@ -277,82 +282,46 @@ significant_nsclc_only
 ```
 
 ### iv. Visualize the bottom 50 metabolic genes
-```{r}
+Now let's zoom in on the bottom 50 metabolic genes.
+```{r, fig.width=12.5, fig.height=15, fig.align='right', dpi=100}
 tmp1 = as.matrix(masked_met_data)[idx, ]
+tmp1 = tmp1[(nrow(tmp1)-50):nrow(tmp1), ]
 tmp2 = as.matrix(masked_prim_data)[idx, ]
+tmp2 = tmp2[(nrow(tmp2)-50):nrow(tmp2), ]
 
 # Metastatic heatmap
 hm5 = Heatmap(as.matrix(tmp1),
               na_col = "black",
+              col=col_fun,
               cluster_columns=FALSE,
-              cluster_rows=TRUE,
+              cluster_rows=FALSE,
               bottom_annotation=h1_col, 
-              #width = ncol(met_data)*unit(3, "mm"), 
-              #height = nrow(met_data)*unit(3, "mm"),
+              width = ncol(tmp1)*unit(5, "mm"), 
+              height = nrow(tmp1)*unit(5, "mm"),
               show_heatmap_legend=FALSE)
 
 
 
 # Primary heatmap
-hm6 = Heatmap(as.matrix(tmp2,
+hm6 = Heatmap(as.matrix(tmp2),
               na_col = "black",
+              col=col_fun,
               cluster_columns=FALSE, 
               cluster_rows=FALSE,
               bottom_annotation=h2_col, 
-              #width = ncol(prim_data)*unit(3, "mm"), 
-              #height = nrow(prim_data)*unit(3, "mm"),
+              width = ncol(tmp2)*unit(5, "mm"), 
+              height = nrow(tmp2)*unit(5, "mm"),
               heatmap_legend_param=list(title="CERES Score"))
 
-all_nsclc = hm1 + hm2
-all_nsclc
+top50_nsclc = hm5 + hm6
+top50_nsclc
 
 ```
 
+Now that we have a sense of what metabolic genes are generally essential between the metastatic and primary cell lines, we'll see which ones intersect between the model predictions and the bottom 50 data.
 
-Now actually plot the p-values and CERES scores.
-  * Note this doesn't look right.
-```{r}
-# Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES NSCLC p-value distribution", 
-       x="P-values (left-sided)", 
-       y="Frequency") +
-  theme(legend.position="none")
-
-# Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES NSCLC distribution", 
-       x="CERES", 
-       y="Frequency") +
-  theme(legend.position="none")
-```
-# 6. A549-specific p-values
-```{r}
-a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
-tmp = as.numeric(a549_ceres[, 6:ncol(a549_ceres)])
-mu = mean(tmp, na.rm=TRUE)
-stdev = sd(tmp, na.rm=TRUE)
-a549_pvals = pnorm(tmp, 
-                     mean=mu, 
-                     sd=stdev,
-                     lower.tail=TRUE)
-a549_data = data.frame(tmp)
-a549_data$pval = a549_pvals
-a549_data$entrez = colnames(a549_ceres[, 6:ncol(a549_ceres)]) 
-
-
-xname = data.frame(entrez=colnames(a549_ceres[, 6:ncol(a549_ceres)]))
-tmp = merge(xname, recon1_match, by='entrez')
-tmp[, 3:4] = NULL
-tmp = unique(tmp)
-a549_data$Symbol = tmp$symbol
-sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
-```
-
+# 5. Get intersecting data with RECON1 predictions
+This section visualizes metabolic genes that 
 
 # 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
