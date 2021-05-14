@@ -11,7 +11,9 @@ This notebook does the following analysis:
   3. Compare it to current iteration of metabolic reactions and genes predicted by COBRA
 
 # 1. Load libraries
+First, let's load some essential libraries.
 ```{r}
+rm(list=ls())
 # Essential libraries
 library(tidyr)
 library(readr)
@@ -33,268 +35,1003 @@ library(edgeR)
 library(ggVennDiagram)
 library(stats)
 library(ggpubr)
+require(gridExtra)
+library(extrafont)
+library(ComplexHeatmap)
+library(circlize)
 
 # Statistics / DS libraries
 library(rrcov)
 ```
 
-# 2. Read in data
+# 2. Read in CRISPR Essentiality Data
+There are two datasets we can read in:
+  A. Robust PCA dataset performed on CERES Scores
+  B. Batch normalized CERES Scores
+
+Either way, the downstream analyses will be the same.
+
+## A. Load the Robust PCA CERES Scores
+This data was filtered based on outliers: data points that contain high leverage and orthogonal distance. This analysis used the `rrcov` library. 
+
+More technical information about this analysis can be found in this paper: Hubert, M., Rousseeuw, P. J., & Vanden Branden, K. (2005). ROBPCA: a new approach to robust principal component analysis. Technometrics, 47(1), 64-79.
 ```{r}
 rm(list=ls())
-datapath = "D:/Analysis/EMT/ceres_robpca.RData"
+datapath = "D:/Analysis/EMT/data/ceres_robpca.RData"
 load(datapath)
 ```
 
-# 3. Compute P-values from CERES Score
+## B. Load the Batch Normalized CERES Scores
+This data was obtained from Pacini, C., Dempster, J. M., Boyle, I., Gonçalves, E., Najgebauer, H., Karakoc, E., ... & Iorio, F. (2021). Integrated cross-study datasets of genetic dependencies in cancer. Nature communications, 12(1), 1-14. They combined the CERES Scores from the Broad and Sanger Institute after batch normalization. 
+
 ```{r}
-mlt_ceres = reshape2::melt(ceres)
-x = as.numeric(mlt_ceres$value)
+rm(list=ls())
+datapath = "D:/Analysis/EMT/data/batched_ceres.RData"
+load(datapath)
 ```
 
-## Global p-value
+# 3. Compute P-values from the CERES Score data distribution
+To compute the P-values, there are two ways we can look at the data:
+  A. Given the entire dataset, we can see how far the data is from the mean (e.g., a Z-score like metric)
+  B. Given two conditions (Primary verus. Metastatic), we can compare the two conditions.
+  
+## A. Compute P-value across entire data distribution
 Next, we'll compute the p-values using the data itself. Most of the data lies close to 0 (no activity), while the significant data points lie on the left side of the data distribution. Thus, we'll compute the left-tailed P-value.
+
+### i. Compute left-tailed p-value
+This codeblock computes the left tailed p-value. I also tried computing an FDR adjusted p-value, but none of the genes turn out to be significant.
 ```{r}
-mu = mean(x, na.rm=TRUE)
-stdev = sd(x, na.rm=TRUE)
-global_pvals = pnorm(x, 
-                     mean=mu, 
-                     sd=stdev,
-                     lower.tail=TRUE)
-#rm("x")
+x       = match_data
+mu      = mean(x, na.rm=TRUE)
+stdev   = sd(x, na.rm=TRUE)
+pvalmat = apply(x, 2, function(x) pnorm(x, 
+                                        mean=mu,
+                                        sd=stdev,
+                                        lower.tail=TRUE))
+padjmat = apply(pvalmat, 2, function(x) p.adjust(x, method="fdr"))
+sum(padjmat < 0.05, na.rm=TRUE)
 ```
 
-Now let's recast the dataframe.
+### ii. SANITY CHECK: Plot the data distribution
+First, we'll preprocess data for a histogram
 ```{r}
-#global_pvals = matrix(global_pvals, 
-#                      nrow=dim(ceres)[1], 
-#                      ncol=dim(ceres)[2],
-#                      byrow=TRUE)
-#global_pvals = data.frame(global_pvals)
-#global_pvals$Var1 = mlt_ceres$Var1
-#global_pvals$Var2 = mlt_ceres$Var2
-
-#tmp = dcast(global_pvals, 
-#                        formula=Var1~Var2, 
-#                        value.var=global_pvals)
-#rownames(tmp) = tmp$Var1
-#tmp$Var1 = NULL
+mlt_pval = reshape2::melt(padjmat)
+mlt_pval$col = as.factor(mlt_pval$value < 0.05)
+mlt_score = reshape2::melt(x)
+mlt_score$col = as.factor(mlt_pval$value < 0.05)
 ```
 
-```{r}
-pvals = global_pvals
-pvals = data.matrix(pvals)
-```
-
-Because we are testing several hypotheses, we should control using the FDR.
-```{r}
-# Perform FDR Adjustment
-adjusted_pval = p.adjust(pvals, method="fdr")
-pvals = adjusted_pval
-rm(list=c("adjusted_pval", "global_pvals"))
-```
-
-## Plot the data distribution
-
-Preprocess data
-```{r}
-tmp = data.frame(pvals)
-tmp$col = as.factor(tmp$pvals < 0.05)
-mlt_ceres = reshape2::melt(ceres)
-tmp$ceres = mlt_ceres$value
-```
-
-Now let's plot the data distribution.
-```{r}
+Now let's plot the data distribution. Note that we'll be plotting the FDR, which has ~ 325413 significant data points in total.
+```{r, fig.height=7.5, fig.width=10, dpi=100}
 # Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=pvals, fill=col)) +  
+p1 = ggplot(mlt_pval, aes(x=value, fill=col)) +  
   geom_histogram(bins=100) +
   scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
   labs(title="CERES FDR distribution (all)", 
-       x="FDR Adjusted P-values (left-sided)", 
+       x="FDR Adjusted P-values (left-sided; alpha=0.05)", 
        y="Frequency") +
   theme(legend.position="none")
 
 # Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
+p2 = ggplot(mlt_score, aes(x=value, fill=col)) +  
   geom_histogram(bins=100) +
   scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES distribution (all)", 
-       x="CERES", 
+  labs(title="CERES distribution (Batch corrected)", 
+       x="CERES Score (Batch Corrected)", 
        y="Frequency") +
   theme(legend.position="none")
+
+grid.arrange(p1, p2)
 ```
 
-# 4. Map the CERES scores back to CCLE
-The data is currently mapped to a) DepMap identifiers, and b) a hybrid of gene symbols and Entrez IDs.
-
-What we need to do is map it to the following:
-
-  * Cancer Cell Line
-  * Cancer Cell Line Tissue Lineage
-  * Entrez ID
-
-First, we'll get relevant meta data
+# 4. Get gene list that are universally lethal across all cell lines
+This gene list was determined from Project Score, which prioritized CRISPR Scores using the Adaptive Daisy model. The publication to reference is Behan, F. M., Iorio, F., Picco, G., Gonçalves, E., Beaver, C. M., Migliardi, G., ... & Garnett, M. J. (2019). Prioritization of cancer therapeutic targets using CRISPR–Cas9 screens. Nature, 568(7753), 511-516.
 ```{r}
-# Linux
-#metapath = "~/Data/CRISPR/sample_info.csv"
-
-# Dell
-metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
-
-# Read in meta data
-meta_data = read_csv(metapath)
-meta_data = meta_data[, c("DepMap_ID", 
-                        "stripped_cell_line_name", 
-                        "primary_or_metastasis",
-                        "lineage",
-                        "lineage_subtype")]
+project_score_file = "D:/Data/CRISPR/Score/41586_2019_1103_MOESM4_ESM/Supplementary Table 3 - Core-Fitness and Context-Specificity Summary_v2.xlsx"
+sheet_name = "Filter Genes"
+project_score = read_excel(project_score_file, sheet_name)
 ```
 
-## Filter the data to get only NSCLC
-Now we need to select specific cell lines that we're interested in from the NSCLC subtype.
+In this method, core fitness genes were scored as 0, and they were designated as high chance for false positive genes. While we can perform a more empircal analysis to determine the threshold used to filter promiscuous genes versus specific essential genes, I have used the arbitrary threshold of a score of 50 to separate out core essential versus specific genes.
 ```{r}
-# Lung data needs to be NSCLC and we need to know whether it's from the primary site or if it is metastatic
-lung_meta_data = meta_data[meta_data["lineage"]=="lung",]
-lung_meta_data = lung_meta_data[lung_meta_data["lineage_subtype"]=="NSCLC",]
-lung_meta_data = lung_meta_data[!is.na(lung_meta_data$primary_or_metastasis),]
+specific_scores = project_score[project_score$`Dependency Score` > 50, ]
+essential_scores = project_score[project_score$`Dependency Score` < 50, ]
+```
+
+Finally, I would like to see how the scores are distributed.
+```{r}
+tmp = reshape2::melt(project_score$`Dependency Score`)
+p2 = ggplot(tmp, aes(x=value)) +  
+  geom_histogram(bins=100) +
+  labs(title="Project Score distribution", 
+       x="Specificity Scores", 
+       y="Frequency") +
+  theme(legend.position="none")
+p2
+```
+
+Interestingly, most Scores are ubiquitous across all cancers. These maps will be used in the heatmaps below.
+
+# 5. Grab NSCLC Lung Cancer Cell Line Data
+The `cellmatch` dataframe contains the metadata for the `match_data`. We're interested in specifically analyzing NSCLC data.
+
+## A. Subset the Data
+```{r}
+NSCLC_meta = cellmatch[cellmatch["lineage_subtype"]=="NSCLC", ]
+NSCLC_meta = NSCLC_meta[!is.na(NSCLC_meta$primary_or_metastasis), ]
 ``` 
 
-## Separate entrez and gene symbol identifiers
-We should clean up the column names for the Project Achilles and store as both symbol and entrez ID separately.
+## B. Visualize Primary V. Metastatic
+Let's visualize how many cells are primary site versus metastatic cancers. First, let's get the counts.
 ```{r}
-# Save gene symbols
-orig_colnames = colnames(ceres)
-all_symbol = as.character(sapply(strsplit(orig_colnames, " "), '[', 1))
-#all_symbol = all_symbol[-1]
+unique(NSCLC_meta$primary_or_metastasis)
+tmp = NSCLC_meta %>%
+  group_by(primary_or_metastasis) %>%
+  count()
 
-# Save Entrez ID 
-all_entrez = as.character(sapply(strsplit(orig_colnames, " "), '[', -1))
-all_entrez = str_remove(all_entrez, "[( )]")
-all_entrez = str_remove(all_entrez, "[( )]")
-all_entrez[1] = all_symbol[1]
+tmp2 = cellmatch %>%
+  group_by(primary_or_metastasis) %>%
+  count()
+tmp2= tmp2[-nrow(tmp2), ]
 ```
 
-Combine all the identifiers into a single dataframe.
-```{r}
-# All identifiers
-all_ids = data.frame(symbol=all_symbol, entrez=all_entrez)
-all_ids = all_ids[-1, ]
-```
-
-### Map dataset to Entrez IDs
-Map everything to Entrez IDs
-```{r}
-# Create dataset with gene symbols as ID
-data_entrez = ceres
-colnames(data_entrez) = all_entrez
-
-# Create pvalue dataframe
-pvals = as.matrix(pvals)
-data_dims = dim(ceres)
-pvalue_entrez = matrix(pvals, 
-                   nrow=data_dims[1], 
-                   ncol=data_dims[2])
-pvalue_entrez = data.frame(pvalue_entrez)
-colnames(pvalue_entrez) = all_entrez[2:length(pvalue_entrez)] 
-```
-
-### Map dataset to Gene Symbols
-Map everything to Gene Symbols
-```{r}
-# Create dataset with gene symbols as ID
-data_symbol = ceres
-colnames(data_symbol) = all_symbol
-
-# Create pvalue dataframe
-pvals = as.matrix(pvals)
-data_dims = dim(ceres)
-pvalue_symbol = matrix(pvals, 
-                   nrow=data_dims[1], 
-                   ncol=data_dims[2])
-pvalue_symbol = data.frame(pvalue_symbol)
-colnames(pvalue_symbol) = all_symbol[2:length(pvalue_symbol)] 
-pvalue_symbol$DepMap_ID = ids
-```
-
-## Filter metabolic genes only
-Map it back to the human metabolic reconstruction.
-```{r}
-recon1_map = "D:/Data/Mappings/Reconstructions/RECON1/RECON1.xlsx"
-recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
-recon1_match = merge(all_ids, recon1_genes, by.x="entrez", by.y="Entrez")
-
-data_entrez = data_entrez[, unique(recon1_match$entrez)]
-
-pvalue_entrez = pvalue_entrez[, unique(recon1_match$entrez)]
-rownames(pvalue_entrez) = rownames(data_entrez)
-```
-
-# 5. Merge metadata to metabolic p-values and CERES scores
-Finally, we can the NSCLC data back to RECON1 genes.
-```{r}
-# Entrez IDs
-merged_lung = merge(lung_meta_data, data_entrez, by.x='DepMap_ID', by.y='row.names')
-merged_pval = merge(lung_meta_data, pvalue_entrez, by='DepMap_ID', by.y='row.names')
-
-# Gene Symbols
-merged_lung = merge(lung_meta_data, data_symbol, by='DepMap_ID')
-merged_pval = merge(lung_meta_data, pvalue_symbol, by='DepMap_ID')
-
-```
-## Visualize the NSCLC CRISPR-Cas9 metabolism data mapped to RECON1
-Let's construct the data object used for the visualization.
-```{r}
-tmp = merged_pval[, 6:ncol(merged_pval)]
-tmp = reshape2::melt(data.frame(tmp))
-tmp$col = as.factor(tmp$value < 0.05)
-lung_ceres = reshape2::melt(merged_lung[, 6:ncol(merged_lung)])
-tmp$ceres = lung_ceres$value
-```
-
-Now actually plot the p-values and CERES scores.
-  * Note this doesn't look right.
-```{r}
-# Plot p-value distribution
-ggplot(data.frame(tmp), aes(x=value, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES NSCLC p-value distribution", 
-       x="P-values (left-sided)", 
+Now let's make the barplot.
+```{r, fig.width=5, fig.height=5, dpi=100}
+ggplot(data=tmp, aes(x=primary_or_metastasis, 
+                          y=n, 
+                          fill=primary_or_metastasis)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values = c("Metastasis"="#EF476F", "Primary"="#073B4C")) +
+  labs(title="NSCLC cell line distribution", 
+       x="Type of NSCLC cell line", 
        y="Frequency") +
   theme(legend.position="none")
 
-# Plot CERES distribution
-ggplot(tmp, aes(x=ceres, fill=col)) +  
-  geom_histogram(bins=100) +
-  scale_fill_manual(values = c("TRUE"="red", "FALSE"="gray")) +
-  labs(title="CERES NSCLC distribution", 
-       x="CERES", 
+ggsave(filename="D:/Analysis/EMT/figures/Supporting Figures/NSCLC_Primary_v_Metastatic.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+ggplot(data=tmp2, aes(x=primary_or_metastasis, 
+                          y=n, 
+                          fill=primary_or_metastasis)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values = c("Metastasis"="#EF476F", "Primary"="#073B4C")) +
+  labs(title="All Primary/Metastatic Cancer Cell Line Distribution", 
+       x="Type of NSCLC cell line", 
        y="Frequency") +
   theme(legend.position="none")
+
+ggsave(filename="D:/Analysis/EMT/figures/Supporting Figures/All_Primary_v_Metastatic.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
 ```
-# 6. A549-specific p-values
+While the data is not skewed that much, it is still notable that there are more metastatic versus primary site NSCLC cell lines in the data.
+
+## C. Grab NSCLC specific data
+Finally, we'll grab the CERES scores and the FDR associated with each NSCLC cell line.
 ```{r}
-a549_ceres = merged_lung[merged_lung$stripped_cell_line_name=="A549",]
-tmp = as.numeric(a549_ceres[, 6:ncol(a549_ceres)])
-mu = mean(tmp, na.rm=TRUE)
-stdev = sd(tmp, na.rm=TRUE)
-a549_pvals = pnorm(tmp, 
-                     mean=mu, 
-                     sd=stdev,
-                     lower.tail=TRUE)
-a549_data = data.frame(tmp)
-a549_data$pval = a549_pvals
-a549_data$entrez = colnames(a549_ceres[, 6:ncol(a549_ceres)]) 
-
-
-xname = data.frame(entrez=colnames(a549_ceres[, 6:ncol(a549_ceres)]))
-tmp = merge(xname, recon1_match, by='entrez')
-tmp[, 3:4] = NULL
-tmp = unique(tmp)
-a549_data$Symbol = tmp$symbol
-sig_a549_ceres = a549_ceres[a549_ceres$PValue < 0.05, ]
+NSCLC_ceres = match_data[, colnames(match_data) %in% NSCLC_meta$DepMap_ID]
+NSCLC_fdr = padjmat[,  colnames(padjmat) %in% NSCLC_meta$DepMap_ID]
 ```
 
+## D. Grab RECON1 metabolic reconstruction genes in the NSCLC dataset
+To benchmark RECON1 results, we'll grab the CERES score gene entries that intersect with the metabolic reconstruction.
+```{r}
+# Grab map between Entrez and Symbol in RECON1
+ids = rownames(NSCLC_ceres)
+idx = ids %in% recon1_genes$Symbol
+
+recon1_nsclc_ceres = NSCLC_ceres[idx, ]
+recon1_nsclc_fdr = NSCLC_fdr[idx, ]
+```
+
+# 6. Visualize NSCLC Reactions of Interest from COBRA
+Note that to translate reaction IDs --> gene IDs, I used the `findGenesFromRxns` function in the COBRA Toolbox.
+
+## A. Bulk Reaction KO Sensitive Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the bulk reaction KOs.
+
+### i. Load Data
+```{r}
+# Top 50 reaction knockouts
+top50_path = "D:/Analysis/EMT/data/top50_ko_map.csv"
+top50_map = read.csv(top50_path,
+                          header=FALSE)
+
+# High confidence knockouts
+highconf_path = "D:/Analysis/EMT/data/highconf_ko_map.csv"
+highconf_map = read.csv(highconf_path,
+                          header=FALSE)
+
+# Low confidence knockouts
+lowconf_path = "D:/Analysis/EMT/data/lowconf_ko_map.csv"
+lowconf_map = read.csv(lowconf_path,
+                          header=FALSE)
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+top50_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% top50_map$V1, ]
+highconf_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% highconf_map$V1, ]
+lowconf_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% lowconf_map$V1, ]
+```
+
+### iii. Visualize boxplots
+In this case, I am visualizing boxplots of primary versus metastatic gene distributions that are important to this story. 
+
+Note: the horizontal line at a CERES Score = 0 denotes no essentiality. 
+```{r, fig.height=5, fig.width=10, dpi=100}
+# Top 50 Reactions
+tmp = reshape2::melt(top50_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Top 50 Reaction Knockout NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_ko_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Low Confidence Reactions
+tmp = reshape2::melt(lowconf_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Low Confidence Reaction Knockout NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/lowconf_ko_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+```
+
+## B. Bulk Overactive Metabolic Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the overactive metabolic reactions.
+
+### i. Load Data
+```{r}
+# Top 50 reaction knockouts
+top50_path = "D:/Analysis/EMT/data/top50_flux_map.csv"
+top50_map = read.csv(top50_path,
+                     header=FALSE)
+
+# Glycolysis
+glycolysis_path = "D:/Analysis/EMT/data/glycolysis_flux_map.csv"
+glycolysis_map = read.csv(glycolysis_path,
+                          header=FALSE)
+
+# Pentose Phosphate Pathway
+ppp_path = "D:/Analysis/EMT/data/ppp_flux_map.csv"
+ppp_map = read.csv(ppp_path,
+                          header=FALSE)
+
+# Specific Reactions
+specific_path = "D:/Analysis/EMT/data/specific_flux_map.csv"
+specific_map = read.csv(specific_path,
+                          header=FALSE)
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+top50_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% top50_map$V1, ]
+glycolysis_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% glycolysis_map$V1, ]
+ppp_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% ppp_map$V1, ]
+specific_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% specific_map$V1, ]
+```
+
+### iii. Visualize heatmap
+```{r, fig.height=5, fig.width=10, dpi=100}
+# Top 50 Metabolically Active Reactions
+tmp = reshape2::melt(top50_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Top 50 NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_flux_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Glycolytic Reactions
+tmp = reshape2::melt(glycolysis_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Glycolysis NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/glycolysis_flux_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Pentose Phosphate Pathway Reactions
+tmp = reshape2::melt(ppp_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Pentose Phosphate Pathway NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/ppp_flux_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Specific Reactions
+tmp = reshape2::melt(specific_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Specific Reactions NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/specific_flux_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+```
+
+## C. Single-Cell KO Sensitive Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the single-cell reaction knockouts.
+
+### i. Load Data
+```{r}
+# Top 50 reaction knockouts
+singlecell_path = "D:/Analysis/EMT/data/singlecell_ko_map.csv"
+singlecell_map = read.csv(singlecell_path,
+                          header=FALSE)
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+singlecell_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% singlecell_map$V1, ]
+```
+
+### iii. Visualize heatmap
+```{r, fig.height=5, fig.width=10, dpi=100}
+tmp = reshape2::melt(singlecell_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Single-Cell KO NSCLC CERES Score Distribution", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/singlecell_ko_nsclc.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+```
+
+# 7. Visualize All CERES Score Mapped to Reactions of Interest
+## A. Bulk Reaction KO Sensitive Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the bulk reaction KOs.
+
+### i. Load Data
+```{r}
+# Top 50 reaction knockouts
+top50_path = "D:/Analysis/EMT/data/top50_ko_map.csv"
+top50_map = read.csv(top50_path,
+                          header=FALSE)
+
+# High confidence knockouts
+highconf_path = "D:/Analysis/EMT/data/highconf_ko_map.csv"
+highconf_map = read.csv(highconf_path,
+                          header=FALSE)
+
+# Low confidence knockouts
+lowconf_path = "D:/Analysis/EMT/data/lowconf_ko_map.csv"
+lowconf_map = read.csv(lowconf_path,
+                          header=FALSE)
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+top50_ceres = match_data[row.names(match_data) %in% top50_map$V1, ]
+highconf_ceres = match_data[row.names(match_data) %in% highconf_map$V1, ]
+lowconf_ceres = match_data[row.names(match_data) %in% lowconf_map$V1, ]
+```
+
+### iii. Visualize boxplots
+In this case, I am visualizing boxplots of primary versus metastatic gene distributions that are important to this story. 
+
+Note: the horizontal line at a CERES Score = 0 denotes no essentiality. 
+```{r, fig.height=5, fig.width=10, dpi=100}
+# Top 50 Reactions
+tmp = reshape2::melt(top50_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Top 50 Reaction Knockout CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_ko_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Low Confidence Reactions
+tmp = reshape2::melt(lowconf_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Low Confidence Reaction Knockout CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/lowconf_ko_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+```
+
+## B. Bulk Overactive Metabolic Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the overactive metabolic reactions.
+
+### i. Load Data
+```{r}
+# Top 50 reaction knockouts
+top50_path = "D:/Analysis/EMT/data/top50_flux_map.csv"
+top50_map = read.csv(top50_path,
+                     header=FALSE)
+
+# Glycolysis
+glycolysis_path = "D:/Analysis/EMT/data/glycolysis_flux_map.csv"
+glycolysis_map = read.csv(glycolysis_path,
+                          header=FALSE)
+
+# Pentose Phosphate Pathway
+ppp_path = "D:/Analysis/EMT/data/ppp_flux_map.csv"
+ppp_map = read.csv(ppp_path,
+                          header=FALSE)
+
+# Specific Reactions
+specific_path = "D:/Analysis/EMT/data/specific_flux_map.csv"
+specific_map = read.csv(specific_path,
+                          header=FALSE)
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+top50_ceres = match_data[row.names(match_data) %in% top50_map$V1, ]
+glycolysis_ceres = match_data[row.names(match_data) %in% glycolysis_map$V1, ]
+ppp_ceres = match_data[row.names(match_data) %in% ppp_map$V1, ]
+specific_ceres = match_data[row.names(match_data) %in% specific_map$V1, ]
+```
+
+### iii. Visualize heatmap
+```{r, fig.height=5, fig.width=10, dpi=100}
+# Top 50 Metabolically Active Reactions
+tmp = reshape2::melt(top50_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Top 50 CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_flux_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Glycolytic Reactions
+tmp = reshape2::melt(glycolysis_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Glycolysis CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/glycolysis_flux_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Pentose Phosphate Pathway Reactions
+tmp = reshape2::melt(ppp_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Pentose Phosphate Pathway CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/ppp_flux_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+
+# Specific Reactions
+tmp = reshape2::melt(specific_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Specific Reactions CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/specific_flux_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+```
+
+## C. Single-Cell KO Sensitive Reactions
+This module visualizes the reactions listed in the `make_manuscript_figures.Rmd` file for the single-cell reaction knockouts.
+
+### i. Load Data
+```{r}
+# Top 50 reaction knockouts
+singlecell_path = "D:/Analysis/EMT/data/singlecell_ko_map.csv"
+singlecell_map = read.csv(singlecell_path,
+                          header=FALSE)
+```
+
+### ii. Get intersecting CRISPR data
+```{r}
+singlecell_ceres = match_data[row.names(match_data) %in% singlecell_map$V1, ]
+```
+
+### iii. Visualize heatmap
+```{r, fig.height=5, fig.width=10, dpi=100}
+tmp = reshape2::melt(singlecell_ceres)
+ggplot(tmp, aes(x=Var1, y=value)) + 
+  geom_boxplot() + 
+  labs(title="Single-Cell KO CERES Score Distribution (All Cell Lines)", 
+       x="Metabolic genes predicted by COBRA", 
+       y="CERES Score") +
+  geom_jitter(width=0.15, 
+              alpha=0.025)+
+  theme(axis.text.x = element_text(angle=90, 
+                                   hjust=1,
+                                   vjust=0.3)) +
+  geom_hline(yintercept=0,
+             color = "red",
+             size=0.5)
+
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/singlecell_ko_all.png",
+       plot=last_plot(),
+       device=png(),
+       width=10, 
+       height=5,
+       dpi=100)
+```
+
+# 8. Visualize CERES Score Data
+Now that we have the entire subset, let's visualize the data by splitting the data between primary and metastatic cell lines. 
+
+First, we'll separate the data into metastatic and primary.
+```{r}
+met_idx = NSCLC_meta$primary_or_metastasis == "Metastasis"
+prim_idx = NSCLC_meta$primary_or_metastasis == "Primary"
+```
+
+Then we'll pre-process some matrices for visualization via heatmap.
+```{r}
+# Metastatic data
+met_data = recon1_nsclc_ceres[, met_idx]
+met_fdr = recon1_nsclc_fdr[, met_idx]
+met_bin = met_fdr > 0.05
+colnames(met_data) = NSCLC_meta$stripped_cell_line_name[met_idx]
+
+# Turn non-significant datapoints into black
+masked_met_data = met_data
+masked_met_data[met_bin] = NA
+
+# Primary site data
+prim_data = recon1_nsclc_ceres[, prim_idx]
+prim_fdr = recon1_nsclc_fdr[, prim_idx]
+prim_bin = prim_fdr > 0.05
+colnames(prim_data) = NSCLC_meta$stripped_cell_line_name[prim_idx]
+
+# Turn non-significant datapoints into black
+masked_prim_data = prim_data
+masked_prim_data[prim_bin] = NA
+```
+
+Finally, filter by essential / specifically lethal.
+```{r}
+essential_met = met_data[row.names(met_data) %in% essential_scores$`HGNC Symbol`, ]
+specific_met = met_data[row.names(met_data) %in% specific_scores$`HGNC Symbol`, ]
+essential_masked_met = masked_met_data[row.names(masked_met_data) %in% essential_scores$`HGNC Symbol`, ]
+specific_masked_met = masked_met_data[row.names(masked_met_data) %in% specific_scores$`HGNC Symbol`, ]
+
+essential_prim = prim_data[row.names(prim_data) %in% essential_scores$`HGNC Symbol`, ]
+specific_prim = prim_data[row.names(prim_data) %in% specific_scores$`HGNC Symbol`, ]
+essential_masked_prim = masked_prim_data[row.names(masked_prim_data) %in% essential_scores$`HGNC Symbol`, ]
+specific_masked_prim = masked_prim_data[row.names(masked_prim_data) %in% specific_scores$`HGNC Symbol`, ]
+```
+
+### i. Create annotation bar for primary/metastatic
+Let's create the column annotation bars.
+```{r}
+h1_col = HeatmapAnnotation(hm1=anno_block(gp=gpar(fill="#EF476F"),
+                                      labels=c("Metastatic"), 
+                                      labels_gp=gpar(col="black", 
+                                                     fontsize=10)))
+
+h2_col = HeatmapAnnotation(hm2=anno_block(gp=gpar(fill="#073B4C"),
+                                      labels=c("Primary"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+```
+
+### ii. Create annotation bar for essential/specific
+```{r}
+h1_row = rowAnnotation(hm1=anno_block(gp=gpar(fill="#EF476F"),
+                                      labels=c("Essential"), 
+                                      labels_gp=gpar(col="black", 
+                                                     fontsize=10)))
+
+h2_row = rowAnnotation(hm2=anno_block(gp=gpar(fill="#073B4C"),
+                                      labels=c("Specific"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+```
+
+### ii. Visualize all data
+This heatmap contains all 1400+ metabolic genes across 44 cell lines.
+```{r, fig.width=12.5, fig.height=40, fig.align='right', dpi=100}
+# Metastatic heatmap
+hm1 = Heatmap(as.matrix(essential_met),
+              left_annotation=h1_row,
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=TRUE,
+              show_row_names = FALSE,
+              show_row_dend=FALSE,
+              top_annotation=h1_col, 
+              column_names_side = "top",
+              width = ncol(essential_met)*unit(3, "mm"), 
+              height = nrow(essential_met)*unit(1, "mm"),
+              show_heatmap_legend=FALSE)
+idx1 = row_order(hm1)
+
+hm2 = Heatmap(as.matrix(specific_met),
+              left_annotation=h2_row,
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=TRUE,
+              show_row_dend=FALSE,
+              show_row_names = FALSE,
+              width = ncol(specific_met)*unit(3, "mm"), 
+              height = nrow(specific_met)*unit(1, "mm"),
+              show_heatmap_legend=FALSE,
+              show_column_names = FALSE)
+idx2 = row_order(hm2)
+
+
+# Primary heatmap
+hm3 = Heatmap(as.matrix(essential_prim)[idx1, ],
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              top_annotation=h2_col, 
+              column_names_side = "top",
+              width = ncol(essential_prim)*unit(3, "mm"), 
+              height = nrow(essential_prim)*unit(1, "mm"),
+              heatmap_legend_param=list(title="CERES Score"))
+
+hm4 = Heatmap(as.matrix(specific_prim)[idx2, ],
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              width = ncol(specific_prim)*unit(3, "mm"), 
+              height = nrow(specific_prim)*unit(1, "mm"),
+              show_heatmap_legend=FALSE,
+              show_column_names = FALSE)
+
+metastatic = hm1 %v% hm2
+primary = hm3 %v% hm4
+```
+
+```{r}
+library(cowplot)
+plot_grid(hm1, hm2, hm3, hm4, ncol=2)
+lyot = grid.layout(nrow=1, ncol=2, widths=unit(0.1, "null"))
+grid.newpage()
+pushViewport(viewport(layout = lyot))
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 1, just="bottom"))
+draw(metastatic, newpage=FALSE)
+upViewport()
+
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 2, just="bottom"))
+draw(primary, newpage=FALSE)
+upViewport()
+```
+
+### iii. Visualize the signficant data only
+We'll black out the non-significant entries based on FDR > 0.05.
+```{r, fig.width=12.5, fig.height=40, fig.align='right', dpi=100}
+# Metastatic heatmap
+hm5 = Heatmap(as.matrix(essential_masked_met[idx1, ]),
+              left_annotation=h1_row,
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=FALSE,
+              show_row_names = FALSE,
+              show_row_dend=FALSE,
+              top_annotation=h1_col, 
+              column_names_side = "top",
+              width = ncol(essential_masked_met)*unit(3, "mm"), 
+              height = nrow(essential_masked_met)*unit(1, "mm"),
+              show_heatmap_legend=FALSE)
+
+hm6 = Heatmap(as.matrix(specific_masked_met[idx2, ]),
+              left_annotation=h2_row,
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=FALSE,
+              show_row_dend=FALSE,
+              show_row_names = FALSE,
+              width = ncol(specific_masked_met)*unit(3, "mm"), 
+              height = nrow(specific_masked_met)*unit(1, "mm"),
+              show_heatmap_legend=FALSE,
+              show_column_names = FALSE)
+
+
+# Primary heatmap
+hm7 = Heatmap(as.matrix(essential_masked_prim)[idx1, ],
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              top_annotation=h2_col, 
+              column_names_side = "top",
+              width = ncol(essential_masked_prim)*unit(3, "mm"), 
+              height = nrow(essential_masked_prim)*unit(1, "mm"),
+              heatmap_legend_param=list(title="CERES Score"))
+
+hm8 = Heatmap(as.matrix(specific_masked_prim)[idx2, ],
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              width = ncol(specific_masked_prim)*unit(3, "mm"), 
+              height = nrow(specific_masked_prim)*unit(1, "mm"),
+              show_heatmap_legend=FALSE,
+              show_column_names = FALSE)
+```
+
+```{r}
+#hm5
+#hm6
+#hm7
+#hm8
+metastatic = hm5 %v% hm6
+metastatic
+primary = hm7 %v% hm8
+primary
+#plot_grid(hm5, hm6, hm7, hm8, ncol=2)
+#lyot = grid.layout(nrow=1, ncol=2, widths=unit(0.1, "null"))
+grid.newpage()
+pushViewport(viewport(layout = lyot))
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 1, just="bottom"))
+draw(metastatic, newpage=FALSE)
+upViewport()
+
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 2, just="bottom"))
+draw(primary, newpage=FALSE)
+upViewport()
+```
+
+### iv. Visualize the bottom 50 metabolic genes
+Now let's zoom in on the bottom 50 metabolic genes.
+```{r, fig.width=12.5, fig.height=15, fig.align='right', dpi=100}
+tmp1 = as.matrix(essential_masked_met)[idx1, ]
+tmp1 = tmp1[(nrow(tmp1)-50):nrow(tmp1), ]
+
+tmp2 = as.matrix(specific_masked_met)[idx2, ]
+tmp2 = tmp2[(nrow(tmp2)-50):nrow(tmp2), ]
+
+tmp3 = as.matrix(essential_masked_prim)[idx1, ]
+tmp3 = tmp3[(nrow(tmp3)-50):nrow(tmp3), ]
+
+tmp4 = as.matrix(specific_masked_prim)[idx2, ]
+tmp4 = tmp4[(nrow(tmp4)-50):nrow(tmp4), ]
+
+# Metastatic heatmap
+hm9 = Heatmap(as.matrix(tmp1),
+              left_annotation=h1_row,
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=FALSE,
+              show_row_names = FALSE,
+              show_row_dend=FALSE,
+              top_annotation=h1_col, 
+              column_names_side = "top",
+              width = ncol(tmp1)*unit(3, "mm"), 
+              height = nrow(tmp1)*unit(3, "mm"),
+              show_heatmap_legend=FALSE)
+
+hm10 = Heatmap(as.matrix(tmp2),
+              left_annotation=h2_row,
+              na_col = "black",
+              cluster_columns=FALSE,
+              cluster_rows=FALSE,
+              show_row_dend=FALSE,
+              show_row_names = FALSE,
+              width = ncol(tmp2)*unit(3, "mm"), 
+              height = nrow(tmp2)*unit(3, "mm"),
+              show_heatmap_legend=FALSE,
+              show_column_names = FALSE)
+
+
+# Primary heatmap
+hm11 = Heatmap(as.matrix(tmp3),
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              top_annotation=h2_col, 
+              column_names_side = "top",
+              width = ncol(tmp3)*unit(3, "mm"), 
+              height = nrow(tmp3)*unit(3, "mm"),
+              heatmap_legend_param=list(title="CERES Score"))
+
+hm12 = Heatmap(as.matrix(tmp4),
+              na_col = "black",
+              cluster_columns=FALSE, 
+              cluster_rows=FALSE,
+              width = ncol(tmp4)*unit(3, "mm"), 
+              height = nrow(tmp4)*unit(3, "mm"),
+              show_heatmap_legend=FALSE,
+              show_column_names = FALSE)
+```
+
+```{r, fig.width=12.5, fig.height=15, fig.align='right', dpi=300}
+#hm5
+#hm6
+#hm7
+#hm8
+metastatic = hm9 %v% hm10
+metastatic
+primary = hm11 %v% hm12
+primary
+#plot_grid(hm5, hm6, hm7, hm8, ncol=2)
+lyot = grid.layout(nrow=1, ncol=2)
+grid.newpage()
+pushViewport(viewport(layout = lyot))
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 1, just="bottom"))
+draw(metastatic, newpage=FALSE)
+upViewport()
+
+pushViewport(viewport(layout.pos.row = 1, layout.pos.col = 2, just="bottom"))
+draw(primary, newpage=FALSE)
+upViewport()
+```
+
+Now that we have a sense of what metabolic genes are generally essential between the metastatic and primary cell lines, we'll see which ones intersect between the model predictions and the bottom 50 data.
+
+# 5. Get intersecting data with RECON1 simulations
 
 # 7. Get differentially expressed CERES score by comparing metastatic / primary site using limma-voom
 
@@ -351,15 +1088,7 @@ head(top.table, 20)
 write.table(top.table, "clipboard", sep="\t", col.names=TRUE)
 ```
 
-# 8. Get gene list that are universally lethal across all cell lines
-This gene list was determined from Project Score. Specifically, I defined universally lethal genes that are lethal in more than 50% of the cancer cell lines out of > 300. 
-```{r}
-project_score_file = "D:/Data/CRISPR/Score/41586_2019_1103_MOESM4_ESM/Supplementary Table 3 - Core-Fitness and Context-Specificity Summary_v2.xlsx"
-sheet_name = "Filter Genes"
 
-project_score = read_excel(project_score_file, sheet_name)
-genes_to_filter = project_score[project_score$`Dependency Score` > 50, ]
-```
 
 # 9. Get differentially expressed genes for A549 from CERES score
 First, we'll get the row corresponding to the cancer cell line A549.

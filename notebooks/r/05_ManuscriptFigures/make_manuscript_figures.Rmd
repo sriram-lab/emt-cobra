@@ -57,6 +57,12 @@ bardata = top50[, 4]
 expt_data = top50[, 5]
 ```
 
+Save the top50 identifiers to get the genes for the CRISPR validation section.
+```{r}
+write.csv(top50[, 1:3], 
+          "D:/Analysis/EMT/data/top50_flux_ids.csv")
+```
+
 #### i. Reformat the data
 We're going to grab selected time points that have replicate values across multiple studies and tell the EMT story. The selected time points will be stored 4 separate dataframes corresponding to each time point.
 
@@ -74,19 +80,19 @@ This creates individual annotation bars for each of the corresponding time point
 
 ```{r}
 h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
-                                      labels=c("Early"), 
+                                      labels=c("1Hr"), 
                                       labels_gp=gpar(col="black", 
                                                      fontsize=10)))
 h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
-                                      labels=c("Int. 1"), 
+                                      labels=c("8Hrs"), 
                                       labels_gp=gpar(col="white", 
                                                      fontsize=10)))
 h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
-                                      labels=c("Int. 2"), 
+                                      labels=c("24Hrs"), 
                                       labels_gp=gpar(col="white", 
                                                      fontsize=10)))
 h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
-                                      labels=c("Late"), 
+                                      labels=c("48-72Hrs"), 
                                       labels_gp=gpar(col="white", 
                                                      fontsize=10)))
 ```
@@ -316,6 +322,16 @@ glycolysis_figures
 dev.off()
 ```
 
+Save the glycolysis identifiers to get the genes for the CRISPR validation section.
+```{r}
+idx = (data$`KEGG Subsystem` == "Glycolysis/Gluconeogenesis")
+idx[is.na(idx)] = FALSE
+glycolysis_data = data[idx, ]
+
+write.csv(glycolysis_data[, 1:3], 
+          "D:/Analysis/EMT/data/glycolysis_flux_ids.csv")
+```
+
 ### D. Visualize Pentose Phosphate Pathway Reactions
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 ppp_figures = flux_heatmap(data, pathway="Pentose Phosphate Pathway")
@@ -328,6 +344,14 @@ ppp_figures
 dev.off()
 ```
 
+Save the PPP identifiers to get the genes for the CRISPR validation section.
+```{r}
+idx = (data$`KEGG Subsystem` == "Pentose Phosphate Pathway")
+idx[is.na(idx)] = FALSE
+ppp_data = data[idx, ]
+write.csv(top50[, 1:3], 
+          "D:/Analysis/EMT/data/ppp_flux_ids.csv")
+```
 
 ### E. Visualize Specific Reactions
 Now let's specifically get reactions that are unique to each state.
@@ -340,7 +364,9 @@ reactions_of_interest = c("ribulose 5-phosphate 3-epimerase",
                           "L-lactate dehydrogenase")
 idx = data$`BiGG Reaction ID` %in% reactions_of_interest
 specific_data = data[idx, ]
+```
 
+```{r}
 # Create figures
 specific_figures = flux_heatmap(specific_data)
 png(filename="D:/Analysis/EMT/figures/specific_flux_heatmap.png",
@@ -350,6 +376,12 @@ png(filename="D:/Analysis/EMT/figures/specific_flux_heatmap.png",
     res=1200)
 specific_figures
 dev.off()
+```
+
+Save the specific reaction identifiers to get the genes for the CRISPR validation section.
+```{r}
+write.csv(specific_data[, 1:3], 
+          "D:/Analysis/EMT/data/specific_flux_ids.csv")
 ```
 
 ## 2. Visualize the Bulk Reaction KOs
@@ -493,7 +525,9 @@ data = data[order(data$`Absolute Effect * N expts`, decreasing=TRUE), ]
 
 # Grab top 50
 top50 = data[1:50, ]
+```
 
+```{r}
 # Create figures
 top50_figures = ko_heatmap(top50)
 png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_heatmap.png",
@@ -508,6 +542,12 @@ dev.off
 top50_figures
 ```
 
+Save the top 50 identifiers to get the genes for the CRISPR validation section.
+```{r}
+write.csv(top50[, 1:3], 
+          "D:/Analysis/EMT/data/top50_ko_ids.csv")
+```
+
 ### D. Grab high confidence reactions (2 or more in same sample)
 There's not that much for high confidence reactions.
 
@@ -517,7 +557,9 @@ reactions_of_interest = c("alpha-ketoglutarate/malate transporter",
                           "carnitine O-acetyltransferase")
 idx = data$`BiGG Reaction ID` %in% reactions_of_interest
 specific_data = data[idx, ]
+```
 
+```{r}
 # Create figures
 specific_figures = ko_heatmap(specific_data)
 png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_high_priority_heatmap.png",
@@ -530,8 +572,12 @@ dev.off()
 
 # Show
 specific_figures
+```
 
-
+Save the high confidence identifiers to get the genes for the CRISPR validation section.
+```{r}
+write.csv(specific_data[, 1:3], 
+          "D:/Analysis/EMT/data/highconf_ko_ids.csv")
 ```
 
 ### E. Grab low confidence reactions (1 in same sample)
@@ -582,7 +628,9 @@ Subset and create the plot.
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 idx = data$`BiGG Reaction ID` %in% reactions_of_interest
 specific_data = data[idx, ]
+```
 
+```{r}
 # Create figures
 specific_figures = ko_heatmap(specific_data)
 png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_low_priority_heatmap.png",
@@ -592,6 +640,12 @@ png(filename="D:/Analysis/EMT/figures/RECON1_rxnko_low_priority_heatmap.png",
     res=1200)
 specific_figures
 dev.off()
+```
+
+Save the low confidence identifiers to get the genes for the CRISPR validation section.
+```{r}
+write.csv(specific_data[, 1:3], 
+          "D:/Analysis/EMT/data/lowconf_ko_ids.csv")
 ```
 
 ## 3. Single-Cell Reaction KOs
@@ -667,6 +721,12 @@ png(filename="D:/Analysis/EMT/figures/scRNASeq_avg_rxn_ko.png",
     res=1200)
 ht
 dev.off()
+```
+
+Save the low confidence identifiers to get the genes for the CRISPR validation section.
+```{r}
+write.csv(data[, 1:3], 
+          "D:/Analysis/EMT/data/singlecell_ko_ids.csv")
 ```
 
 ## Conclusion
