@@ -121,7 +121,9 @@ p2 = ggplot(mlt_score, aes(x=value, fill=col)) +
        y="Frequency") +
   theme(legend.position="none")
 
-grid.arrange(p1, p2)
+plt = grid.arrange(p1, p2)
+savepath = "D:/Analysis/EMT/figures/CRISPR/batch_distribution.png"
+ggsave(file=savepath, plt)
 ```
 
 # 4. Get gene list that are universally lethal across all cell lines
@@ -139,7 +141,7 @@ essential_scores = project_score[project_score$`Dependency Score` < 50, ]
 ```
 
 Finally, I would like to see how the scores are distributed.
-```{r}
+```{r, fig.height=7.5, fig.width=10, dpi=100}
 tmp = reshape2::melt(project_score$`Dependency Score`)
 p2 = ggplot(tmp, aes(x=value)) +  
   geom_histogram(bins=100) +
@@ -147,7 +149,10 @@ p2 = ggplot(tmp, aes(x=value)) +
        x="Specificity Scores", 
        y="Frequency") +
   theme(legend.position="none")
-p2
+
+
+savepath = "D:/Analysis/EMT/figures/CRISPR/project_score.png"
+ggsave(file=savepath, p2)
 ```
 
 Interestingly, most Scores are ubiquitous across all cancers. These maps will be used in the heatmaps below.
@@ -265,24 +270,44 @@ lowconf_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% lowconf_ma
 ### iii. Visualize boxplots
 In this case, I am visualizing boxplots of primary versus metastatic gene distributions that are important to this story. 
 
+First, let's create the function that will make these boxplots.
+```{r}
+essentiality_boxplots = function(df, metadata){
+  # Map melted dataframe to metadata
+  tmp = reshape2::melt(df)
+  tmp = merge(tmp, metadata, 
+              by.x='Var2', by.y='DepMap_ID')
+  
+  # Create Boxplots
+  plt = tmp %>%
+          drop_na() %>%
+          ggplot(aes(x=Var1, y=value, color=primary_or_metastasis)) +
+          geom_boxplot(outlier.shape=NA) +
+          geom_point(position=position_jitterdodge(), alpha=0.50) + 
+          labs( x="Metabolic genes predicted by COBRA", 
+               y="CERES Score",
+               legend="Status") +
+          theme(axis.text.x = element_text(angle=90, 
+                                           hjust=1,
+                                           vjust=0.3)) +
+          geom_hline(yintercept=0,
+                     color = "black",
+                     size=0.5) +
+          scale_color_manual(name="Cancer Status", 
+                             values=c("#EF476F", "#073B4C")) +
+          scale_alpha(guide="none")
+  
+  return(plt)
+  
+}
+```
+
+
 Note: the horizontal line at a CERES Score = 0 denotes no essentiality. 
 ```{r, fig.height=5, fig.width=10, dpi=100}
-# Top 50 Reactions
-tmp = reshape2::melt(top50_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Top 50 Reaction Knockout NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
 
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_ko_nsclc.png",
+plt = essentiality_boxplots(top50_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/top50_ko_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -290,21 +315,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_ko_nsclc.png",
        dpi=100)
 
 # Low Confidence Reactions
-tmp = reshape2::melt(lowconf_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Low Confidence Reaction Knockout NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/lowconf_ko_nsclc.png",
+plt = essentiality_boxplots(lowconf_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/lowconf_ko_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -349,21 +361,8 @@ specific_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% specific_
 ### iii. Visualize heatmap
 ```{r, fig.height=5, fig.width=10, dpi=100}
 # Top 50 Metabolically Active Reactions
-tmp = reshape2::melt(top50_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Top 50 NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_flux_nsclc.png",
+plt = essentiality_boxplots(top50_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/top50_flux_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -371,21 +370,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_flux_nsclc.png",
        dpi=100)
 
 # Glycolytic Reactions
-tmp = reshape2::melt(glycolysis_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Glycolysis NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/glycolysis_flux_nsclc.png",
+plt = essentiality_boxplots(glycolysis_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/glycolysis_flux_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -393,21 +379,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/glycolysis_flux_nsclc.png",
        dpi=100)
 
 # Pentose Phosphate Pathway Reactions
-tmp = reshape2::melt(ppp_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Pentose Phosphate Pathway NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/ppp_flux_nsclc.png",
+plt = essentiality_boxplots(ppp_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/ppp_flux_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -415,21 +388,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/ppp_flux_nsclc.png",
        dpi=100)
 
 # Specific Reactions
-tmp = reshape2::melt(specific_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Specific Reactions NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/specific_flux_nsclc.png",
+plt = essentiality_boxplots(specific_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/specific_flux_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -455,21 +415,8 @@ singlecell_ceres = recon1_nsclc_ceres[row.names(recon1_nsclc_ceres) %in% singlec
 
 ### iii. Visualize heatmap
 ```{r, fig.height=5, fig.width=10, dpi=100}
-tmp = reshape2::melt(singlecell_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Single-Cell KO NSCLC CERES Score Distribution", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/singlecell_ko_nsclc.png",
+plt = essentiality_boxplots(singlecell_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/NSCLC/singlecell_ko_nsclc.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -512,22 +459,8 @@ In this case, I am visualizing boxplots of primary versus metastatic gene distri
 Note: the horizontal line at a CERES Score = 0 denotes no essentiality. 
 ```{r, fig.height=5, fig.width=10, dpi=100}
 # Top 50 Reactions
-tmp = reshape2::melt(top50_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Top 50 Reaction Knockout CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_ko_all.png",
+plt = essentiality_boxplots(top50_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/top50_ko_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -535,22 +468,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_ko_all.png",
        dpi=100)
 
 # Low Confidence Reactions
-tmp = reshape2::melt(lowconf_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Low Confidence Reaction Knockout CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/lowconf_ko_all.png",
+plt = essentiality_boxplots(lowconf_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/lowconf_ko_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -595,22 +514,8 @@ specific_ceres = match_data[row.names(match_data) %in% specific_map$V1, ]
 ### iii. Visualize heatmap
 ```{r, fig.height=5, fig.width=10, dpi=100}
 # Top 50 Metabolically Active Reactions
-tmp = reshape2::melt(top50_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Top 50 CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_flux_all.png",
+plt = essentiality_boxplots(top50_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/top50_flux_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -618,22 +523,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/top50_flux_all.png",
        dpi=100)
 
 # Glycolytic Reactions
-tmp = reshape2::melt(glycolysis_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Glycolysis CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/glycolysis_flux_all.png",
+plt = essentiality_boxplots(glycolysis_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/glycolysis_flux_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -641,22 +532,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/glycolysis_flux_all.png",
        dpi=100)
 
 # Pentose Phosphate Pathway Reactions
-tmp = reshape2::melt(ppp_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Pentose Phosphate Pathway CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/ppp_flux_all.png",
+plt = essentiality_boxplots(ppp_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/ppp_flux_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -664,22 +541,8 @@ ggsave(filename="D:/Analysis/EMT/figures/CRISPR/ppp_flux_all.png",
        dpi=100)
 
 # Specific Reactions
-tmp = reshape2::melt(specific_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Specific Reactions CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/specific_flux_all.png",
+plt = essentiality_boxplots(specific_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/specific_flux_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
@@ -705,22 +568,8 @@ singlecell_ceres = match_data[row.names(match_data) %in% singlecell_map$V1, ]
 
 ### iii. Visualize heatmap
 ```{r, fig.height=5, fig.width=10, dpi=100}
-tmp = reshape2::melt(singlecell_ceres)
-ggplot(tmp, aes(x=Var1, y=value)) + 
-  geom_boxplot() + 
-  labs(title="Single-Cell KO CERES Score Distribution (All Cell Lines)", 
-       x="Metabolic genes predicted by COBRA", 
-       y="CERES Score") +
-  geom_jitter(width=0.15, 
-              alpha=0.025)+
-  theme(axis.text.x = element_text(angle=90, 
-                                   hjust=1,
-                                   vjust=0.3)) +
-  geom_hline(yintercept=0,
-             color = "red",
-             size=0.5)
-
-ggsave(filename="D:/Analysis/EMT/figures/CRISPR/singlecell_ko_all.png",
+plt = essentiality_boxplots(singlecell_ceres, NSCLC_meta)
+ggsave(filename="D:/Analysis/EMT/figures/CRISPR/All/singlecell_ko_all.png",
        plot=last_plot(),
        device=png(),
        width=10, 
