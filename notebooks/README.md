@@ -1,14 +1,7 @@
-# Software suite for the EMT analysis
+# Notebooks 
+Our analysis utilized 3 programming languages. 
+  * Python was used to perform MAGIC data imputation
+  * R was used to perform CRISPR-Cas9 analysis and other omics data visualization tasks
+  * MATLAB was used to perform constraint-based modeling
 
-Currently, different languages were used to conduct the differential expression analysis, simulate metabolic fluxes and growth rates using constraint-based modeling, and to visualize the results as an application.
-
-
-Directory map in progress
-```bash
-|-- matlab
-|   |--
-|-- python
-|-- |--
-|-- r
-|   |--
-```
+In addition to physical assets, Google Colab notebooks were used to perform additional analyses. Those can be found [here](https://drive.google.com/drive/folders/1kCNsrULvzgaTEH3387mAx7KbB_dJSO4p?usp=sharing).
