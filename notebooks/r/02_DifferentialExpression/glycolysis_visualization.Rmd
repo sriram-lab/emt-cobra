@@ -1,0 +1,30 @@
+---
+title: "Visualize Glycolysis Metabolic Gene Expression Data"
+output: html_notebook
+---
+
+## Summary
+This notebook visualizes glycolytic metabolic gene expression data.
+
+```{r}
+rm(list=ls())
+```
+
+## Load Libraries
+Let's load some plotting libraries.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(extrafont)
+library(ComplexHeatmap)
+library(circlize)
+#font_import()
+#loadfonts(device = "win")
+```
+
+## 1. Load Data
+We need to load all datasets.
+```{r}
+```
