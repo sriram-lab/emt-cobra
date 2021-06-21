@@ -6,15 +6,18 @@ output: html_notebook
 # Summary
 This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
 
-# Download all dependencies
+```{r}
+rm(list=ls())
+```
 
+# 1. Download all dependencies
 First, we'll download several dependencies for data processing and data visualization.
 
 ```{r, include=FALSE}
-pkgLst = c("Seurat", "dplyr", "viridis", 
-           "matrixStats", "UpSetR", 
-           "mgcv", "tidyverse", "reshape2", "ggplot2")
-install.packages(pkgLst)
+#pkgLst = c("Seurat", "dplyr", "viridis", 
+#           "matrixStats", "UpSetR", 
+#           "mgcv", "tidyverse", "reshape2", "ggplot2")
+#install.packages(pkgLst)
 
 library(mgcv)
 library(splines)
@@ -28,19 +31,21 @@ library(reshape2)
 library(ggplot2)
 ```
 
-# Load scRNASeq datasets
-
+# 2. Load scRNASeq datasets
 Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the $TGF \beta 1$ sample, since this was the way EMT was induced in many bulk experiments.
 
 ```{r, include=TRUE}
-a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
+# Linux
+#a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
+
+# Windows: Dell
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/a549_TGFB1.rds'
+a549 = readRDS(filepath)
+
 ```
 
-# Differential expression across all time points
-
+# 3. Differential expression across all time points
 This code block gets differentially expressed genes from the preprocessed Seurat object.
-
-## Bulk scRNASeq across time points
 
 Cook et al performed a GAM with loess on the time covariate for differential expression. Below is the modified `diffExp` function that takes in the Seurat object to get the result.
 
@@ -76,18 +81,39 @@ Compute DGE for A549 TGF treatment and save it to a csv file.
 ```{r, include=TRUE}
 # Perform DEA
 a549_tgfb1_dge = diffExp(a549)
+```
 
-# Write to file
-filepath = "~/Data/Expression/GSE147405/dge_a549_tgfb1.csv"
-write.csv(a549_tgfb1_dge, file=filepath, quote=F)
+# 4. Find duplicates and remove iteratively
+There were duplicate genes within the dataset. Upon further inspection, it looks like they have the same regression coefficients, and just different p-values.
+
+To resolve this, I wanted to simply remove the duplicates.
+```{r}
+a549_tgfb1_dge$Gene = sub("\\..*", "", a549_tgfb1_dge$Gene)
+a549_tgfb1_dge = a549_tgfb1_dge[!duplicated(a549_tgfb1_dge$Gene), ]
+```
+
+# 5. Save to file
+First, let's save all data.
+```{r}
+# Linux filepath
+#filepath = "~/Data/Expression/GSE147405/dge_a549_tgfb1.csv"
+
+# Windows: Dell
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/dge_a549_tgfb1.csv'
+write.csv(a549_tgfb1_dge, file=filepath, quote=FALSE)
 ```
 
 Let's now get a list of significant genes with a FDR-corrected p-value less than or equal to 0.01. This will be saved to the file a549_tgfb1_sig.csv.
-
 ```{r, include=TRUE}
 a549_tgfb1_sig = filter(a549_tgfb1_dge, qval <= 0.01)
 
-# Write to file
-filepath = "~/Data/Expression/GSE147405/a549_tgfb1_sig.csv"
-write.csv(a549_tgfb1_sig, file=filepath, quote=F)
+# Linux filepath
+#filepath = "~/Data/Expression/GSE147405/a549_tgfb1_sig.csv"
+
+# Windows: Dell
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/a549_tgfb1_sig.csv'
+write.csv(a549_tgfb1_sig, file=filepath, quote=FALSE)
 ```
+
+# Summary
+This notebook gets differentially expressed genes using GAM modeling to get coefficients corresponding to each time point. This can now be analyzed downstream.

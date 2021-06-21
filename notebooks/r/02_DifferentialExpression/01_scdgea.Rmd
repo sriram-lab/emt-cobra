@@ -1,10 +1,10 @@
 ---
-title: "R Notebook"
+title: "Single Cell Differential Gene Expression Analysis"
+author: Scott Campit
 output: html_notebook
 ---
 
 # Differential expression
-
 This code block gets differentially expressed genes from the preprocessed Seurat object.
 
 ## Bulk scRNASeq across time points
@@ -13,9 +13,12 @@ Cook et al performed a GAM with loess on the time covariate for differential exp
 
 ```{r}
 diffExp = function(seurat_object){
-  cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in%                                        c("8h_rm", "1d_rm", "3d_rm"))]
+  cells_keep = colnames(seurat_object)[-which(seurat_object$Time %in% 
+                                                c("8h_rm", "1d_rm", "3d_rm"))]
   subset_seurat = subset(seurat_object, cells=cells_keep)
-  subset_seurat$Timepoint = as.numeric(gsub("[^0-9.-]", "",                                                       subset_seurat$Time))
+  subset_seurat$Timepoint = as.numeric(gsub("[^0-9.-]", 
+                                            "", 
+                                            subset_seurat$Time))
   subset_seurat$Timepoint[subset_seurat$Timepoint==8] = 0.33 
   
   exp = as.matrix(GetAssayData(subset_seurat, slot="data")) 

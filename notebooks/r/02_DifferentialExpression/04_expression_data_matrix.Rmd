@@ -1,0 +1,83 @@
+---
+title: "Create expression data matrix"
+author: Scott Campit
+output: html_notebook
+---
+
+## Summary
+This notebook concatenates the expression datasets for visualization. The final data matrix will be the effect size for a given set of time points that overlap across all datasets. This will be used to construct a heatmap.
+
+```{r}
+rm(list=ls())
+```
+
+Load libraries
+```{r}
+# Google API
+library(googledrive)
+library(googlesheets4)
+
+# Essential data manipulation libraries
+#install.packages(c("BiocManager", "tidyverse", "readxl", 'data.table', 'openxlsx'))
+library(data.table)
+library(openxlsx)
+library(readxl)
+
+# Bioinformatics libraries
+#BiocManager::install(c("edgeR", "limma", "GEOquery", "affy",
+#                       "hgu133plus2.db", "org.Hs.eg.db"), 
+#                     dependencies=TRUE,
+#                     update=TRUE)
+
+
+library(hgu133plus2.db)
+library(org.Hs.eg.db)
+library(edgeR)
+library(GEOquery)
+library(affy)
+```
+
+## 1. Load Data 
+This section will take the expression data and try to overlay it with the predicted fluxes.
+
+### A. Bulk Proteomics Data
+Bulk proteomics data was taken from the following sources:
+  * Lu, C., Sidoli, S., Kulej, K., Ross, K., Wu, C. H., & Garcia, B. A. (2019). Coordination between TGF-β cellular signaling and epigenetic regulation during epithelial to mesenchymal transition. Epigenetics & chromatin, 12(1), 1-17.
+  * Sartor, M. A., Mahavisno, V., Keshamouni, V. G., Cavalcoli, J., Wright, Z., Karnovsky, A., ... & Omenn, G. S. (2010). ConceptGen: a gene set enrichment and gene set relation mapping tool. Bioinformatics, 26(4), 456-463.
+  
+Note we had to contact the lead author for the Keshamouni proteomics data.
+
+```{r}
+# Garcia Proteomics
+url = "https://docs.google.com/spreadsheets/d/1LDRQKmoFR4i5swABQ00lm5v7JqubIduFUTTV_YbUGsU/edit?usp=sharing"
+garcia_proteomics = read_sheet(url)
+
+# Keshamouni Proteomics
+url = "https://docs.google.com/spreadsheets/d/1Gx1b2uvqBRht_iC5nhu0dpcDKX52ymVJjbhFHANEYIg/edit?usp=sharing"
+kesh_proteomics = read_sheet(url)
+```
+
+### B. Bulk Transcriptomics Data
+Bulk transcriptomics data was taken from the following sources:
+  * (GSE17708)[https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE17708]
+  * (GSE17518)[https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE17518]
+
+```{r}
+# Keshamouni Transcriptomics
+kesh_trans = getGEO("GSE17708", GSEMatrix = TRUE)
+#file.remove("C:\Users\Scott\AppData\Local\Temp\Rtmp0sdK0p/GPL570.soft")
+
+# Thannickal Transcriptomics
+than_trans = getGEO("GSE17518", GSEMatrix = TRUE)
+#file.remove("C:\Users\Scott\AppData\Local\Temp\Rtmp0sdK0p/GPL96.soft")
+```
+
+### C. Single-Cell Transcriptomics Data
+Finally, single-cell transcriptomics data was taken from Cook & Vanderhyden, 2020.
+  * Cook, D. P., & Vanderhyden, B. C. (2020). Context specificity of the EMT transcriptional response. Nature communications, 11(1), 1-9.
+  
+```{r}
+# Cook & Vanderhyden Transcriptomics
+
+
+```

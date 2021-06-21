@@ -729,4 +729,7 @@ write.csv(data[, 1:3],
           "D:/Analysis/EMT/data/singlecell_ko_ids.csv")
 ```
 
+## 4. Glycolysis Expression Matrix
+
+
 ## Conclusion

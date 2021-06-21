@@ -17,6 +17,10 @@ The datasets under consideration are:
   * Keshamouni et al 2009 (Proteomics)
   * Garcia et al 2019 (Proteomics)
 
+```{r}
+rm(list=ls())
+```
+
 # Differential Gene Expression Analysis (RNASeq)
 
 ## Datasets without pre-processed differentially expressed genes
