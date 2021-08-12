@@ -7,7 +7,7 @@ output: html_notebook
 # Summary
 This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
 
-# 1. Load Libraries
+## 1. Load Libraries
 
 First, we'll download several dependencies for data processing and data visualization.
 
@@ -21,35 +21,48 @@ library(readxl)
 library(biomaRt)
 ```
 
-# 2. Load scRNASeq dataset
+## 2. Load scRNASeq dataset
+
+### A. MAGIC Dataset
 Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. 
 ```{r, include=FALSE}
 # Linux
 #a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
 
 # Dell
-magic_datapath = "D:/Analysis/EMT/a549_magic.xlsx"
+magic_datapath = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_magic.xlsx"
+a549_zscore = read_excel(magic_datapath, sheet="Zscore")
+a549_pvalue = read_excel(magic_datapath, sheet="pvalue")
+```
+
+### B. Non-MAGIC dataset
+```{r, include=FALSE}
+# Linux
+#a549 = readRDS("~/Data/scRNASeq/GSE147405/A549_TGFB1.rds")
+
+# Dell
+magic_datapath = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_no_magic.xlsx"
 a549_zscore = read_excel(magic_datapath, sheet="Zscore")
 a549_pvalue = read_excel(magic_datapath, sheet="pvalue")
 ```
 
 Load Seurat object
 ```{r}
-seuratobj_path = "D:/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds"
+seuratobj_path = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds"
 a549_tgfb = readRDS(seuratobj_path)
 a549_tgfb = subset(a549_tgfb, subset = Time==c("0d", "8h", "3d", "1d", "7d"))
 ```
 
-# 3. Map dataset 
+## 3. Map dataset 
 
-## Map to time and clusters
+### A. Map to time and clusters
 ```{r}
 ids = a549_zscore[, 1]
 ids$time = a549_tgfb@meta.data$Time
 ids$cluster = a549_tgfb@active.ident
 ```
 
-## Preprocess the Z-score and p-value
+### B. Preprocess the Z-score and p-value
 Now let's merge the MAGIC imputed data with the gene identifiers.
 ```{r}
 a549_zscore = data.frame(a549_zscore)
@@ -68,11 +81,11 @@ colnames(a549_zscore) = ids$time
 colnames(a549_pvalue) = ids$time
 ```
 
-# 4. Create a gene identifier map
+## 4. Create a gene identifier map
 Use BiomaRt to get Ensembl IDs map
 ```{r}
 ensembl = useMart("ensembl", dataset="hsapiens_gene_ensembl")
-gene_ids = data.frame(colnames(a549_zscore))
+gene_ids = data.frame(rownames(a549_zscore))
 names(gene_ids) = "Gene"
 human_ids = getBM(attributes=c('ensembl_gene_id',
                                'entrezgene_id',
@@ -83,7 +96,7 @@ mapped_ids = merge(gene_ids, human_ids,
                    by.x='Gene', by.y='hgnc_symbol')
 ```
 
-# 5. Map to Ensembl identifiers
+## 5. Map to Ensembl identifiers
 Merge the data with gene identifiers
 ```{r}
 merged_zscore = merge(mapped_ids, a549_zscore, 
@@ -92,9 +105,19 @@ merged_pvalue = merge(mapped_ids, a549_pvalue,
                               by.x='Gene', by.y="row.names")
 ```
 
-# 6. Save Ensembl data
+## 6. Save Ensembl data
+### A. MAGIC Dataset
 ```{r}
-savepath = "D:/Analysis/EMT/mapped_magic_a549.xlsx"
+savepath = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/mapped_magic_a549.xlsx"
+writexl::write_xlsx(
+  x=list(zscore = merged_zscore,
+         pvalue = merged_pvalue),
+  path=savepath)
+```
+
+### B. No MAGIC Dataset
+```{r}
+savepath = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/mapped_nomagic_a549.xlsx"
 writexl::write_xlsx(
   x=list(zscore = merged_zscore,
          pvalue = merged_pvalue),
