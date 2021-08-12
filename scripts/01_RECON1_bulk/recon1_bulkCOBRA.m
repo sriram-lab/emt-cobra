@@ -18,7 +18,7 @@ initCobraToolbox(false); changeCobraSolver('gurobi', 'all');
 % Assign default values of parameters for the iMAT algorithm.
 
 kap = [];       rho = [];
-isgenes = true; pfba = true;
+isreactions = false; pfba = true;
 eps = [];       eps2 = [];
 %% 3. Compute COBRA data
 % This code block fits the metabolic reconstruction with differentially expressed 

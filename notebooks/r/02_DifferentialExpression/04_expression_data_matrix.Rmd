@@ -22,6 +22,7 @@ library(googlesheets4)
 library(data.table)
 library(openxlsx)
 library(readxl)
+library(expm) 
 
 # Bioinformatics libraries
 #BiocManager::install(c("edgeR", "limma", "GEOquery", "affy",
@@ -126,29 +127,6 @@ convertGeneList = function(gene_obj, db1, db2){
 }
 ```
 
-#### ii. Map between identifier types
-This function uses a database to map gene/protein IDs to a common identifier
-```{r}
-geneIDMapping = function(df, geneList, query, db){
-  #
-  #
-  #
-  #
-  
-  map = select(db, 
-               keys=geneList, 
-               columns = query
-               )
-  
-  # Join map and data
-  new_df = cbind(geneList, df)
-  mapped_lst = merge(map, new_df, by.x="PROBEID", by.y="probes")
-  
-  maplist = list("Map1"=map1, "Map2"=map2)
-  return(maplist)
-}
-```
-
 ### B. Map datasets 
 
 #### i. Load Single-Cell Data 
@@ -161,6 +139,12 @@ map = select(hgu133plus2.db,
              keytype="SYMBOL")
 cookvand = merge(map, cook_vand_data, by.x="SYMBOL", by.y="Gene")
 ```
+
+Add mask for second visualization
+```{r}
+cookvand[cookvand$qval > 0.05, c("Spline_1", "Spline_2", "Spline_3")] = NaN
+```
+
 #### ii. Load Proteomics datasets
 ```{r}
 # Keshamouni Proteomics
@@ -173,12 +157,40 @@ map = select(hgu133plus2.db,
 kesh_prot = merge(map, kesh_proteomics, by.x="REFSEQ", by.y="REFSEQ")
 ```
 
+Add mask for second visualization
+```{r}
+kesh_prot = kesh_prot[, c("ENTREZID", "SYMBOL", "Log2 ratio", "Ttest")]
+kesh_prot$`Log2 ratio` = replace(kesh_prot$`Log2 ratio`, idx, NaN)
+```
+
 ```{r}
 # Garcia Proteomics Data
 library(biomaRt)
 human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
 garcia_prot = convertGeneList(garcia_proteomics_effect, human, mouse)
+
+colnames(garcia_prot)[5:8]
+mask = garcia_proteomics_pvalue[, colnames(garcia_proteomics_pvalue)[2:5]]  < -log2(0.05)
+tmp = garcia_proteomics_effect[, colnames(garcia_proteomics_effect)[2:5]]
+
+tmp[mask] = NA
+
+for(i in 1:ncol(tmp)){
+  z = tmp[, i]
+  y = mask[, i]
+  z[y] = NaN
+  df[, i] = z
+}
+
+-log2(0.1)
+-log2(0.05)
+-log2(0.01)
+
+```
+
+```{r}
+
 ```
 
 #### Create a universal map for Entrez IDs and Gene Symbols
@@ -405,4 +417,14 @@ h4 = Heatmap(late_data,
 
 final_figure = h1+h2+h3+h4
 final_figure
+```
+
+```{r, fig.width=12.5, fig.height=20, fig.align='right', dpi=100}
+png(filename="D:/Chandrasekaran/Projects/EMT/Analysis/glycolysis_expr_heatmap.png",
+       width=12.5,
+       height=20,
+       units='in',
+    res=1200)
+final_figure
+dev.off()
 ```
