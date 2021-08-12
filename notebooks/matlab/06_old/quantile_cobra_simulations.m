@@ -10,6 +10,10 @@ clear all;
 % Needed to load COBRA onto Great lakes
 %addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
 
+gurobi_path = fullfile(getenv('GUROBI_HOME'), 'matlab');
+addpath(gurobi_path);
+addpath('~')
+
 initCobraToolbox(false); 
 changeCobraSolver('gurobi', 'all');
 % B. Load RECON1 reconstruction and gene expression dataset
@@ -20,13 +24,13 @@ changeCobraSolver('gurobi', 'all');
 % the initial dataset was preprocessed.
 
 % DELL
-load D:/Chandrasekaran/Projects/EMT/Data/COBRA/recon1_expression.mat
+%load D:/Chandrasekaran/Projects/EMT/Data/COBRA/recon1_expression.mat
 
 % ACLX
 %load ~/Analysis/EMT/scRNASeq_ihuman_diffexp.mat
 
 % NFS
-%load ~/Turbo/scampit/Analysis/EMT/scRNASeq_ihuman_diffexp.mat
+load ~/Turbo/scampit/Projects/EMT/Data/COBRA/recon1_expression.mat
 % Set the objective function to maximize biomass
 
 % Set up objective function
@@ -64,6 +68,7 @@ params.kappa2    = [];
 
 %workers = 4;
 %parpool("local", workers);
+parpool;
 % B. Initiate data structures
 % We'll use the iHUMAN metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
@@ -72,7 +77,7 @@ params.kappa2    = [];
 %basepath = "~/Analysis/EMT/human1/";
 
 % NFS
-basepath = "~/Turbo/scampit/Analysis/EMT/human1/";
+basepath = "~/Turbo/scampit/Projects/EMT/Data/COBRA/recon1_quantile_single";
 
 % DELL
 %basepath = "D:/Chandrasekaran/Projects/EMT/Data/COBRA/recon1_quantile_single";
