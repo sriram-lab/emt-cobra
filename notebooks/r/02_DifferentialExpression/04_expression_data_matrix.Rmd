@@ -22,6 +22,7 @@ library(googlesheets4)
 library(data.table)
 library(openxlsx)
 library(readxl)
+library(expm) 
 
 # Bioinformatics libraries
 #BiocManager::install(c("edgeR", "limma", "GEOquery", "affy",
@@ -49,12 +50,14 @@ Note we had to contact the lead author for the Keshamouni proteomics data.
 
 ```{r}
 # Garcia Proteomics
-url = "https://docs.google.com/spreadsheets/d/1LDRQKmoFR4i5swABQ00lm5v7JqubIduFUTTV_YbUGsU/edit?usp=sharing"
-garcia_proteomics = read_sheet(url)
+url = "https://docs.google.com/spreadsheets/d/1LDRQKmoFR4i5swABQ00lm5v7JqubIduFUTTV_YbUGsU/edit#gid=1182791926"
+garcia_proteomics_effect = read_sheet(url)
+url = "https://docs.google.com/spreadsheets/d/1LDRQKmoFR4i5swABQ00lm5v7JqubIduFUTTV_YbUGsU/edit#gid=559844629"
+garcia_proteomics_pvalue = read_sheet(url)
 
 # Keshamouni Proteomics
-url = "https://docs.google.com/spreadsheets/d/1Gx1b2uvqBRht_iC5nhu0dpcDKX52ymVJjbhFHANEYIg/edit?usp=sharing"
-kesh_proteomics = read_sheet(url)
+datapath = "D:/Chandrasekaran/Projects/EMT/Data/Proteomics/Keshamouni/raw/Proteomics2010.xlsx"
+kesh_proteomics = read_excel(datapath, sheet='Protein List')
 ```
 
 ### B. Bulk Transcriptomics Data
@@ -64,12 +67,13 @@ Bulk transcriptomics data was taken from the following sources:
 
 ```{r}
 # Keshamouni Transcriptomics
-kesh_trans = getGEO("GSE17708", GSEMatrix = TRUE)
-#file.remove("C:\Users\Scott\AppData\Local\Temp\Rtmp0sdK0p/GPL570.soft")
+kesh_trans = "D:/Chandrasekaran/Projects/EMT/Data/RNASeq/GSE17708/GSE17708_Keshamouni_TGFB1_logs.xls"
+kesh_tran_effect = read_excel(kesh_trans, sheet="FC")
+kesh_tran_pvalue = read_excel(kesh_trans, sheet="PValue")
 
-# Thannickal Transcriptomics
-than_trans = getGEO("GSE17518", GSEMatrix = TRUE)
-#file.remove("C:\Users\Scott\AppData\Local\Temp\Rtmp0sdK0p/GPL96.soft")
+# Thannickal et al Transcriptomics
+than_tran = "D:/Chandrasekaran/Projects/EMT/Data/RNASeq/GSE17518/GSE17518_DGE.xlsx"
+than_tran = read_excel(than_tran)
 ```
 
 ### C. Single-Cell Transcriptomics Data
@@ -77,7 +81,350 @@ Finally, single-cell transcriptomics data was taken from Cook & Vanderhyden, 202
   * Cook, D. P., & Vanderhyden, B. C. (2020). Context specificity of the EMT transcriptional response. Nature communications, 11(1), 1-9.
   
 ```{r}
-# Cook & Vanderhyden Transcriptomics
+# Linux Path
+#filename = '~/Data/RNASeq/GSE17518/GSE17518_DGE.xlsx'
 
+# Windows -> Dell
+#filename = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/dge_a549_tgfb1.csv"
 
+filename = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/dge_a549_tgfb1.csv'
+cook_vand_data = read.csv(file=filename)
+cook_vand_data$X = NULL
+```
+
+## 2. Map all of the data to a single dataframe
+We need to convert all data (mapped to symbols) to a common index. We should take the outer, so that we'll be able to get all genes.  
+
+### A. Create a function that will perform this mapping
+
+#### i. Map between mouse and human
+This is the function that maps genes between two different organisms.
+```{r, results='hide'}
+# Make a function that maps genes using two reference databases
+convertGeneList = function(gene_obj, db1, db2){
+  # convertGeneList converts MGI symbols to human identifiers.
+  # INPUTS:
+  #   * gene_obj: a Seurat object
+  #   * db1: A biomart database. This function is specific to the mouse database.
+  #   * db2: A biomart database. This function is specific to the human database.
+  # OUTPUT:
+  #   * mapped_gene_obj: A dataframe with the mapped gene object.   
+  orthologs = getLDS(attributes=c("mgi_symbol"), 
+                     filters="mgi_symbol", 
+                     values=gene_obj$`Gene Symbol`, 
+                     mart=db2, 
+                     attributesL=c("hgnc_symbol", 
+                                   "entrezgene_id", 
+                                   "ensembl_gene_id"), 
+                     martL=db1, 
+                     uniqueRows=TRUE)
+  
+  mapped_gene_obj = merge(orthologs, 
+                          gene_obj, 
+                          by.x='MGI.symbol', 
+                          by.y='Gene Symbol')
+  return(mapped_gene_obj)
+}
+```
+
+### B. Map datasets 
+
+#### i. Load Single-Cell Data 
+```{r}
+# Cook and Vanderhyden
+map = select(hgu133plus2.db, 
+             keys=cook_vand_data$Gene, 
+             columns = c('ENTREZID', 
+                         'SYMBOL'),
+             keytype="SYMBOL")
+cookvand = merge(map, cook_vand_data, by.x="SYMBOL", by.y="Gene")
+```
+
+Add mask for second visualization
+```{r}
+cookvand[cookvand$qval > 0.05, c("Spline_1", "Spline_2", "Spline_3")] = NaN
+```
+
+#### ii. Load Proteomics datasets
+```{r}
+# Keshamouni Proteomics
+map = select(hgu133plus2.db, 
+             keys=kesh_proteomics$REFSEQ, 
+             columns = c('ENTREZID', 
+                         'SYMBOL',
+                         'REFSEQ'),
+             keytype="REFSEQ")
+kesh_prot = merge(map, kesh_proteomics, by.x="REFSEQ", by.y="REFSEQ")
+```
+
+Add mask for second visualization
+```{r}
+kesh_prot = kesh_prot[, c("ENTREZID", "SYMBOL", "Log2 ratio", "Ttest")]
+kesh_prot$`Log2 ratio` = replace(kesh_prot$`Log2 ratio`, idx, NaN)
+```
+
+```{r}
+# Garcia Proteomics Data
+library(biomaRt)
+human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+garcia_prot = convertGeneList(garcia_proteomics_effect, human, mouse)
+
+colnames(garcia_prot)[5:8]
+mask = garcia_proteomics_pvalue[, colnames(garcia_proteomics_pvalue)[2:5]]  < -log2(0.05)
+tmp = garcia_proteomics_effect[, colnames(garcia_proteomics_effect)[2:5]]
+
+tmp[mask] = NA
+
+for(i in 1:ncol(tmp)){
+  z = tmp[, i]
+  y = mask[, i]
+  z[y] = NaN
+  df[, i] = z
+}
+
+-log2(0.1)
+-log2(0.05)
+-log2(0.01)
+
+```
+
+```{r}
+
+```
+
+#### Create a universal map for Entrez IDs and Gene Symbols
+
+First, replace all column names to be consistent.
+```{r}
+colnames(garcia_prot)[which(names(garcia_prot) == "HGNC.symbol")] = "SYMBOL"
+colnames(garcia_prot)[which(names(garcia_prot) == "NCBI.gene..formerly.Entrezgene..ID")] = "ENTREZID"
+
+colnames(kesh_tran_effect)[which(names(kesh_tran_effect) == "Gene Symbol")] = "SYMBOL"
+colnames(kesh_tran_effect)[which(names(kesh_tran_effect) == "Entrez Gene")] = "ENTREZID"
+```
+
+Then ensure the data types are the same for each column.
+```{r}
+garcia_prot = garcia_prot %>% 
+  dplyr::mutate(
+    SYMBOL = as.character(SYMBOL),
+    ENTREZID = as.character(ENTREZID)
+  )
+
+kesh_prot = kesh_prot %>% 
+  dplyr::mutate(
+    SYMBOL = as.character(SYMBOL),
+    ENTREZID = as.character(ENTREZID)
+  )
+
+kesh_tran_effect = kesh_tran_effect %>% 
+  dplyr::mutate(
+    SYMBOL = as.character(SYMBOL),
+    ENTREZID = as.character(ENTREZID)
+  )
+
+than_tran = than_tran %>% 
+  dplyr::mutate(
+    SYMBOL = as.character(SYMBOL),
+    ENTREZID = as.character(ENTREZID)
+  )
+
+cookvand = cookvand %>% 
+  dplyr::mutate(
+    SYMBOL = as.character(SYMBOL),
+    ENTREZID = as.character(ENTREZID)
+  )
+
+```
+
+Finally, combine all identifiers into a single dataframe.
+```{r}
+universal_map = dplyr::bind_rows(kesh_prot[,        c("SYMBOL", "ENTREZID")],
+                                 garcia_prot[,      c("SYMBOL", "ENTREZID")],
+                                 kesh_tran_effect[, c("SYMBOL", "ENTREZID")],
+                                 than_tran[,        c("SYMBOL", "ENTREZID")],
+                                 cookvand[,         c("SYMBOL", "ENTREZID")])
+universal_map = dplyr::distinct(universal_map)
+```
+
+Now, we'll extract the relevant columns that we need.
+```{r}
+colnames(cookvand)
+kesh_prot        = kesh_prot[, c("SYMBOL", "ENTREZID", 
+                                 "Log2 ratio")]
+garcia_prot      = garcia_prot[, c("SYMBOL", "ENTREZID", 
+                                   "5 min/0 min", "60 min/0min", "1 day/0 min", "2 days/0 min")]
+kesh_tran_effect = kesh_tran_effect[, c("SYMBOL", "ENTREZID", 
+                                        "0.5 vs 0", "1 vs 0", "2 vs 0", "4 vs 0", "8 vs 0", "16 vs 0", "24 vs 0", "72 vs 0")]
+than_tran        = than_tran[, c("SYMBOL", "ENTREZID", "t")]
+cookvand         = cookvand[, c("SYMBOL", "ENTREZID", "Spline_1", "Spline_2", "Spline_3")]
+```
+
+Then ensure the data types are the same for each column.
+```{r}
+colnames(kesh_prot)[which(names(kesh_prot) == "Log2 ratio")] = "Keshamouni_72hrs"
+
+colnames(garcia_prot)[which(names(garcia_prot) == "60 min/0min")] = "Garcia_1hrs"
+colnames(garcia_prot)[which(names(garcia_prot) == "1 day/0 min")] = "Garcia_24hrs"
+colnames(garcia_prot)[which(names(garcia_prot) == "2 days/0 min")] = "Garcia_48hrs"
+
+colnames(kesh_tran_effect)[which(names(kesh_tran_effect) == "1 vs 0")] = "GSE17708_1hrs"
+colnames(kesh_tran_effect)[which(names(kesh_tran_effect) == "8 vs 0")] = "GSE17708_8hrs"
+colnames(kesh_tran_effect)[which(names(kesh_tran_effect) == "24 vs 0")] = "GSE17708_24hrs"
+colnames(kesh_tran_effect)[which(names(kesh_tran_effect) == "72 vs 0")] = "GSE17708_72hrs"
+
+colnames(than_tran)[which(names(than_tran) == "t")] = "GSE17518_72hrs"
+
+colnames(cookvand)[which(names(cookvand) == "Spline_1")] = "GSE147405_8hrs"
+colnames(cookvand)[which(names(cookvand) == "Spline_2")] = "GSE147405_24hrs"
+colnames(cookvand)[which(names(cookvand) == "Spline_3")] = "GSE147405_72hrs"
+```
+
+```{r}
+data = list(kesh_prot[, c("SYMBOL", "ENTREZID", 
+                          "Keshamouni_72hrs")],
+            garcia_prot[, c("ENTREZID", 
+                            "Garcia_1hrs", "Garcia_24hrs", "Garcia_48hrs")], 
+            kesh_tran_effect[, c("ENTREZID", 
+                                 "GSE17708_1hrs", "GSE17708_8hrs", "GSE17708_24hrs", "GSE17708_72hrs")], 
+            than_tran[, c("ENTREZID", 
+                          "GSE17518_72hrs")], 
+            cookvand[, c("ENTREZID", 
+                         "GSE147405_8hrs", "GSE147405_24hrs", "GSE147405_72hrs")]) 
+```
+
+```{r}
+kesh_prot = kesh_prot[, c("ENTREZID", 
+                          "Keshamouni_72hrs")]
+
+garcia_prot = garcia_prot[, c("ENTREZID", 
+                "Garcia_1hrs", "Garcia_24hrs", "Garcia_48hrs")]
+
+kesh_tran_effect = kesh_tran_effect[, c("ENTREZID", 
+                     "GSE17708_1hrs", "GSE17708_8hrs", "GSE17708_24hrs", "GSE17708_72hrs")]
+
+than_tran = than_tran[, c("ENTREZID", 
+                          "GSE17518_72hrs")]
+
+cookvand = cookvand[, c("ENTREZID", 
+                         "GSE147405_8hrs", "GSE147405_24hrs", "GSE147405_72hrs")]
+```
+
+```{r}
+kesh_tran_effect = aggregate(. ~ENTREZID, data=kesh_tran_effect, median, na.rm=TRUE)
+garcia_prot = aggregate(. ~ENTREZID, data=garcia_prot, median, na.rm=TRUE)
+kesh_prot = aggregate(. ~ENTREZID, data=kesh_prot, median, na.rm=TRUE)
+than_tran = aggregate(. ~ENTREZID, data=than_tran, median, na.rm=TRUE)
+cookvand = aggregate(. ~ENTREZID, data=cookvand, median, na.rm=TRUE)
+```
+
+```{r}
+data = merge(universal_map, kesh_tran_effect, by="ENTREZID", all= TRUE)
+data = merge(data, garcia_prot, by="ENTREZID", all= TRUE)
+data = merge(kesh_prot, data, by="ENTREZID", all= TRUE)
+data = merge(data, than_tran, by="ENTREZID",  all= TRUE)
+data = merge(data, cookvand, by="ENTREZID",  all= TRUE)
+```
+
+```{r}
+geneset_path = "D:/Chandrasekaran/Projects/EMT/Analysis/data/glycolysis_geneset.txt"
+library(readr)
+geneset = read_csv(geneset_path)
+glycolysis_genes = merge(data, geneset, by.x='SYMBOL', by.y='KEGG_GLYCOLYSIS_GLUCONEOGENESIS')
+```
+
+```{r}
+# Split by hours
+early_data = glycolysis_genes[, c("GSE17708_1hrs", "Garcia_1hrs")]
+mid1_data  = glycolysis_genes[, c("GSE17708_8hrs", "GSE147405_8hrs")]
+mid2_data  = glycolysis_genes[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")]
+late_data  = glycolysis_genes[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                       "Keshamouni_72hrs", "GSE147405_72hrs")]
+```
+
+```{r}
+#BiocManager::install("ComplexHeatmap")
+#install.packages('circlize')
+library(ComplexHeatmap)
+library(circlize)
+
+h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
+                                      labels=c("1Hr"), 
+                                      labels_gp=gpar(col="black", 
+                                                     fontsize=10)))
+h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
+                                      labels=c("8Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
+                                      labels=c("24Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
+                                      labels=c("48-72Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+```
+
+```{r, fig.width=20, fig.height=20, fig.align='right', dpi=100}
+col_fun = colorRamp2(c(-3, 0, 3), 
+                     c("#2B9EB3", "Gray", "#F8333C"))
+h1 = Heatmap(row_labels=glycolysis_genes$SYMBOL,
+             row_names_side="left",
+             early_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h1_col, 
+             width = ncol(early_data)*unit(5, "mm"), 
+             height = nrow(early_data)*unit(5, "mm"))
+h2 = Heatmap(mid1_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h2_col, 
+             width = ncol(mid1_data)*unit(5, "mm"), 
+             height = nrow(mid1_data)*unit(5, "mm"))
+h3 = Heatmap(mid2_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h3_col, 
+             width = ncol(mid2_data)*unit(5, "mm"), 
+             height = nrow(mid2_data)*unit(5, "mm"))
+h4 = Heatmap(late_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+               rect_gp = gpar(col="black", 
+                              lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=TRUE,
+             bottom_annotation=h4_col,
+             width = ncol(late_data)*unit(5, "mm"), 
+             height = nrow(late_data)*unit(5, "mm"),
+             heatmap_legend_param=list(title="Expression"))
+
+final_figure = h1+h2+h3+h4
+final_figure
+```
+
+```{r, fig.width=12.5, fig.height=20, fig.align='right', dpi=100}
+png(filename="D:/Chandrasekaran/Projects/EMT/Analysis/glycolysis_expr_heatmap.png",
+       width=12.5,
+       height=20,
+       units='in',
+    res=1200)
+final_figure
+dev.off()
 ```
