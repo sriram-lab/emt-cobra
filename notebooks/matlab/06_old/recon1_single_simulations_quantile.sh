@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=recon1_emt_a549_1
+#SBATCH --job-name=recon1_emt_a549_quantile
 #SBATCH --mail-user=scampit@umich.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --licenses=gurobi@slurmdb:8
@@ -12,6 +12,6 @@
 #SBATCH --account=lsa1
 #SBATCH --partition=standard
 
-module load matlab/R2020a
+module load matlab/R2018b
 module load gurobi
-matlab -nodisplay -r "run('/home/scampit/Turbo/scampit/Software/emt/srv/recon1_scCOBRA_rho1.m'); exit"
+matlab -nodisplay -r "run('/home/scampit/Turbo/scampit/Software/emt-cobra/notebooks/matlab/06_old/quantile_cobra_simulations.m'); exit"

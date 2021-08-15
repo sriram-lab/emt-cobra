@@ -2,7 +2,7 @@
 #SBATCH --job-name=ihuman_emt_a549_psa
 #SBATCH --mail-user=scampit@umich.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --licenses=gurobi@slurmdb:8
+#SBATCH --licenses=gurobi@slurmdb:1
 #SBATCH --output=/home/scampit/Turbo/scampit/Software/emt-cobra/scripts/log/ihuman_output.log
 #SBATCH --error=/home/scampit/Turbo/scampit/Software/emt-cobra/scripts/err/ihuman_error.err
 #SBATCH --nodes=1
@@ -14,5 +14,5 @@
 
 module load matlab/R2020a
 module load gurobi
-matlab -nodisplay -r "addpath(genpath('/home/scampit/Turbo/scampit/Software/emt-cobra/)); 
+matlab -nodisplay -r "addpath(genpath('/home/scampit/Turbo/scampit/Software/emt-cobra/')); 
                       run('/home/scampit/Turbo/scampit/Software/emt-cobra/scripts/04_iHUMAN_single/ihuman_scfba_psa.m'); exit"

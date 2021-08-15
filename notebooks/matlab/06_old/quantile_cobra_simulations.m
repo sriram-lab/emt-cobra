@@ -2,13 +2,13 @@
 % *Author:* Scott Campit
 %% Summary
 %% 1. Load Data
-% A. Load the COBRA Toolbox
-
+%% A. Load the COBRA Toolbox
+%%
 % Initialize metabolic modeling components
 clear all;
 
 % Needed to load COBRA onto Great lakes
-%addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
+addpath('/nfs/turbo/umms-csriram/scampit/Software/cobratoolbox');
 
 gurobi_path = fullfile(getenv('GUROBI_HOME'), 'matlab');
 addpath(gurobi_path);
@@ -16,12 +16,12 @@ addpath('~')
 
 initCobraToolbox(false); 
 changeCobraSolver('gurobi', 'all');
-% B. Load RECON1 reconstruction and gene expression dataset
+%% B. Load RECON1 reconstruction and gene expression dataset
 % First, we'll load the A549 MAGIC-imputed gene expression dataset and the iHUMAN 
 % metabolic reconstruction. 
 % 
-% For more information, see the |save_diffexp_data.mlx| livescript to see how 
-% the initial dataset was preprocessed.
+% For more information, see the |save_diffexp_data.mlx| livescript to see 
+% how the initial dataset was preprocessed.
 
 % DELL
 %load D:/Chandrasekaran/Projects/EMT/Data/COBRA/recon1_expression.mat
@@ -31,11 +31,18 @@ changeCobraSolver('gurobi', 'all');
 
 % NFS
 load ~/Turbo/scampit/Projects/EMT/Data/COBRA/recon1_expression.mat
-% Set the objective function to maximize biomass
-
+%% Set the objective function to maximize biomass
+%%
 % Set up objective function
 model.c = zeros(size(model.c));
 model.c(string(model.rxns) == 'biomass_objective') = 1;
+model.genes = model.geneEntrezID;
+
+ia = ismember(entrez, model.genes);
+entrez_pdata = entrez_pdata(ia, :);
+entrez_zdata = entrez_zdata(ia, :);
+entrez_zdata(entrez_pdata > 0.05) = NaN;
+entrez = entrez(ia);
 %% 3. Set flux balance analysis hyperparameters
 % Assign default values of parameters for the iMAT algorithm.
 
@@ -48,7 +55,7 @@ params.kappa2    = [];
 %% 4. Compute COBRA data
 % This code block fits the metabolic reconstruction with differentially expressed 
 % genes using the iMAT algorithm (|constrain_flux_regulation.m|).
-% A. Setting up parallel computations
+%% A. Setting up parallel computations
 % We can set the number of CPUs to use for our calculations.
 % 
 % The code block below is for running this script on Great Lakes
@@ -69,7 +76,7 @@ params.kappa2    = [];
 %workers = 4;
 %parpool("local", workers);
 parpool;
-% B. Initiate data structures
+%% B. Initiate data structures
 % We'll use the iHUMAN metabolic reconstruction to perform flux balance analysis 
 % and knockouts.
 
@@ -77,11 +84,11 @@ parpool;
 %basepath = "~/Analysis/EMT/human1/";
 
 % NFS
-basepath = "~/Turbo/scampit/Projects/EMT/Data/COBRA/recon1_quantile_single";
+basepath = "/home/scampit/Turbo/scampit/Projects/EMT/Data/COBRA/recon1_quantile_single";
 
 % DELL
 %basepath = "D:/Chandrasekaran/Projects/EMT/Data/COBRA/recon1_quantile_single";
-% C. Perform Single-cell simulations
+%% C. Perform Single-cell simulations
 % Now let's perform some knockouts. I will perform gene knockouts to save time.
 
 parfor j = 1:size(entrez_zdata, 2)
@@ -90,12 +97,12 @@ parfor j = 1:size(entrez_zdata, 2)
     down_idx  = cell_data < 0;
         
     % Get up- and down-regulated genes
-    expression = struct()
-    expression.upgenes    = entrez(up_idx);
-    expression.downgenes  = entrez(down_idx);
+    expression = struct();
+    expression.upgenes    = cellstr(entrez(up_idx));
+    expression.downgenes  = cellstr(entrez(down_idx));
     
     % Fit models and get flux distribution
-    [CFR_mdl, soln] = CFRv101(model, expression, params)
+    [CFR_mdl, soln] = CFRv101(model, expression, params);
     [geneKO, rxnKO] = knockOut(CFR_mdl, 'All');
 
     % Save data as individual files
@@ -104,7 +111,7 @@ parfor j = 1:size(entrez_zdata, 2)
     cobra_cell.geneko = geneKO;
     cobra_cell.rxnko  = rxnKO;
     cobra_cell.flux   = soln;
-    parsave(sprintf(strcat(basepath, '%d.mat'), j), cobra_cell, j); 
+    parsave(sprintf(strcat('./recon1_results/', '%d.mat'), j), cobra_cell, j); 
 end
 %% Summary
 % This notebook goes through bulk and single cell flux balance analysis. To 
