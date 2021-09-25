@@ -1,0 +1,393 @@
+---
+title: "Correlation between Stat3 and metabolism"
+output: html_notebook
+---
+
+
+```{r}
+rm(list=ls())
+```
+
+## Summary
+This notebook examines the correlation between Stat3 and metabolic genes, specifically looking at glutamine metabolism metabolic genes.
+
+## 1. Load Libraries
+```{r, results='hide'}
+library(tidyverse)
+library(umap)
+library(Seurat)
+library(writexl)
+library(ggpubr)
+library(gridExtra)
+library(extrafont)
+loadfonts(device="win")
+```
+
+## 2. Load data
+Let's now load the data
+```{r, include=TRUE}
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds'
+a549 = readRDS(filepath)
+```
+
+
+First let's do some data preprocessing
+```{r}
+#a549 = NormalizeData(a549, normalization.method = "LogNormalize", scale.factor = 10000)
+#a549 = FindVariableFeatures(a549, selection.method = "vst", nfeatures = 2000)
+#all.genes = rownames(a549)
+#a549 = ScaleData(a549, features = all.genes)
+```
+
+Run SCTransform
+```{r}
+#a549 = PercentageFeatureSet(a549, pattern = "^MT-", col.name = "percent.mt")
+#a549 = SCTransform(a549, vars.to.regress = "percent.mt", verbose = FALSE)
+```
+
+Finally do the clustering
+```{r}
+#a549 = RunPCA(a549, features = VariableFeatures(object = a549))
+#a549 = FindNeighbors(a549, dims = 1:10)
+#a549 = FindClusters(a549, resolution = 0.5)
+#a549 = RunUMAP(a549, dims = 1:10)
+
+```
+
+
+Visualize the data for 644 cells that were simulated.
+```{r, fig.width=24, fig.height=12, results='hide'}
+colmap = c('0d' = '#97EAD2',
+           '8hr'= '#8CC7A1',
+           '1d' = '#816E94',
+           '3d' = '#74226C',
+           '7d' = '#4B2142')
+pB = DimPlot(a549, 
+        reduction="umap",
+        dims=c(1, 2),
+        group.by='Time',
+        cols=colmap,
+        label=FALSE,
+        repel=TRUE,
+        pt.size=5, 
+        na.value = "grey50") + 
+        labs(title="A549 Time-Course Expression Embedding (No TGF-B Removal)", 
+             x="UMAP 1", 
+             y="UMAP 2") +
+        theme_minimal() +
+        theme(plot.title = element_text(size=26),
+              legend.text=element_text(size=22),
+              axis.title.x=element_text(size=22),
+              axis.title.y=element_text(size=22),
+              axis.text.x=element_text(size=22),
+              axis.text.y=element_text(size=22),
+              legend.position = c(.95, .95),
+              legend.justification = c("right", "top"),
+              legend.box.just = "right",
+              legend.margin = margin(6, 6, 6, 6),
+              text=element_text(family="sans")) +
+        guides(color=guide_legend(override.aes=list(size=2)))
+
+pB
+```
+
+## 3. Correlation for single-cell transcriptomics data
+
+Now let's get the correlation between Stat3 and Stat related proteins with glutamine metabolism related genes using the single-cell dataset. This heatmap shows the relationship between glutamine synthetase and STAT3.
+```{r, fig.width=24, fig.height=12, results='hide'}
+tmp = a549@assays$RNA@data
+to_query = c('STAT3', 'GLUL')
+tmp = t(as.data.frame(tmp)[to_query, ])
+row_sub = apply(tmp, 1, function(row) all(row !=0 ))
+tmp = data.frame(tmp[row_sub,])
+
+ggplot(tmp, aes(x=STAT3, y=GLUL, size = 5)) + 
+  geom_point(position = position_jitter(w = 0.05, h = 0.05)) + 
+  geom_smooth(method=lm, se=TRUE) +
+  xlab("STAT3 (Normalized Expression)") +
+  ylab("GLUL (Normalized Expression)") + 
+  ggtitle("STAT3 and Glutamuine Synthetase A549 scRNASeq") +
+  theme(
+    plot.title = element_text(size=26),
+    legend.text=element_text(size=22),
+    axis.title.x=element_text(size=22),
+    axis.title.y=element_text(size=22),
+    axis.text.x=element_text(size=22),
+    axis.text.y=element_text(size=22),
+    legend.position="none"
+  ) +
+  annotate("text", 
+           x = 0.3, 
+           y = 1.0, 
+           hjust = 0,
+           vjust = 0,
+           col = "Black", 
+           size = 12,
+           label = paste("R = ", 
+                         signif(cor(tmp$STAT3, tmp$GLUL), digits = 3), 
+                         "; P-value = ", 
+                         format(round(cor.test(tmp$STAT3, tmp$GLUL)$p.value, 3), nsmall=3))) +
+  annotate("text", 
+           x = 0.3, 
+           y = 0.925,  
+           hjust = 0,
+           vjust = 0,
+           col = "Black", 
+           size = 12,
+           label = paste("y = ", signif(coef(lm(tmp$GLUL ~ tmp$STAT3))[1],3), " + ",
+                         signif(coef(lm(tmp$GLUL ~ tmp$STAT3))[2],2), "x"))
+  
+```
+
+Another question we could ask is, is STAT3 related to expression of glutamine transporters. Best characterized transporters include:
+  * SLC1A5 / ASCT2
+  * SLC7A5 / LAT1
+  * SLC7A8 / LAT2
+  * SLC38A1 / SNAT1
+  * SCL38A2 / SNAT2
+  * SCL38A5 / SNAT5
+  * SCL38A7 / SNAT7
+  * SCL38A9
+  
+Source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7193454/
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+tmp = a549@assays$RNA@data
+to_query = c('STAT3', 
+             'SLC1A5', 'ASCT2', 
+             'SLC7A5', 'LAT1', 
+             'SLC7A8', 'LAT2', 
+             'SLC38A1', 'SNAT1',
+             'SCL38A2', 'SNAT2', 
+             'SCL38A5', 'SNAT5', 
+             'SCL38A7', 'SNAT7',
+             'SCL38A9')
+tmp = t(as.data.frame(tmp)[to_query, ])
+tmp = tmp[, colSums(is.na(tmp)) < nrow(tmp)]
+tmp = data.frame(tmp)
+
+tmp2 = tmp[, c("STAT3", "SLC7A5")]
+row_sub = apply(tmp2, 1, function(row) all(row !=0 ))
+tmp2 = data.frame(tmp2[row_sub,])
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+ggplot(tmp2, aes(x=STAT3, y=SLC7A5, size = 5)) + 
+  geom_point(position = position_jitter(w = 0.05, h = 0.05)) + 
+  geom_smooth(method=lm, se=TRUE) +
+  xlab("STAT3 (Normalized Expression)") +
+  ylab("SLC7A5 (Normalized Expression)") + 
+  ggtitle("STAT3 and SLC7A5 A549 scRNASeq") +
+  theme(
+    plot.title = element_text(size=26),
+    legend.text=element_text(size=22),
+    axis.title.x=element_text(size=22),
+    axis.title.y=element_text(size=22),
+    axis.text.x=element_text(size=22),
+    axis.text.y=element_text(size=22),
+    legend.position="none"
+  ) +
+  annotate("text", 
+           x = 1.25, 
+           y = 1.0, 
+           hjust = 0,
+           vjust = 0,
+           col = "Black", 
+           size = 12,
+           label = paste("R = ", 
+                         signif(cor(tmp2$STAT3, tmp2$SLC7A5), digits = 3), 
+                         "; P-value = ", 
+                         format(round(cor.test(tmp2$STAT3, tmp2$SLC7A5)$p.value, 3), nsmall=3))) +
+  annotate("text", 
+           x = 1.25, 
+           y = 0.85,  
+           hjust = 0,
+           vjust = 0,
+           col = "Black", 
+           size = 12,
+           label = paste("y = ", signif(coef(lm(tmp2$SLC7A5 ~ tmp2$STAT3))[1],3), " + ",
+                         signif(coef(lm(tmp2$SLC7A5 ~ tmp2$STAT3))[2],2), "x"))
+```
+
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+FeaturePlot(a549, features=c('STAT3', 'GLUL'), pt.size = 3, reduction='umap')
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+RidgePlot(a549, features=c('STAT3', 'GLUL'), ncol=2, group.by='Time',)
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+VlnPlot(object=a549, 
+        features=c('STAT3', 'GLUL'),
+        pt.size=5,
+        group.by='Time'
+)
+```
+```{r}
+#install.packages("msigdbr")
+library(msigdbr)
+```
+
+```{r}
+reactome_annotation = msigdbr(species = "Homo sapiens", category = "C2", subcategory = "CP:REACTOME")
+gln_reactome = reactome_annotation[reactome_annotation$gs_name=="REACTOME_GLUTAMATE_AND_GLUTAMINE_METABOLISM", ]
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+RidgePlot(a549, features=c('STAT3', gln_reactome$gene_symbol), ncol=3, group.by='Time',)
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+VlnPlot(object=a549, 
+        features=c('STAT3', gln_reactome$gene_symbol),
+        pt.size=5,
+        group.by='Time'
+)
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+VlnPlot(object=a549, 
+        features=c('STAT3', 'GLUL', 'SLC1A5', 'SLC7A5', 'LAT2', 'SLC38A1'),
+        pt.size=5,
+        group.by='Time'
+)
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+FeaturePlot(a549, features=c('STAT3', gln_reactome$gene_symbol), pt.size = 3, reduction='umap')
+```
+
+```{r, fig.width=24, fig.height=12, results='hide'}
+a549@active.ident = as.factor(a549$Time)
+tmp = FindAllMarkers(a549, features=c('STAT3', ''))
+```
+
+## 4. Correlation for single-cell transcriptomics and metabolic fluxes from FBA
+```{r}
+library(ggplot2)
+df1 = t(as.matrix(a549@assays$RNA@data))
+df2 = t(as.matrix(a549@assays$FBA@data))
+tmp = merge(df1, df2, by='row.names')
+
+tmp2 = tmp[, c('STAT3', 'GLNS')]
+tmp2 = sapply(tmp2, as.numeric)
+tmp2 = data.frame(tmp2)
+tmp2$STAT3 = (tmp2$STAT3-min(tmp2$STAT3))/(max(tmp2$STAT3)-min(tmp2$STAT3))
+tmp2$GLNS = (tmp2$GLNS-min(tmp2$GLNS))/(max(tmp2$GLNS)-min(tmp2$GLNS))
+
+```
+
+```{r}
+row_sub = apply(tmp2, 1, function(row) all(row !=0 ))
+tmp2 = data.frame(tmp2[row_sub,])
+```
+
+Let's plot the relationship between STAT3 expression and Glutamine Synthase flux.
+```{r, fig.width=24, fig.height=12, results='hide'}
+ggplot(data=tmp2, aes_string(x='STAT3', y='GLNS', size = 5)) + 
+  geom_point(position = position_jitter(w = 0.05, h = 0.05)) + 
+  geom_smooth(method = "lm", se=TRUE) + 
+  xlab("STAT3 (Normalized Expression)") + 
+  ylab("GLNS (COBRA Flux)")  +
+  ggtitle("Correlation between STAT3 expression and Glutamine Synthetase flux") + 
+  theme(
+    plot.title = element_text(size=26),
+    axis.title.x=element_text(size=22),
+    axis.title.y=element_text(size=22),
+    axis.text.x=element_text(size=22),
+    axis.text.y=element_text(size=22),
+    legend.position="none"
+  ) #+
+  #annotate("text", 
+  #         x = 0.50, 
+  #         y = 0.50, 
+  #         hjust = 0,
+  #         vjust = 0,
+  #         col = "Black", 
+  #         size = 12,
+  #         label = paste("R = ", 
+  #                       signif(cor(tmp2$STAT3, tmp2$GLNS), digits = 3), 
+  #                       "; P-value = ", 
+  #                       format(round(cor.test(tmp2$STAT3, tmp2$GLNS)$p.value, 3), nsmall=3))) +
+  #annotate("text", 
+  #         x = 0.50, 
+  #         y = 0.40,  
+  #         hjust = 0,
+  ##         vjust = 0,
+  #         col = "Black", 
+  #         size = 12,
+  #         label = paste("y = ", signif(coef(lm(tmp2$GLNS ~ tmp2$STAT3))[1],3), " + ",
+  #                       signif(coef(lm(tmp2$GLNS ~ tmp2$STAT3))[2],2), "x"))
+```
+Now let's try STAT3 and glutamine exchange 
+```{r}
+
+tmp2 = tmp[, c('STAT3', 'EX-gln-L-e')]
+tmp2 = sapply(tmp2, as.numeric)
+tmp2 = data.frame(tmp2)
+tmp2$STAT3 = (tmp2$STAT3-min(tmp2$STAT3))/(max(tmp2$STAT3)-min(tmp2$STAT3))
+tmp2$`EX.gln.L.e` = (tmp2$`EX.gln.L.e` - min(tmp2$`EX.gln.L.e`) + 0.01)/ ((max(tmp2$`EX.gln.L.e`)-min(tmp2$`EX.gln.L.e`)) + 0.1)
+
+```
+
+Let's plot the relationship between STAT3 expression and Glutamine Exchange flux.
+```{r, fig.width=24, fig.height=12, results='hide'}
+ggplot(data=tmp2, aes(x=STAT3, y=EX.gln.L.e, size = 5)) + 
+  geom_point(position = position_jitter(w = 0.05, h = 0.05)) + 
+  geom_smooth(method = lm, se=TRUE) + 
+  xlab("STAT3 (Normalized Expression)") + 
+  ylab("Glutamine Fxchange (COBRA Flux)")  +
+  ggtitle("Correlation between STAT3 expression and Glutamine Exchange flux") + 
+  theme(
+    plot.title = element_text(size=26),
+    axis.title.x=element_text(size=22),
+    axis.title.y=element_text(size=22),
+    axis.text.x=element_text(size=22),
+    axis.text.y=element_text(size=22),
+    legend.position="none"
+  ) +
+  annotate("text", 
+           x = 0.70, 
+           y = 1.0, 
+           hjust = 0,
+           vjust = 0,
+           col = "Black", 
+           size = 12,
+           label = paste("R = ", 
+                         signif(cor(tmp2$STAT3, tmp2$`EX.gln.L.e`), digits = 3), 
+                         "; P-value = ", 
+                         format(round(cor.test(tmp2$STAT3, tmp2$`EX.gln.L.e`)$p.value, 3), nsmall=3))) +
+  annotate("text",  
+           x = 0.70, 
+           y = 0.90,  
+           hjust = 0,
+           vjust = 0,
+           col = "Black", 
+           size = 12,
+           label = paste("y = ", signif(coef(lm(tmp2$`EX.gln.L.e` ~ tmp2$STAT3))[1],3), " + ",
+                         signif(coef(lm(tmp2$`EX.gln.L.e` ~ tmp2$STAT3))[2],2), "x"))
+```
+
+```{r}
+library(reshape2)
+tmp3 = melt(tmp2)
+ggplot(data=tmp3, aes(x=as.factor(variable), y=value)) + 
+  geom_violin() + 
+  geom_jitter(height = 0, width = 0.1)
+```
+
+
+## 5. Correlation for single-cell transcriptomics and growth rates from reaction KO
+```{r}
+```
+
+
+## 6. Correlation for single-cell transcriptomics and growth rate from gene KO
+```{r}
+```
+
+
+## Conclusions
+

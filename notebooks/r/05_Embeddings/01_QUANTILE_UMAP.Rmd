@@ -1,0 +1,363 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Summary
+This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
+
+```{r}
+rm(list=ls())
+```
+
+## 1. Load Libraries
+```{r, results='hide'}
+library(tidyverse)
+library(umap)
+library(Seurat)
+library(writexl)
+library(ggpubr)
+library(gridExtra)
+library(extrafont)
+loadfonts(device="win")
+```
+
+## 2. Load scRNASeq datasets
+Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the $TGF \beta 1$ sample, since this was the way EMT was induced in many bulk experiments.
+
+```{r, include=TRUE}
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds'
+a549 = readRDS(filepath)
+```
+
+### A. Visualize Time-Course
+This bit of code separates groups by time point and creates individual UMAP plots. This may be useful for later.
+
+```{r, fig.width=24, fig.height=12, results='hide', dpi=300}
+colmap = c('0d' = '#97EAD2',
+           '8hr'= '#8CC7A1',
+           '1d' = '#816E94',
+           '3d' = '#74226C',
+           '7d' = '#4B2142')
+pA = DimPlot(a549, 
+        reduction="umap",
+        dims=c(1, 2),
+        split.by='Time',
+        group.by='Time',
+        cols=colmap,
+        label=FALSE,
+        repel=TRUE,
+        label.size=4,
+        pt.size=5, 
+        na.value = "grey50") + 
+        labs(title="A549 Time-Course", 
+             x="UMAP 1", 
+             y="UMAP 2") +
+        theme_minimal() +
+        theme(plot.title = element_text(size=26),
+              legend.text=element_text(size=22),
+              axis.title.x=element_text(size=22),
+              axis.title.y=element_text(size=22),
+              axis.text.x=element_text(size=22),
+              axis.text.y=element_text(size=22),
+              legend.position=c(0.05, 0.15),
+              legend.box="vertical",
+              legend.margin=margin(),
+              text=element_text(family="sans")) +
+        guides(color=guide_legend(override.aes=list(size=2)))
+
+pA
+```
+
+This embedding just changes subpopulations to time, which is what I originally wanted.
+
+```{r, fig.width=24, fig.height=12, results='hide', dpi=300}
+pB = DimPlot(a549, 
+        reduction="umap",
+        dims=c(1, 2),
+        group.by='Time',
+        cols = colmap,
+        label=FALSE,
+        repel=TRUE,
+        label.size=4,
+        pt.size=5, 
+        na.value = "grey50") + 
+        labs(title="A549 Time-Course", 
+             x="UMAP 1", 
+             y="UMAP 2") +
+        theme_minimal() +
+        theme(plot.title = element_text(size=26),
+              legend.text=element_text(size=22),
+              axis.title.x=element_text(size=22),
+              axis.title.y=element_text(size=22),
+              axis.text.x=element_text(size=22),
+              axis.text.y=element_text(size=22),
+              legend.position=c(0.05, 0.15),
+              legend.box="vertical",
+              legend.margin=margin(),
+              text=element_text(family="sans")) +
+        guides(color=guide_legend(override.aes=list(size=2)))
+
+
+pB
+```
+
+## 3. Overlay metabolic fluxes onto the UMAP embedding
+We'll read in the metabolic flux data computed from single-cell Flux Balance Analysis
+```{r, results='hide'}
+flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_flux_quantiles.csv'
+flux_data = readr::read_csv(flux_path)
+
+flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_rxnko_quantiles.csv'
+flux_data = readr::read_csv(flux_path)
+
+
+col_names = colnames(flux_data)
+col_names = stringr::str_replace(col_names, '...[0-9]+', '')
+colnames(flux_data) = col_names
+#flux_data[, 4:ncol(flux_data)] = abs(flux_data[, 4:ncol(flux_data)])
+```
+
+Now let's perform some mapping to the original ids
+```{r, results='hide'}
+a549_id_map = read_csv("D:/Chandrasekaran/Projects/EMT/Analysis/data/a549_colmap.csv")
+```
+Now let's do a concatenation. It looks like there is perfect correspondance between the map and the dataset.
+```{r}
+col_names = data.frame(col_names[4:length(col_names)])
+sanity_check = merge(col_names, a549_id_map, by='row.names')
+```
+
+Now let's replace the names. This will be used to map to the embedding.
+```{r}
+colnames(flux_data) = c("BiGG", "Name", "Subsystem", sanity_check$orig_id)
+rxn_ids = flux_data[, c(2:3)]
+flux_data = flux_data[, -c(2:3)]
+flux_data = t(flux_data)
+
+colnames(flux_data) = flux_data[1, ]
+flux_data = data.frame(flux_data)
+flux_data = flux_data[-1, ] 
+```
+
+```{r}
+umap_data = data.frame(a549@reductions$umap@cell.embeddings)
+flux_data = mutate_all(flux_data, function(x) as.numeric(as.character(x)))
+
+#umap_data$cluster = rownames(a549$Time)
+merged_umap = merge(umap_data, flux_data, by.x='row.names', by.y='row.names')
+rownames(merged_umap) = merged_umap$Row.names
+merged_umap = merged_umap[, -1]
+```
+
+Let's intialize some variables we need to declare for the visualization
+```{r, results='hide'}
+reactions_to_visualize = c("ADSL1", "CYSTS", "PEPCKm",
+                           "ACITL", "CYSO", "DHFR")
+reaction_names = c("adenylosuccinate lyase", 
+                   "cystathionine beta-synthase", 
+                   "Phosphoenolpyruvate carboxykinase (GTP)",
+                   "ATP-Citrate lyase",
+                   "cysteine oxidase",
+                   "dihydrofolate reductase")
+colors = c("#CC3311", "#CC3311", "#CC3311",
+           "#004488", "#004488", "#004488")
+```
+
+```{r}
+tmp = merged_umap[, reactions_to_visualize]
+```
+
+```{r}
+p = list()
+p[[1]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[1]])) + 
+                geom_point(size=3, alpha=0.5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[1], 
+                     color="Flux") + 
+                scale_color_gradient(low="gray", high=colors[1],
+                                     limits = c(0, 1.3)) +
+                theme(plot.title = element_text(size=10),
+                      legend.text=element_text(size=8),
+                      axis.title.x=element_text(size=10),
+                      axis.title.y=element_text(size=10),
+                      axis.text.x=element_text(size=8),
+                      axis.text.y=element_text(size=8),
+                      legend.box="vertical",
+                      legend.margin=margin())
+
+p[[2]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[2]])) + 
+                geom_point(size=3, alpha=0.5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[2], 
+                     color="Flux") + 
+                scale_color_gradient(low="gray", high=colors[2],
+                                     limits = c(0,1.3)) +
+                theme(plot.title = element_text(size=10),
+                      legend.text=element_text(size=8),
+                      axis.title.x=element_text(size=10),
+                      axis.title.y=element_text(size=10),
+                      axis.text.x=element_text(size=8),
+                      axis.text.y=element_text(size=8),
+                      legend.box="vertical",
+                      legend.margin=margin())
+
+p[[3]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[3]])) + 
+                geom_point(size=3, alpha=0.5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[3], 
+                     color="Flux") + 
+                scale_color_gradient(low="gray", high=colors[3],
+                                     limits = c(0,1.3)) +
+                theme(plot.title = element_text(size=10),
+                      legend.text=element_text(size=8),
+                      axis.title.x=element_text(size=10),
+                      axis.title.y=element_text(size=10),
+                      axis.text.x=element_text(size=8),
+                      axis.text.y=element_text(size=8),
+                      legend.box="vertical",
+                      legend.margin=margin())
+
+p[[4]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[4]])) + 
+                geom_point(size=3, alpha=0.5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[4], 
+                     color="Flux") + 
+                scale_color_gradient(low="gray", high=colors[4],
+                                     limits = c(0,1.3)) +
+                theme(plot.title = element_text(size=10),
+                      legend.text=element_text(size=8),
+                      axis.title.x=element_text(size=10),
+                      axis.title.y=element_text(size=10),
+                      axis.text.x=element_text(size=8),
+                      axis.text.y=element_text(size=8),
+                      legend.box="vertical",
+                      legend.margin=margin())
+
+p[[5]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[5]])) + 
+                geom_point(size=3, alpha=0.5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[5], 
+                     color="Flux") + 
+                scale_color_gradient(low="gray", high=colors[5],
+                                     limits = c(0,1.3)) +
+                theme(plot.title = element_text(size=10),
+                      legend.text=element_text(size=8),
+                      axis.title.x=element_text(size=10),
+                      axis.title.y=element_text(size=10),
+                      axis.text.x=element_text(size=8),
+                      axis.text.y=element_text(size=8),
+                      legend.box="vertical",
+                      legend.margin=margin())
+
+p[[6]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[6]])) + 
+                geom_point(size=3, alpha=0.5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[6], 
+                     color="Flux") + 
+                scale_color_gradient(low="gray", high=colors[6],
+                                     limits = c(0,1.3)) +
+                theme(plot.title = element_text(size=10),
+                      legend.text=element_text(size=8),
+                      axis.title.x=element_text(size=10),
+                      axis.title.y=element_text(size=10),
+                      axis.text.x=element_text(size=8),
+                      axis.text.y=element_text(size=8),
+                      legend.box="vertical",
+                      legend.margin=margin())
+
+```
+
+
+Create and visualize the final UMAP flux plot object.
+```{r, fig.width=24, fig.height=12, results='hide'}
+pC = scater::multiplot(p[[1]], p[[6]], p[[2]], 
+                       p[[4]], p[[3]], p[[5]], cols=3)
+pC
+```
+
+First, we need to format the data, so that it matches the DGE Matrix, where rows are reactions and columns are cell IDs.
+```{r, results='hide'}
+fba = flux_data
+
+# Reformat
+fba = t(fba)
+fba = as.sparse(fba)
+```
+
+Now we need to make sure the expression matrix has the same cells as the fba matrix, and also ensure the `active.ident` and the `Time` datapoints we'll map to.
+```{r, results='hide'}
+# Get names and indices
+intersect_cells = intersect(colnames(a549@assays$RNA@counts), colnames(fba))
+cell_idx = which(colnames(a549@assays$RNA@counts) %in% intersect_cells)
+
+# Reformat data
+a549_subset = subset(a549, cells=intersect_cells)
+fba = fba[, intersect_cells]
+
+a549_subset[["FBA"]] = CreateAssayObject(counts=fba)
+saveRDS(a549_subset, file = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds")
+
+```
+
+```{r, results='hide'}
+preprocess_flux = function(gene_obj, assay){
+  # Log normalize data
+  gene_obj = NormalizeData(gene_obj, 
+                           assay=assay,
+                           normalization.method='LogNormalize', 
+                           scale.factor=10000)
+  
+  # Scale data
+  gene_obj = ScaleData(gene_obj, 
+                       assay=assay)
+  return(gene_obj)
+}
+```
+
+Now let's perform the data preprocessing:
+```{r, results='hide'}
+#a549_subset = preprocess_flux(a549_subset, assay="FBA")
+```
+
+## D. Get Metabolic Markers
+We'll get metabolic markers based on subpopulations.
+```{r, results='hide'}
+a549_subset@active.ident = as.factor(a549_subset@meta.data$Time)
+subpop_reactions = FindAllMarkers(a549_subset,
+                                  assay="FBA",
+                                  only.pos=TRUE,
+                                  min.pct=0.25,
+                                  logfc.threshold=0.05,
+                                  test.use="MAST")
+#write.table(subpop_reactions, "clipboard", sep="\t")
+```
+
+```{r, results='hide'}
+#var_feats = FindVariableFeatures(object=a549_subset)
+DoHeatmap(object=a549_subset,
+          assay="FBA",
+          slot='counts',
+          label=FALSE,
+          draw.lines=TRUE,
+          lines.width=10,
+          theme(text=element_text(family='sans', size=16),
+                legend.text=element_text(size=16),
+                axis.title.x=element_text(size=20),
+                axis.title.y=element_text(size=20),
+                axis.text.x=element_text(size=16),
+                axis.text.y=element_text(size=16),
+                legend.title=element_text(size=20)))
+```
