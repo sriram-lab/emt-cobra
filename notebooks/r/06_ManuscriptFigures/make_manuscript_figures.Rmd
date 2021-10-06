@@ -68,11 +68,11 @@ We're going to grab selected time points that have replicate values across multi
 
 ```{r}
 # Split by hours
-early_data = abs(top50[, c("GSE17708_1hrs", "Garcia_1hrs")])
-mid1_data  = abs(top50[, c("GSE17708_8hrs", "GSE147405_8hrs")])
-mid2_data  = abs(top50[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")])
-late_data  = abs(top50[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
-                       "Keshamouni_72hrs", "GSE147405_72hrs")])
+early_data = as.matrix(abs(top50[, c("GSE17708_1hrs", "Garcia_1hrs")]))
+mid1_data  = as.matrix(abs(top50[, c("GSE17708_8hrs")]))
+mid2_data  = as.matrix(abs(top50[, c("GSE17708_24hrs", "Garcia_24hrs")]))
+late_data  = as.matrix(abs(top50[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                       "Keshamouni_72hrs")]))
 ```
 
 #### ii. Create the column annotation heatmap for each time-point
@@ -212,10 +212,10 @@ flux_heatmap = function(df, pathway){
   
   # Split by hours
   early_data = abs(data[, c("GSE17708_1hrs", "Garcia_1hrs")])
-  mid1_data  = abs(data[, c("GSE17708_8hrs", "GSE147405_8hrs")])
-  mid2_data  = abs(data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")])
+  mid1_data  = abs(data[, c("GSE17708_8hrs")])
+  mid2_data  = abs(data[, c("GSE17708_24hrs", "Garcia_24hrs")])
   late_data  = abs(data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
-                                     "Keshamouni_72hrs", "GSE147405_72hrs")])
+                                     "Keshamouni_72hrs")])
   tmp = cbind(early_data, mid1_data, mid2_data, late_data)
   
   # Create column annotation bars
@@ -339,10 +339,10 @@ expt_data = tmp2[, 5]
 
 # Split by hours
 early_data = abs(tmp2[, c("GSE17708_1hrs", "Garcia_1hrs")])
-mid1_data  = abs(tmp2[, c("GSE17708_8hrs", "GSE147405_8hrs")])
-mid2_data  = abs(tmp2[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")])
+mid1_data  = abs(tmp2[, c("GSE17708_8hrs")])
+mid2_data  = abs(tmp2[, c("GSE17708_24hrs", "Garcia_24hrs")])
 late_data  = abs(tmp2[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
-                                   "Keshamouni_72hrs", "GSE147405_72hrs")])
+                                   "Keshamouni_72hrs")])
 tmp = cbind(early_data, mid1_data, mid2_data, late_data)
 
 # Create column annotation bars
@@ -495,6 +495,140 @@ idx[is.na(idx)] = FALSE
 ppp_data = data[idx, ]
 write.csv(top50[, 1:3], 
           "D:/Analysis/EMT/data/ppp_flux_ids.csv")
+```
+
+### E. Visualize TCA Cycle Reactions
+Now let's specifically get reactions related to Glycolysis.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+tca_figures = flux_heatmap(data, pathway="Citric Acid Cycle")
+png(filename="D:/Chandrasekaran/Projects/EMT/Analysis/Figures/COBRA Predictions/tca_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+tca_figures
+dev.off()
+```
+
+### F. Visualize OXPHOS Reactions
+Now let's specifically get reactions related to Glycolysis.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+oxphos_figures = flux_heatmap(data, pathway="Oxidative Phosphorylation")
+png(filename="D:/Chandrasekaran/Projects/EMT/Analysis/Figures/COBRA Predictions/oxphos_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+oxphos_figures
+dev.off()
+```
+
+### F. Visualize Glutamate Reactions
+Now let's specifically get reactions related to Glycolysis.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+gln_figures = flux_heatmap(data, pathway="Glutamate metabolism")
+png(filename="D:/Chandrasekaran/Projects/EMT/Analysis/Figures/COBRA Predictions/gln_flux_heatmap.png",
+       width=20,
+       height=12.5,
+       units='in',
+    res=1200)
+gln_figures
+dev.off()
+```
+### G. Visualize Single Cell Reactions Reactions
+Now let's specifically get reactions related to single-cell time points.
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
+# If pathway variable is missing, just visualize everything
+tmp2 = data
+
+# Create new data for barplots and discrete heatmap
+bardata = tmp2[, 4]
+bardata[is.na(bardata)] = 0
+expt_data = tmp2[, 5]
+
+# Split by hours
+mid1_data  = abs(tmp2[, c("GSE147405_8hrs")])
+mid2_data  = abs(tmp2[, c("GSE147405_24hrs")])
+late_data  = abs(tmp2[, c("GSE147405_72hrs")])
+tmp = cbind(mid1_data, mid2_data, late_data)
+
+# Create column annotation bars
+h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
+                                      labels=c("8Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
+                                      labels=c("24Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
+                                      labels=c("48-72Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+
+# Construct experiment heatmap annotation
+hm = Heatmap(as.matrix(expt_data),
+           col = colorRamp2(c(1, 2, 3, 4, 5), 
+                            c("#D8F3DC", "#95D5B2", "#52B788", "#2D6A4F", "#1B4332")),
+           heatmap_legend_param=list(title="Experiments",
+                                     color_bar="discrete"),
+           rect_gp = gpar(col="black", 
+                            lwd=1),
+           width = ncol(expt_data)*unit(5, "mm"), 
+           height = nrow(expt_data)*unit(5, "mm"))
+
+# Construct priority score barplot annotation
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+
+# Construct the heatmaps
+col_fun = colorRamp2(c(0, 
+                       median(as.matrix(tmp), 
+                                 na.rm=TRUE), 
+                       max(as.matrix(tmp), na.rm=TRUE)), 
+                     c("Gray", "#FD7470", "#DC1C13"))
+
+h2 = Heatmap(row_names_side="left",t
+             mid1_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+             rect_gp = gpar(col="black", 
+                            lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h1_col, 
+             left_annotation = rowAnno,
+             width = ncol(early_data)*unit(5, "mm"), 
+             height = nrow(early_data)*unit(5, "mm")) 
+h2 = Heatmap(mid2_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+             rect_gp = gpar(col="black", 
+                            lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h2_col, 
+             width = ncol(mid1_data)*unit(5, "mm"), 
+             height = nrow(mid1_data)*unit(5, "mm"))
+h4 = Heatmap(late_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+             rect_gp = gpar(col="black", 
+                            lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=TRUE,
+             bottom_annotation=h4_col,
+             width = ncol(late_data)*unit(5, "mm"), 
+             height = nrow(late_data)*unit(5, "mm"),
+             heatmap_legend_param=list(title="Absolute flux (gDW/mmol*hr)"))
+
+
+# Return the final figure
+final_figure = h1+h2+h3+h4+hm+bp
+final_figure
 ```
 
 ### E. Visualize Specific Reactions
