@@ -698,10 +698,10 @@ ko_heatmap = function(df, pathway){
   
   # Split by hours
   early_data = data[, c("GSE17708_1hrs", "Garcia_1hrs")] - 1
-  mid1_data  = data[, c("GSE17708_8hrs", "GSE147405_8hrs")] - 1
-  mid2_data  = data[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")] - 1
+  mid1_data  = data[, c("GSE17708_8hrs")] - 1
+  mid2_data  = data[, c("GSE17708_24hrs", "Garcia_24hrs")] - 1
   late_data  = data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
-                                     "Keshamouni_72hrs", "GSE147405_72hrs")] - 1
+                                     "Keshamouni_72hrs")] - 1
   tmp = cbind(early_data, mid1_data, mid2_data, late_data)
   
   # Create column annotation bars
@@ -817,6 +817,129 @@ dev.off
 
 # Show
 top50_figures
+```
+```{r}
+  
+# If pathway variable is missing, just visualize everything
+data =top50
+
+# Create new data for barplots and discrete heatmap
+bardata = data[, 4]
+bardata[is.na(bardata)] = 0
+expt_data = data[, 5]
+
+# Split by hours
+early_data = data[, c("GSE17708_1hrs", "Garcia_1hrs")] - 1
+mid1_data  = data[, c("GSE17708_8hrs")] - 1
+mid2_data  = data[, c("GSE17708_24hrs", "Garcia_24hrs")] - 1
+late_data  = data[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
+                                   "Keshamouni_72hrs")] - 1
+tmp = cbind(early_data, mid1_data, mid2_data, late_data)
+
+# Create column annotation bars
+h1_col = HeatmapAnnotation(h1=anno_block(gp=gpar(fill="#CAC4CE"),
+                                    labels=c("1Hr"), 
+                                    labels_gp=gpar(col="black", 
+                                                   fontsize=10)))
+h2_col = HeatmapAnnotation(h2=anno_block(gp=gpar(fill="#8D86C9"),
+                                      labels=c("8Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h3_col = HeatmapAnnotation(h3=anno_block(gp=gpar(fill="#725AC1"),
+                                      labels=c("24Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+h4_col = HeatmapAnnotation(h4=anno_block(gp=gpar(fill="#242038"),
+                                      labels=c("48-72Hrs"), 
+                                      labels_gp=gpar(col="white", 
+                                                     fontsize=10)))
+
+# Construct experiment heatmap annotation
+hm = Heatmap(as.matrix(expt_data),
+         col = colorRamp2(c(1, 2, 3, 4, 5), 
+                          c("#D8F3DC", "#95D5B2", "#52B788", "#2D6A4F", "#1B4332")),
+         heatmap_legend_param=list(title="Experiments",
+                                   color_bar="discrete"),
+         rect_gp = gpar(col="black", 
+                          lwd=1),
+         width = ncol(expt_data)*unit(5, "mm"), 
+         height = nrow(expt_data)*unit(5, "mm"))
+
+# Construct priority score barplot annotation
+bp = rowAnnotation(
+  Priority=anno_barplot(
+    bardata
+  )
+)
+# Rows to highlight
+myRows = c('L-Glutamine exchange, NA',
+           'aspartate transaminase, Alanine and Aspartate Metabolism')
+
+# Set stylings for row names and make our selected rows unique
+row_idx = which(tmp2$name %in% myRows)
+fontcolors = rep('black', nrow(tmp2))
+fontcolors[row_idx] = 'red'
+fontfaces = rep('plain',nrow(tmp2))
+fontfaces[row_idx] = 'bold'
+rowAnno = rowAnnotation(rows = anno_text(tmp2$name, 
+                                       gp = gpar(fontface = fontfaces, 
+                                                 col = fontcolors),
+                                       just='right', 
+                                       location=1))
+
+
+
+# Construct the heatmaps
+col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
+                     c("#073B4C", "Gray", "#EF476F"))
+h1 = Heatmap(row_names_side="left",
+           early_data, 
+           col=col_fun, 
+           cluster_columns=FALSE, 
+           rect_gp = gpar(col="black", 
+                          lwd=1),
+           cluster_rows=FALSE,
+           show_heatmap_legend=FALSE,
+           bottom_annotation=h1_col, 
+           left_annotation = rowAnno,
+           width = ncol(early_data)*unit(5, "mm"), 
+           height = nrow(early_data)*unit(5, "mm")) 
+h2 = Heatmap(mid1_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+             rect_gp = gpar(col="black", 
+                            lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h2_col, 
+             width = ncol(mid1_data)*unit(5, "mm"), 
+             height = nrow(mid1_data)*unit(5, "mm"))
+h3 = Heatmap(mid2_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+             rect_gp = gpar(col="black", 
+                            lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=FALSE,
+             bottom_annotation=h3_col, 
+             width = ncol(mid2_data)*unit(5, "mm"), 
+             height = nrow(mid2_data)*unit(5, "mm"))
+h4 = Heatmap(late_data, 
+             col=col_fun, 
+             cluster_columns=FALSE, 
+             rect_gp = gpar(col="black", 
+                            lwd=1),
+             cluster_rows=FALSE,
+             show_heatmap_legend=TRUE,
+             bottom_annotation=h4_col,
+             width = ncol(late_data)*unit(5, "mm"), 
+             height = nrow(late_data)*unit(5, "mm"),
+             heatmap_legend_param=list(title="Normalized KO Growth Score",
+                                     at = c(min(as.matrix(tmp)), 0, max(as.matrix(tmp)))))
+
+# Return the final figure
+final_figure = h1+h2+h3+h4+hm+bp
+final_figure
 ```
 
 Save the top 50 identifiers to get the genes for the CRISPR validation section.

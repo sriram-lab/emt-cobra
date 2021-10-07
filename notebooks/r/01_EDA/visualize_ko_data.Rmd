@@ -1,0 +1,142 @@
+---
+title: "KO Results"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+```
+
+## Summary
+This notebook visualizes barplots showing the number of knockouts across datasets.
+```{r}
+library(tidyverse)
+```
+
+## 1. Load data
+
+```{r}
+path = "D:/Chandrasekaran/Projects/EMT/Data/Supplementary Tables.xlsx"
+ko_grate = readxl::read_excel(path, sheet="S. Table 2")
+
+col_names = colnames(ko_grate)
+expt_names = col_names[6:22]
+ko_scores = ko_grate[, expt_names]
+```
+
+## 2. Visualize All Lethal Reactions
+```{r, fig.width = 14, fig.height = 10}
+ggplot(data=freq_tbl, aes(x=variable, y=value, label=value)) +
+  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1") + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial'),
+        legend.position="none") +
+  guides(fill=guide_legend(title="Time")) + 
+  scale_fill_npg()
+```
+```{r, fig.width = 14, fig.height = 10}
+ggplot(data=freq_tbl, aes(x=variable, y=value, label=value)) +
+  geom_bar(aes(fill=X1), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1") + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial')) +
+  guides(fill=guide_legend(title="Experiment")) + 
+  scale_fill_npg()
+```
+
+
+## 3. Visualize All Lethal Reactions Broken Down by Expt
+First we need to melt the dataframe.
+```{r}
+library(reshape2)
+ko_score_by_expt = melt(ko_scores)
+```
+
+Now we need to create some variables that will be used for the bar plots.
+```{r}
+library(stringr)
+library(janitor)
+
+
+tmp = data.frame(str_split_fixed(ko_score_by_expt$variable, "_", 2))
+ko_score_by_expt = cbind(tmp, ko_score_by_expt)
+ko_score_by_expt$counts = ko_score_by_expt$value < 1
+
+freq_tbl = dcast(data=ko_score_by_expt,
+               formula = X1 ~ X2,
+               fun.aggregate = sum, 
+               value.var = "counts")
+
+freq_tbl[freq_tbl == 0] = NA
+freq_tbl = melt(freq_tbl)
+
+```
+Then we visualize.
+```{r, fig.width = 14, fig.height = 10}
+library(ggplot2)
+library(extrafont)
+library("ggsci")
+
+loadfonts(device = "win")
+#dev.new(family = "Arial")
+freq_tbl$variable = gsub('48hrs', '48-72hrs', freq_tbl$variable)
+freq_tbl$variable = gsub('72hrs', '48-72hrs', freq_tbl$variable)
+
+to_keep = c("1hrs", "24hrs", "48-72hrs")
+freq_tbl = freq_tbl[freq_tbl$variable %in% to_keep, ]
+
+ggplot(data=freq_tbl, aes(x=X1, y=value, label=value)) +
+  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1") + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial')) +
+  guides(fill=guide_legend(title="Time")) + 
+  scale_fill_npg()
+   #scale_fill_manual(values=c('#1E3888','#F5E663','#9C3848'), guide=FALSE)
+```
+## 4. Visualize All Lethal Reactions Broken Down by bulk v Single-Cell
+```{r, fig.width = 14, fig.height = 10}
+tmp = freq_tbl[freq_tbl$X1 %in% "GSE147405", ]
+
+ggplot(data=tmp, aes(x=variable, y=value, label=value)) +
+  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1 Single-Cell Simulations") + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial'),
+        legend.position="none") +
+  guides(fill=guide_legend(title="Time")) + 
+  scale_fill_npg()
+
+
+tmp2 = freq_tbl[!freq_tbl$X1 %in% "GSE147405", ]
+
+ggplot(data=tmp2, aes(x=variable, y=value, label=value)) +
+  geom_bar(aes(fill=X1), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1 Bulk Simulations") + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial')) +
+  guides(fill=guide_legend(title="Experiments")) + 
+  scale_fill_npg()
+
+```
