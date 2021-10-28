@@ -14,7 +14,7 @@ library(tidyverse)
 ```
 
 ## 1. Load data
-
+The data contains the knockout growth rates from COBRA simulations for time-course data.
 ```{r}
 path = "D:/Chandrasekaran/Projects/EMT/Data/Supplementary Tables.xlsx"
 ko_grate = readxl::read_excel(path, sheet="S. Table 2")
@@ -24,37 +24,7 @@ expt_names = col_names[6:22]
 ko_scores = ko_grate[, expt_names]
 ```
 
-## 2. Visualize All Lethal Reactions
-```{r, fig.width = 14, fig.height = 10}
-ggplot(data=freq_tbl, aes(x=variable, y=value, label=value)) +
-  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
-  xlab("") +
-  ylab("Number of Lethal Reactions (Growth Score < 0)") +
-  ggtitle("Lethal reactions predicted from RECON1") + 
-  theme_minimal() + 
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        text=element_text(size=22, family='TT Arial'),
-        legend.position="none") +
-  guides(fill=guide_legend(title="Time")) + 
-  scale_fill_npg()
-```
-```{r, fig.width = 14, fig.height = 10}
-ggplot(data=freq_tbl, aes(x=variable, y=value, label=value)) +
-  geom_bar(aes(fill=X1), stat="identity", na.rm=TRUE) +
-  xlab("") +
-  ylab("Number of Lethal Reactions (Growth Score < 0)") +
-  ggtitle("Lethal reactions predicted from RECON1") + 
-  theme_minimal() + 
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        text=element_text(size=22, family='TT Arial')) +
-  guides(fill=guide_legend(title="Experiment")) + 
-  scale_fill_npg()
-```
-
-
-## 3. Visualize All Lethal Reactions Broken Down by Expt
+## 2. Preprocess data structure
 First we need to melt the dataframe.
 ```{r}
 library(reshape2)
@@ -80,7 +50,7 @@ freq_tbl[freq_tbl == 0] = NA
 freq_tbl = melt(freq_tbl)
 
 ```
-Then we visualize.
+This table contains all
 ```{r, fig.width = 14, fig.height = 10}
 library(ggplot2)
 library(extrafont)
@@ -93,8 +63,11 @@ freq_tbl$variable = gsub('72hrs', '48-72hrs', freq_tbl$variable)
 
 to_keep = c("1hrs", "24hrs", "48-72hrs")
 freq_tbl = freq_tbl[freq_tbl$variable %in% to_keep, ]
+```
 
-ggplot(data=freq_tbl, aes(x=X1, y=value, label=value)) +
+## 2. Visualize All Lethal Reactions
+```{r, fig.width = 14, fig.height = 10}
+ggplot(data=freq_tbl, aes(x=variable, y=value, label=value)) +
   geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
   xlab("") +
   ylab("Number of Lethal Reactions (Growth Score < 0)") +
@@ -102,13 +75,52 @@ ggplot(data=freq_tbl, aes(x=X1, y=value, label=value)) +
   theme_minimal() + 
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        text=element_text(size=22, family='TT Arial')) +
+        text=element_text(size=22, family='TT Arial'),
+        axis.text.x = element_text(size=22),
+        legend.position="none") +
+  guides(fill=guide_legend(title="Time")) + 
+  scale_fill_npg()
+```
+
+```{r, fig.width = 14, fig.height = 10}
+ggplot(data=freq_tbl, aes(x=variable, y=value, label=value)) +
+  geom_bar(aes(fill=X1), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1") + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial'),
+        axis.text.x = element_text(.size=22)) +
+  guides(fill=guide_legend(title="Experiment")) + 
+  scale_fill_npg()
+```
+
+
+## 3. Visualize All Lethal Reactions Broken Down by Expt
+```{r, fig.width = 14, fig.height = 10}
+library(dplyr)
+tmp = freq_tbl %>% 
+  filter(!grepl('GSE147405', X1))
+
+ggplot(data=tmp, aes(x=X1, y=value, label=value)) +
+  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
+  xlab("") +
+  ylab("Number of Lethal Reactions (Growth Score < 0)") +
+  ggtitle("Lethal reactions predicted from RECON1") + 
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
+  theme_minimal() + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(size=22, family='TT Arial'),
+        axis.text.x = element_text(size=22)) + 
   guides(fill=guide_legend(title="Time")) + 
   scale_fill_npg()
    #scale_fill_manual(values=c('#1E3888','#F5E663','#9C3848'), guide=FALSE)
 ```
 ## 4. Visualize All Lethal Reactions Broken Down by bulk v Single-Cell
-```{r, fig.width = 14, fig.height = 10}
+```{r, fig.width = 10, fig.height = 10}
 tmp = freq_tbl[freq_tbl$X1 %in% "GSE147405", ]
 
 ggplot(data=tmp, aes(x=variable, y=value, label=value)) +
@@ -120,6 +132,7 @@ ggplot(data=tmp, aes(x=variable, y=value, label=value)) +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         text=element_text(size=22, family='TT Arial'),
+        axis.text.x = element_text(size=22)
         legend.position="none") +
   guides(fill=guide_legend(title="Time")) + 
   scale_fill_npg()
@@ -128,15 +141,18 @@ ggplot(data=tmp, aes(x=variable, y=value, label=value)) +
 tmp2 = freq_tbl[!freq_tbl$X1 %in% "GSE147405", ]
 
 ggplot(data=tmp2, aes(x=variable, y=value, label=value)) +
-  geom_bar(aes(fill=X1), stat="identity", na.rm=TRUE) +
+  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
   xlab("") +
-  ylab("Number of Lethal Reactions (Growth Score < 0)") +
-  ggtitle("Lethal reactions predicted from RECON1 Bulk Simulations") + 
+  ylab("Number of Lethal Reactions") +
+  ggtitle("Lethal reactions (RECON1 Bulk Simulations)") + 
+  #geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
   theme_minimal() + 
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        text=element_text(size=22, family='TT Arial')) +
+        text=element_text(size=25, family='TT Arial'),
+        axis.text.x = element_text(size=25)) +
   guides(fill=guide_legend(title="Experiments")) + 
-  scale_fill_npg()
+  scale_fill_manual(values=c("#CAC4CE", "#725AC1", "#242038")) +
+  coord_flip()
 
 ```

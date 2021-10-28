@@ -818,7 +818,7 @@ dev.off
 # Show
 top50_figures
 ```
-```{r}
+```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
   
 # If pathway variable is missing, just visualize everything
 data =top50
@@ -873,15 +873,19 @@ bp = rowAnnotation(
 )
 # Rows to highlight
 myRows = c('L-Glutamine exchange, NA',
+           'D-Glucose exchange, NA',
+           'pyruvate carboxylase, Pyruvate Metabolism',
+           'C160 fatty acid activation, Fatty acid activation',
+           'hexokinase (D-glucose:ATP), Glycolysis/Gluconeogenesis',
            'aspartate transaminase, Alanine and Aspartate Metabolism')
 
 # Set stylings for row names and make our selected rows unique
-row_idx = which(tmp2$name %in% myRows)
-fontcolors = rep('black', nrow(tmp2))
+row_idx = which(data$name %in% myRows)
+fontcolors = rep('black', nrow(data))
 fontcolors[row_idx] = 'red'
-fontfaces = rep('plain',nrow(tmp2))
+fontfaces = rep('plain',nrow(data))
 fontfaces[row_idx] = 'bold'
-rowAnno = rowAnnotation(rows = anno_text(tmp2$name, 
+rowAnno = rowAnnotation(rows = anno_text(data$name, 
                                        gp = gpar(fontface = fontfaces, 
                                                  col = fontcolors),
                                        just='right', 
@@ -891,7 +895,7 @@ rowAnno = rowAnnotation(rows = anno_text(tmp2$name,
 
 # Construct the heatmaps
 col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
-                     c("#073B4C", "Gray", "#EF476F"))
+                     c("#E63946", "Gray", "#495057"))
 h1 = Heatmap(row_names_side="left",
            early_data, 
            col=col_fun, 
@@ -1060,10 +1064,10 @@ expt_data = tmp2[, 5]
 
 # Split by hours
 early_data = tmp2[, c("GSE17708_1hrs", "Garcia_1hrs")] - 1
-mid1_data  = tmp2[, c("GSE17708_8hrs", "GSE147405_8hrs")] - 1
-mid2_data  = tmp2[, c("GSE17708_24hrs", "Garcia_24hrs", "GSE147405_24hrs")] - 1
+mid1_data  = tmp2[, c("GSE17708_8hrs")] - 1
+mid2_data  = tmp2[, c("GSE17708_24hrs", "Garcia_24hrs")] - 1
 late_data  = tmp2[, c("GSE17708_72hrs", "GSE17518_72hrs", "Garcia_48hrs", 
-                                   "Keshamouni_72hrs", "GSE147405_72hrs")] - 1
+                                   "Keshamouni_72hrs")] - 1
 tmp = cbind(early_data, mid1_data, mid2_data, late_data)
 
 # Create column annotation bars
@@ -1106,17 +1110,18 @@ bp = rowAnnotation(
 
 # Rows to highlight
 myRows = c('enolase, Glycolysis/Gluconeogenesis',
-           'hydroxymethylglutaryl-CoA lyase, Cholesterol Metabolism',
            'ATP-Citrate lyase, Citric Acid Cycle',
            'carnitine O-aceyltransferase, mitochondrial, Fatty Acid Metabolism',
            'fatty acyl-CoA synthase (n-C10:0CoA), Fatty acid elongation',
            'fatty-acyl-CoA synthase (n-C12:0CoA), Fatty acid elongation',
            'fatty-acyl-CoA synthase (n-C14:0CoA), Fatty acid elongation',
-           'Hydroxymethylglutaryl-CoA reversible mitochondrial transport, Transport, Mitochondrial',
-           'Hydroxymethylglutaryl CoA synthase (ir), Cholesterol Metabolism',
            'pantetheine-phosphate adenylyltransferase, CoA Biosynthesis',
            'carnitine O-acetyltransferase, Carnitine shuttle',
-           'alpha-ketoglutarate/malate transporter, Transport, Mitochondrial'
+           'alpha-ketoglutarate/malate transporter, Transport, Mitochondrial',
+           'Aconitate hydratase, Citric Acid Cycle',
+           'Isocitrate dehydrogenase (NADP+), Citric Acid Cycle',
+           'L-lactate dehydrogenase, Glycolysis/Gluconeogenesis',
+           'malate dehydrogenase, Citric Acid Cycle'
            )
 
 # Set stylings for row names and make our selected rows unique
@@ -1133,7 +1138,7 @@ rowAnno = rowAnnotation(rows = anno_text(tmp2$name,
   
 # Construct the heatmaps
 col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
-                     c("#073B4C", "Gray", "#EF476F"))
+                     c("#E63946", "Gray", "#495057"))
 h1 = Heatmap(row_names_side="left",
              early_data, 
              col=col_fun, 
@@ -1245,7 +1250,7 @@ hm = Heatmap(as.matrix(data[, "Std_All"]),
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 final_data = as.matrix(tmp)
 col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
-                       c("#073B4C", "Gray", "#EF476F"))
+                       c("#E63946", "Gray", "#495057"))
 
 ht = Heatmap(row_labels=data$name,
              final_data, 
