@@ -1138,7 +1138,7 @@ rowAnno = rowAnnotation(rows = anno_text(tmp2$name,
   
 # Construct the heatmaps
 col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
-                     c("#E63946", "Gray", "#495057"))
+                     c("#E63946", "Gray", "#495057"))+
 h1 = Heatmap(row_names_side="left",
              early_data, 
              col=col_fun, 

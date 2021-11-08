@@ -120,37 +120,27 @@ ggplot(data=tmp, aes(x=X1, y=value, label=value)) +
    #scale_fill_manual(values=c('#1E3888','#F5E663','#9C3848'), guide=FALSE)
 ```
 ## 4. Visualize All Lethal Reactions Broken Down by bulk v Single-Cell
-```{r, fig.width = 10, fig.height = 10}
-tmp = freq_tbl[freq_tbl$X1 %in% "GSE147405", ]
-
-ggplot(data=tmp, aes(x=variable, y=value, label=value)) +
-  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
-  xlab("") +
-  ylab("Number of Lethal Reactions (Growth Score < 0)") +
-  ggtitle("Lethal reactions predicted from RECON1 Single-Cell Simulations") + 
-  theme_minimal() + 
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        text=element_text(size=22, family='TT Arial'),
-        axis.text.x = element_text(size=22)
-        legend.position="none") +
-  guides(fill=guide_legend(title="Time")) + 
-  scale_fill_npg()
-
+```{r, fig.width = 10, fig.height = 5}
 
 tmp2 = freq_tbl[!freq_tbl$X1 %in% "GSE147405", ]
 
 ggplot(data=tmp2, aes(x=variable, y=value, label=value)) +
-  geom_bar(aes(fill=variable), stat="identity", na.rm=TRUE) +
+  geom_bar(aes(fill=variable), 
+           stat="identity",
+           na.rm=TRUE,
+           width=1) +
   xlab("") +
   ylab("Number of Lethal Reactions") +
-  ggtitle("Lethal reactions (RECON1 Bulk Simulations)") + 
+  ggtitle("RECON1 Lethal reactions (Bulk)") + 
   #geom_text(size = 3, position = position_stack(vjust = 0.5)) + 
   theme_minimal() + 
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         text=element_text(size=25, family='TT Arial'),
-        axis.text.x = element_text(size=25)) +
+        axis.text.x = element_text(size=30),
+        axis.text.y = element_text(size=30),
+        legend.text=element_text(size=30),
+        legend.title=element_text(size=30)) +
   guides(fill=guide_legend(title="Experiments")) + 
   scale_fill_manual(values=c("#CAC4CE", "#725AC1", "#242038")) +
   coord_flip()
