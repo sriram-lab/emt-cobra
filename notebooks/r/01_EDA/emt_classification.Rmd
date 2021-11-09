@@ -1,0 +1,105 @@
+---
+title: "Classify CCLE to E and M"
+output: html_notebook
+---
+
+
+```{r}
+rm(list=ls())
+```
+
+## Summary
+This notebook aims to classify CCLE cells to either be E or M, based on known EMT signatures.
+```{r}
+library(tidyverse)
+```
+
+## 1. Load EMT signatures
+There were 3 MSigDB curated up and down signatures I was able to get for hepatocytes (GOTZMANN), mammary (JECHLINGER), and breast (SARRIO) cancer cells. 
+
+To get a high confidence list set, I wanted to get the intersection between these datasets for up and down genes. This is to infer the core set of genes used for EMT.
+
+### A. Load upregulated genes
+```{r}
+gotzmann_up = read.table('C:/Users/Scott/Desktop/emt_sigs/GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+
+jechlinger_up = read.table('C:/Users/Scott/Desktop/emt_sigs/JECHLINGER_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+
+sarrio_up = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENCHYMAL_TRANSITION_UP.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+```
+
+### B. Load downregulated genes
+```{r}
+gotzmann_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+
+jechlinger_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/JECHLINGER_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+
+sarrio_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENCHYMAL_TRANSITION_DN.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+```
+
+## 2. Get intersection between gene sets
+Now lets get the intersection across datasets.
+
+### A. Intersection Across Up List
+```{r}
+emt_up = intersect(gotzmann_up, jechlinger_up, sarrio_up)
+```
+
+### B. Intersection Across Down List
+```{r}
+emt_dn = intersect(gotzmann_dn, jechlinger_dn, sarrio_dn)
+```
+
+## 3. Load up the CCLE Expression dataset
+I'll load the CCLE Expression dataset. We'll also assess whether or not expression is statistically significant. 
+
+Here is the data README:
+
+```
+### CCLE_expression.csv
+
+Pipeline: Expression
+
+RNAseq TPM gene expression data for just protein coding genes using RSEM. Log2 transformed, using a pseudo-count of 1.
+
+- Rows: cell lines (Broad IDs)
+- Columns: genes (HGNC symbol and Entrez ID)
+```
+
+
+```{r}
+tpm_data = "D:/Chandrasekaran/Projects/eGEM/Data/RNASeq/CCLE/CCLE_expression.csv"
+ccle_rnaseq_tpm = read.table(tpm_data,
+                             header=TRUE,
+                             fill=TRUE)
+```
+
+## 4. Classify cell lines based on expression
+We'll classify cells whether or not they are E or M using the number of up and downregulated genes - specifically. If there is a tie, we'll assume that they are epithelial.
+```{r}
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
