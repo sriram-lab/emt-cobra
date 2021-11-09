@@ -141,12 +141,63 @@ flux_data = data.frame(flux_data)
 flux_data = flux_data[-1, ] 
 ```
 
+This will perform a zscore transformation
+```{r}
+flux_data = mutate_all(flux_data, function(x) as.numeric(as.character(x)))
+flux_data[is.na(flux_data)] = 0
+```
+
+Let's visualize the Z-score distirbution.
+```{r}
+tmp = melt(flux_data)
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=100) + 
+  scale_y_continuous(trans='log10') +
+  ggtitle("RECON1 scRNASeq KO distribution") +
+  xlab("Reaction KO Distribution") +
+  ylab("Frequency (log-scale)") +
+  theme_minimal()
+```
+
+```{r}
+tmp = scale(flux_data, center=TRUE, scale=TRUE)
+```
+
+Get the standard deviations for each column
+```{r}
+rxn_std = apply(flux_data, 2, sd)
+rxn_std_sorted = sort(rxn_std, 
+                      decreasing = TRUE, 
+                      index.return=TRUE)
+```
+
+Let's visualize the Z-score distirbution.
+```{r}
+tmp = melt(tmp)
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=100) + 
+  scale_y_continuous(trans='log10') +
+  ggtitle("RECON1 scRNASeq KO distribution") +
+  xlab("Reaction KO Z-Score Distribution") +
+  ylab("Frequency (log-scale)") +
+  theme_minimal()
+```
+This combines the reaction ko data with the UMAP embedding.
 ```{r}
 umap_data = data.frame(a549@reductions$umap@cell.embeddings)
-flux_data = mutate_all(flux_data, function(x) as.numeric(as.character(x)))
 
 #umap_data$cluster = rownames(a549$Time)
 merged_umap = merge(umap_data, flux_data, by.x='row.names', by.y='row.names')
+rownames(merged_umap) = merged_umap$Row.names
+merged_umap = merged_umap[, -1]
+```
+
+This combines the reaction ko z-score data with the UMAP embedding.
+```{r}
+umap_data = data.frame(a549@reductions$umap@cell.embeddings)
+
+#umap_data$cluster = rownames(a549$Time)
+merged_umap = merge(umap_data, tmp, by.x='row.names', by.y='row.names')
 rownames(merged_umap) = merged_umap$Row.names
 merged_umap = merged_umap[, -1]
 ```
@@ -162,6 +213,17 @@ reaction_names = c("adenylosuccinate lyase",
                    "cysteine oxidase",
                    "dihydrofolate reductase")
 
+```
+
+```{r}
+reactions_to_visualize = c("APAT2rm", "BALAtmr", "MMSAD3m",
+                           "PCm", "GAPD", "EX_h_e")
+reaction_names = c("3-Aminopropanoate:2-oxoglutarate aminotransferase (m)",
+                   "Beta-alanine reversible mitochondrial transport (diffusion)",
+                   "methylmalonate-semialdehyde dehydrogenase (malonic semialdehyde), mitochondrial", 
+                   "pyruvate carboxylase",
+                   "glyceraldehyde-3-phosphate dehydrogenase",
+                   "H+ exchange")
 ```
 
 ```{r, results='hide'}
@@ -192,6 +254,10 @@ tmp[is.na(tmp)] = 0
 ```
 
 ```{r}
+tmp = scale(tmp, center=TRUE, scale=TRUE)
+```
+
+```{r}
 p = list()
 p[[1]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
                 geom_point(size=5) +
@@ -200,8 +266,8 @@ p[[1]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vi
                      y="UMAP 2",
                      title=reaction_names[1], 
                      color="Flux") + 
-                scale_color_gradient(low="red", high='gray',
-                                     limit=c(0, 1)) +
+                scale_colour_gradient2(low="red", mid = 'gray', high='black',
+                                     limit=c(-2, 1)) +
                 theme(plot.title = element_text(size=26),
                             legend.text=element_text(size=22),
                             axis.title.x=element_text(size=22),
@@ -221,8 +287,8 @@ p[[2]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vi
                      y="UMAP 2",
                      title=reaction_names[2], 
                      color="Flux") + 
-                scale_color_gradient(low="red", high='gray',
-                                     limit=c(0, 1)) +
+                scale_colour_gradient2(low="red", mid = 'gray', high='black',
+                                     limit=c(-2, 1)) +
                 theme(plot.title = element_text(size=26),
                             legend.text=element_text(size=22),
                             axis.title.x=element_text(size=22),
@@ -241,8 +307,8 @@ p[[3]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vi
                      y="UMAP 2",
                      title=reaction_names[3], 
                      color="Flux") + 
-                scale_color_gradient(low="red", high='gray',
-                                     limit=c(0, 1)) +
+                scale_colour_gradient2(low="red", mid = 'gray', high='black',
+                                     limit=c(-2, 1)) +
                 theme(plot.title = element_text(size=26),
                             legend.text=element_text(size=22),
                             axis.title.x=element_text(size=22),
@@ -261,8 +327,8 @@ p[[4]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vi
                      y="UMAP 2",
                      title=reaction_names[4], 
                      color="Flux") + 
-                scale_color_gradient(low="red", high='gray',
-                                    limit=c(0, 1)) +
+                scale_colour_gradient2(low="red", mid = 'gray', high='black',
+                                     limit=c(-2, 1)) +
                 theme(plot.title = element_text(size=26),
                             legend.text=element_text(size=22),
                             axis.title.x=element_text(size=22),
@@ -281,8 +347,8 @@ p[[5]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vi
                      y="UMAP 2",
                      title=reaction_names[5], 
                      color="Flux") + 
-                scale_color_gradient(low="red", high='gray',
-                                     limit=c(0, 1)) +
+                scale_colour_gradient2(low="red", mid = 'gray', high='black',
+                                     limit=c(-2, 1)) +
                 theme(plot.title = element_text(size=26),
                             legend.text=element_text(size=22),
                             axis.title.x=element_text(size=22),

@@ -19,7 +19,11 @@ There were 3 MSigDB curated up and down signatures I was able to get for hepatoc
 
 To get a high confidence list set, I wanted to get the intersection between these datasets for up and down genes. This is to infer the core set of genes used for EMT.
 
-### A. Load upregulated genes
+Specifically, the more upregulated and downregulated genes there are, the more mesenchymal the cell line is (P > 0.5). These cells will be labeled as M state cells. Otherwise if the number of up + downregulated genes is <= 50% of the total number of EMT markers (7 or less), it is labeled as E state cells. 
+
+Note: EMTome provides a gene list but does not tell us anything about directionality.
+
+### A. Load upregulated EMT genes
 ```{r}
 gotzmann_up = read.table('C:/Users/Scott/Desktop/emt_sigs/GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', 
                          skip = 2, 
@@ -37,7 +41,7 @@ sarrio_up = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENC
                          sep ='\n')
 ```
 
-### B. Load downregulated genes
+### B. Load downregulated EMT genes
 ```{r}
 gotzmann_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', 
                          skip = 2, 
@@ -86,20 +90,201 @@ RNAseq TPM gene expression data for just protein coding genes using RSEM. Log2 t
 
 
 ```{r}
-tpm_data = "D:/Chandrasekaran/Projects/eGEM/Data/RNASeq/CCLE/CCLE_expression.csv"
-ccle_rnaseq_tpm = read.table(tpm_data,
-                             header=TRUE,
-                             fill=TRUE)
+tpm_data = "D:/Chandrasekaran/Projects/eGEM/Data/RNASeq/CCLE/CCLE_expression.xlsx"
+ccle_rnaseq_tpm = readxl::read_excel(tpm_data,
+                                     sheet="RSEM Symbol")
 ```
+
+```{r}
+ach_id = ccle_rnaseq_tpm[, 1]
+tmp = ccle_rnaseq_tpm[, -1]
+
+z_tmp = scale(tmp, center=TRUE, scale=TRUE)
+p_tmp = 2*pnorm(abs(z_tmp), mean=0, sd=1, lower.tail=FALSE)
+```
+
+```{r}
+hist(melt(z_tmp)$value, breaks=100)
+```
+
+```{r}
+hist(melt(p_tmp)$value, breaks=100)
+```
+
+Show whether significant
+```{r}
+z_up_idx = z_tmp > 0
+z_dn_idx = z_tmp < 0
+z_mask = p_tmp < 0.05
+```
+
+Mask with significance.
+```{r}
+z_up = z_tmp
+z_up[!(z_up_idx & z_mask)] = NaN
+
+z_dn = z_tmp
+z_dn[!(z_dn_idx & z_mask)] = NaN
+```
+
+Mask w/o significance
+```{r}
+z_up = z_tmp
+z_up[!(z_up_idx)] = NaN
+
+z_dn = z_tmp
+z_dn[!(z_dn_idx)] = NaN
+
+```
+
+
+```{r}
+z_up = data.frame(z_up)
+z_up = subset(z_up, select=as.matrix(emt_up))
+
+z_dn = data.frame(z_dn)
+z_dn = subset(z_dn, select=as.matrix(emt_dn))
+```
+
 
 ## 4. Classify cell lines based on expression
 We'll classify cells whether or not they are E or M using the number of up and downregulated genes - specifically. If there is a tie, we'll assume that they are epithelial.
-```{r}
 
+First, get cells that are NSCLC specific and intersect with the CRISPR dataset.
+```{r}
+meta_path = "D:/Chandrasekaran/Projects/eGEM/Data/RNASeq/CCLE/sample_info.csv"
+meta_data = read.table(meta_path, sep=',', fill=TRUE, header=TRUE)
+nsclc_meta = meta_data[meta_data$lineage_subtype=='NSCLC', ]
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+Now map the z_up and z_dn based on the meta data.
+```{r}
+tmp = intersect(ach_id$ACH_ID, nsclc_meta$DepMap_ID)
+tmp_idx = which(ach_id$ACH_ID %in% nsclc_meta$DepMap_ID)
+```
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+Now let's get the intersecting data.
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+Note that when I tried this analysis with significant genes only, the data was pretty sparse. Thus, I ran this analysis with non-significant p-values.
+```{r}
+nsclc_achid = ach_id[tmp_idx, ]
+nsclc_meta = merge(nsclc_meta, nsclc_achid, by.x="DepMap_ID", by.y="ACH_ID")
+nsclc_zup = z_up[tmp_idx, ]
+rownames(nsclc_zup) = as.matrix(nsclc_achid)
+nsclc_zdn = z_dn[tmp_idx, ]
+rownames(nsclc_zdn) = as.matrix(nsclc_achid)
+```
+
+Okay, there are 6 downregulated EMT markers and 8 upregulated EMT markers. If the number of up and downregulated markers is > 7, we'll label as M. Otherwise, it's E.
+```{r}
+cmb = cbind(nsclc_zup, nsclc_zdn)
+
+cmb_idx = (cmb > 0 | cmb < 0)
+cmb_idx[is.na(cmb_idx)] = 0
+```
+
+Get a sense of the distribution. It's definitely skewed towards E.
+```{r}
+hist(rowSums(cmb_idx))
+```
+Now let's label the data.
+```{r}
+cmb$State = "E"
+cmb$State[rowSums(cmb_idx) > 7] = "M"
+cmb$state_encoding = 0
+cmb$state_encoding[cmb$State == "M"] = 1
+```
+
+Let's see how this matches with primary/metastatic annotations
+```{r}
+col2get = nsclc_meta[, c("DepMap_ID", "primary_or_metastasis")]
+cmb = merge(cmb, col2get, by.x=0, by.y="DepMap_ID")
+
+write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_nosig.csv")
+
+
+library(yardstick)
+cmb$pm_encoding = 0
+cmb$pm_encoding[cmb$primary_or_metastasis == "Metastasis"] = 1
+
+cmb$state_encoding = as.factor(cmb$state_encoding)
+cmb$pm_encoding = as.factor(cmb$pm_encoding)
+
+
+
+#cmb[cmb$primary_or_metastasis == "Primary", "primary_or_metastasis"] = "E"
+#cmb[cmb$primary_or_metastasis == "", "primary_or_metastasis"] = "E"
+#cmb[cmb$primary_or_metastasis == NA, "primary_or_metastasis"] = "M"
+```
+
+```{r}
+cm = conf_mat(data = cmb, estimate=state_encoding, truth=pm_encoding)
+cm
+```
+
+```{r}
+library(ggplot2)
+
+autoplot(cm, type = "heatmap") + 
+  scale_x_discrete(breaks=c("0","1"),
+        labels=c("Primary", "Metastatic")) +
+  scale_y_discrete(breaks=c("0","1"),
+        labels=c("Epithelial", "Mesenchymal")) + 
+  xlab("CCLE Annotation") +
+  ylab("EMT Marker Label (thresh = 7)") +
+  scale_fill_gradient(low="white", high="#D00000")
+```
+
+Okay, let's repeat this with significant genes and just set the threshold to be 0.
+```{r}
+z_up = z_tmp
+z_up[!(z_up_idx & z_mask)] = NaN
+
+z_dn = z_tmp
+z_dn[!(z_dn_idx & z_mask)] = NaN
+
+z_up = data.frame(z_up)
+z_up = subset(z_up, select=as.matrix(emt_up))
+
+z_dn = data.frame(z_dn)
+z_dn = subset(z_dn, select=as.matrix(emt_dn))
+
+nsclc_zup = z_up[tmp_idx, ]
+rownames(nsclc_zup) = as.matrix(nsclc_achid)
+nsclc_zdn = z_dn[tmp_idx, ]
+rownames(nsclc_zdn) = as.matrix(nsclc_achid)
+
+cmb = cbind(nsclc_zup, nsclc_zdn)
+
+cmb_idx = (cmb > 0 | cmb < 0)
+cmb_idx[is.na(cmb_idx)] = 0
+
+cmb$State = "E"
+cmb$State[rowSums(cmb_idx) > 0] = "M"
+cmb$state_encoding = 0
+cmb$state_encoding[cmb$State == "M"] = 1
+
+col2get = nsclc_meta[, c("DepMap_ID", "primary_or_metastasis")]
+cmb = merge(cmb, col2get, by.x=0, by.y="DepMap_ID")
+
+cmb$pm_encoding = 0
+cmb$pm_encoding[cmb$primary_or_metastasis == "Metastasis"] = 1
+
+cmb$state_encoding = as.factor(cmb$state_encoding)
+cmb$pm_encoding = as.factor(cmb$pm_encoding)
+
+cm = conf_mat(data = cmb, estimate=state_encoding, truth=pm_encoding)
+
+
+autoplot(cm, type = "heatmap") + 
+  scale_x_discrete(breaks=c("0","1"),
+        labels=c("Primary", "Metastatic")) +
+  scale_y_discrete(breaks=c("0","1"),
+        labels=c("Epithelial", "Mesenchymal")) + 
+  xlab("CCLE Annotation") +
+  ylab("EMT Marker Label (thresh = 7)") +
+  scale_fill_gradient(low="white", high="#D00000")
+
+write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_sig.csv")
+
+```
