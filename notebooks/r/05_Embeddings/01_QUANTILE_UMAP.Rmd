@@ -149,6 +149,7 @@ flux_data[is.na(flux_data)] = 0
 
 Let's visualize the Z-score distirbution.
 ```{r}
+library(reshape2)
 tmp = melt(flux_data)
 ggplot(tmp, aes(x=value)) + 
   geom_histogram(bins=100) + 
