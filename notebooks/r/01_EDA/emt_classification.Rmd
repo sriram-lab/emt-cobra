@@ -59,18 +59,30 @@ sarrio_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENC
                          sep ='\n')
 ```
 
+### C. Load EMT Signature data (PMID30783512)
+This gene list was curated from EMTome.
+```{r}
+Gordian = read.table('C:/Users/Scott/Desktop/emt_sigs/PMID30783512.txt', 
+                         skip = 2, 
+                         header = FALSE, 
+                         sep ='\n')
+```
+
+
 ## 2. Get intersection between gene sets
 Now lets get the intersection across datasets.
 
 ### A. Intersection Across Up List
 ```{r}
-emt_up = intersect(gotzmann_up, jechlinger_up, sarrio_up)
+emt_up = intersect(gotzmann_up, jechlinger_up, sarrio_up, Gordian)
 ```
 
 ### B. Intersection Across Down List
 ```{r}
-emt_dn = intersect(gotzmann_dn, jechlinger_dn, sarrio_dn)
+emt_dn = intersect(gotzmann_dn, jechlinger_dn, sarrio_dn, Gordian)
 ```
+
+Note that with the additional EMTome geneset, I get the same signatures.
 
 ## 3. Load up the CCLE Expression dataset
 I'll load the CCLE Expression dataset. We'll also assess whether or not expression is statistically significant. 
@@ -282,9 +294,9 @@ autoplot(cm, type = "heatmap") +
   scale_y_discrete(breaks=c("0","1"),
         labels=c("Epithelial", "Mesenchymal")) + 
   xlab("CCLE Annotation") +
-  ylab("EMT Marker Label (thresh = 7)") +
+  ylab("EMT Marker Label (at least 1 sig M marker)") +
   scale_fill_gradient(low="white", high="#D00000")
 
-write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_sig.csv")
+#write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_sig.csv")
 
 ```
