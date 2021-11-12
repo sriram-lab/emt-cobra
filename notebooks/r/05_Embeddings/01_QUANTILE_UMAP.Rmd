@@ -105,11 +105,11 @@ pB
 ## 3. Overlay growth rates from KO onto the UMAP embedding
 We'll read in the metabolic flux data computed from single-cell Flux Balance Analysis
 ```{r, results='hide'}
-#flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_flux_quantiles.csv'
-#flux_data = readr::read_csv(flux_path)
-
-flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_rxnko_quantiles.csv'
+flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_flux_quantiles.csv'
 flux_data = readr::read_csv(flux_path)
+
+#flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_rxnko_quantiles.csv'
+#flux_data = readr::read_csv(flux_path)
 
 
 col_names = colnames(flux_data)
@@ -452,7 +452,7 @@ flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_flux_quantiles.c
 flux_data = readr::read_csv(flux_path)
 
 
-col_names = colnames(flux_data)'
+col_names = colnames(flux_data)
 col_names = stringr::str_replace(col_names, '...[0-9]+', '')
 colnames(flux_data) = col_names
 #flux_data[, 4:ncol(flux_data)] = abs(flux_data[, 4:ncol(flux_data)])
