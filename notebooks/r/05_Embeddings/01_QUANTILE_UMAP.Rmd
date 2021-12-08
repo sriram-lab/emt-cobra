@@ -19,7 +19,7 @@ library(writexl)
 library(ggpubr)
 library(gridExtra)
 library(extrafont)
-loadfonts(device="win")
+#loadfonts(device="win")
 ```
 
 ## 2. Load scRNASeq datasets
@@ -396,6 +396,7 @@ saveRDS(a549_subset, file = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_q
 
 ```
 
+Let's create a preprocessing pipeline for downstream analyses
 ```{r, results='hide'}
 preprocess_flux = function(gene_obj, assay){
   # Log normalize data
@@ -411,7 +412,7 @@ preprocess_flux = function(gene_obj, assay){
 }
 ```
 
-Now let's perform the data preprocessing:
+Now let's perform the data preprocessing
 ```{r, results='hide'}
 #a549_subset = preprocess_flux(a549_subset, assay="FBA")
 ```
@@ -446,7 +447,8 @@ DoHeatmap(object=a549_subset,
                 legend.title=element_text(size=20)))
 ```
 
-## 6. Overlay metabolic fluxes
+## 6. Overlay metabolic fluxes 
+Now let's repeat for metabolic fluxes.
 ```{r}
 flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/old/recon1_flux_quantiles.csv'
 flux_data = readr::read_csv(flux_path)

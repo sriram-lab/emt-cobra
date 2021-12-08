@@ -46,12 +46,16 @@ a549_zscore = read_excel(magic_datapath, sheet="Zscore")
 a549_pvalue = read_excel(magic_datapath, sheet="pvalue")
 ```
 
+### C. Quantile dataset
+This dataset 
+
 Load Seurat object
 ```{r}
 seuratobj_path = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/GSE147405/A549/A549_TGFB1.rds"
 a549_tgfb = readRDS(seuratobj_path)
 a549_tgfb = subset(a549_tgfb, subset = Time==c("0d", "8h", "3d", "1d", "7d"))
 ```
+
 
 ## 3. Map dataset 
 

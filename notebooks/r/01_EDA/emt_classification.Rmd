@@ -116,6 +116,7 @@ p_tmp = 2*pnorm(abs(z_tmp), mean=0, sd=1, lower.tail=FALSE)
 ```
 
 ```{r}
+library(reshape)
 hist(melt(z_tmp)$value, breaks=100)
 ```
 
@@ -201,26 +202,39 @@ hist(rowSums(cmb_idx))
 ```
 Now let's label the data.
 ```{r}
-cmb$State = "E"
-cmb$State[rowSums(cmb_idx) > 7] = "M"
-cmb$state_encoding = 0
+cmb$numSig = rowSums(!is.na(cmb))
+quantile(cmb$numSig)
+```
+
+Subset data based on quantiles
+```{r}
+cmb$State = "I"
+cmb$State[cmb$numSig <=5] = "E"
+cmb$State[cmb$numSig >= 8] = "M"
+
+cmb$state_encoding = NA
+cmb$state_encoding[cmb$State == "E"] = 0
+cmb$state_encoding[cmb$State == "I"] = 1
 cmb$state_encoding[cmb$State == "M"] = 1
+
+tmp = cmb[!is.na(cmb$state_encoding), ] 
+tmp = tmp[tmp$State != "I", ] 
 ```
 
 Let's see how this matches with primary/metastatic annotations
 ```{r}
 col2get = nsclc_meta[, c("DepMap_ID", "primary_or_metastasis")]
-cmb = merge(cmb, col2get, by.x=0, by.y="DepMap_ID")
+tmp = merge(tmp, col2get, by.x=0, by.y="DepMap_ID")
 
-write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_nosig.csv")
+#write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_nosig.csv")
 
 
 library(yardstick)
-cmb$pm_encoding = 0
-cmb$pm_encoding[cmb$primary_or_metastasis == "Metastasis"] = 1
+tmp$pm_encoding = 0
+tmp$pm_encoding[tmp$primary_or_metastasis == "Metastasis"] = 1
 
-cmb$state_encoding = as.factor(cmb$state_encoding)
-cmb$pm_encoding = as.factor(cmb$pm_encoding)
+tmp$state_encoding = as.factor(tmp$state_encoding)
+tmp$pm_encoding = as.factor(tmp$pm_encoding)
 
 
 
@@ -230,7 +244,7 @@ cmb$pm_encoding = as.factor(cmb$pm_encoding)
 ```
 
 ```{r}
-cm = conf_mat(data = cmb, estimate=state_encoding, truth=pm_encoding)
+cm = conf_mat(data = tmp, estimate=state_encoding, truth=pm_encoding)
 cm
 ```
 
@@ -245,6 +259,11 @@ autoplot(cm, type = "heatmap") +
   xlab("CCLE Annotation") +
   ylab("EMT Marker Label (thresh = 7)") +
   scale_fill_gradient(low="white", high="#D00000")
+```
+
+Save the data
+```{r}
+write.csv(tmp, "filtered_EMT_Marker_annot.csv")
 ```
 
 Okay, let's repeat this with significant genes and just set the threshold to be 0.

@@ -1,0 +1,914 @@
+---
+title: "MAGIC_UMAP_99"
+output: html_notebook
+---
+
+## Summary
+This notebook processes scRNASeq time course data. Some of the code was adapted from Cook et al., 2020.
+
+```{r}
+rm(list=ls())
+```
+
+## 1. Load Libraries
+```{r, results='hide'}
+library(tidyverse)
+library(umap)
+library(Seurat)
+library(writexl)
+library(ggpubr)
+library(gridExtra)
+library(extrafont)
+#loadfonts(device="win")
+```
+
+## 2. Load scRNASeq datasets
+Next, we'll load the A549 dataset, which is the lung cancer cell line investigated in GSE147405. Additionally, we'll focus on the $TGF \beta 1$ sample, since this was the way EMT was induced in many bulk experiments.
+
+```{r, include=TRUE}
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds'
+a549 = readRDS(filepath)
+```
+
+### A. Visualize Time-Course
+This bit of code separates groups by time point and creates individual UMAP plots. This may be useful for later.
+
+```{r, fig.width=24, fig.height=12, results='hide', dpi=300}
+colmap = c('0d' = '#97EAD2',
+           '8hr'= '#8CC7A1',
+           '1d' = '#816E94',
+           '3d' = '#74226C',
+           '7d' = '#4B2142')
+pA = DimPlot(a549, 
+        reduction="umap",
+        dims=c(1, 2),
+        split.by='Time',
+        group.by='Time',
+        cols=colmap,
+        label=FALSE,
+        repel=TRUE,
+        label.size=4,
+        pt.size=5, 
+        na.value = "grey50") + 
+        labs(title="A549 Time-Course", 
+             x="UMAP 1", 
+             y="UMAP 2") +
+        theme_minimal() +
+        theme(plot.title = element_text(size=26),
+              legend.text=element_text(size=22),
+              axis.title.x=element_text(size=22),
+              axis.title.y=element_text(size=22),
+              axis.text.x=element_text(size=22),
+              axis.text.y=element_text(size=22),
+              legend.position=c(0.05, 0.15),
+              legend.box="vertical",
+              legend.margin=margin(),
+              text=element_text(family="sans")) +
+        guides(color=guide_legend(override.aes=list(size=2)))
+
+pA
+```
+
+This embedding just changes subpopulations to time, which is what I originally wanted.
+
+```{r, fig.width=24, fig.height=12, results='hide', dpi=300}
+pB = DimPlot(a549, 
+        reduction="umap",
+        dims=c(1, 2),
+        group.by='Time',
+        cols = colmap,
+        label=FALSE,
+        repel=TRUE,
+        label.size=4,
+        pt.size=5, 
+        na.value = "grey50") + 
+        labs(title="A549 Time-Course", 
+             x="UMAP 1", 
+             y="UMAP 2") +
+        theme_minimal() +
+        theme(plot.title = element_text(size=26),
+              legend.text=element_text(size=22),
+              axis.title.x=element_text(size=22),
+              axis.title.y=element_text(size=22),
+              axis.text.x=element_text(size=22),
+              axis.text.y=element_text(size=22),
+              legend.position=c(0.05, 0.15),
+              legend.box="vertical",
+              legend.margin=margin(),
+              text=element_text(family="sans")) +
+        guides(color=guide_legend(override.aes=list(size=2)))
+
+
+pB
+```
+
+## 3. Overlay growth rates from KO onto the UMAP embedding
+
+### A. Load up and map the knockout data
+We'll read in the metabolic KO data computed from single-cell Flux Balance Analysis
+```{r, results='hide'}
+ko_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/i99/rxnko_i99.csv'
+ko_data = readr::read_csv(ko_path)
+
+a549_id_map = read_csv("D:/Chandrasekaran/Projects/EMT/Analysis/data/a549_colmap.csv")
+
+col_names = colnames(ko_data[, 4:ncol(ko_data)])
+col_names = stringr::str_replace(col_names, '_[^_]+$', '')
+col_names = stringr::str_replace(col_names, 'x', '')
+
+rxnmap = ko_data[1:3]
+ko_data[1:3] = NULL
+
+ko_data = t(ko_data)
+ko_data = as.data.frame(ko_data)
+
+rownames(ko_data) = a549_id_map$orig_id
+colnames(ko_data) = rxnmap$rxn_ids
+```
+
+### B. Data Transformations
+
+#### i. Mean Normalization
+First, let's perform a mean normalization. We'll specifically subtract the mean KO across all cells for a given reaction. Also ignore NA.
+```{r}
+mnorm_ko = ko_data - colMeans(ko_data, na.rm=TRUE)
+```
+
+Let's visualize the Z-score distirbution.
+```{r}
+library(reshape2)
+tmp = melt(mnorm_ko)
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=100) + 
+  scale_y_continuous(trans='log10') +
+  ggtitle("RECON1 scRNASeq KO distribution") +
+  xlab("Reaction KO Distribution") +
+  ylab("Frequency (log-scale)") +
+  theme_minimal()
+```
+
+#### ii. Z-score Transformation
+
+Alternatively, let's see the impact of a Z-score transformation.
+```{r}
+tmp = ko_data
+zko = (tmp - colMeans(tmp, na.rm=TRUE)) / apply(tmp, 2, sd, na.rm=TRUE)
+```
+
+Let's visualize the Z-score distirbution.
+```{r}
+library(reshape2)
+tmp = melt(zko)
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=100) + 
+  scale_y_continuous(trans='log10') +
+  ggtitle("RECON1 scRNASeq KO distribution") +
+  xlab("Reaction KO Distribution") +
+  ylab("Frequency (log-scale)") +
+  theme_minimal()
+```
+
+### C. Merge with UMAP embedding
+This combines the reaction ko data with the UMAP embedding.
+```{r}
+umap_data = data.frame(a549@reductions$umap@cell.embeddings)
+```
+
+#### i. Mean Normalization
+```{r}
+merged_meanko = merge(umap_data, mnorm_ko, by.x='row.names', by.y='row.names')
+rownames(merged_meanko) = merged_meanko$Row.names
+merged_meanko = merged_meanko[, -1]
+```
+
+#### ii. Z-score
+```{r}
+merged_zko = merge(umap_data, zko, by.x='row.names', by.y='row.names')
+rownames(merged_zko) = merged_zko$Row.names
+merged_zko = merged_zko[, -1]
+```
+
+### D. Visualize KO Data
+Let's intialize some variables we need to declare for the visualization
+
+#### i. Set 1: Flux
+```{r, results='hide'}
+reactions_to_visualize = c("ADSL1", "CYSTS", "PEPCKm",
+                           "ACITL", "CYSO", "DHFR")
+reaction_names = c("adenylosuccinate lyase", 
+                   "cystathionine beta-synthase", 
+                   "Phosphoenolpyruvate carboxykinase (GTP)",
+                   "ATP-Citrate lyase",
+                   "cysteine oxidase",
+                   "dihydrofolate reductase")
+```
+
+#### ii. Set 2: KO
+```{r}
+reactions_to_visualize = c("APAT2rm", "BALAtmr", "MMSAD3m",
+                           "PCm", "GAPD", "EX_h_e")
+reaction_names = c("3-Aminopropanoate:2-oxoglutarate aminotransferase (m)",
+                   "Beta-alanine reversible mitochondrial transport (diffusion)",
+                   "methylmalonate-semialdehyde dehydrogenase (malonic semialdehyde), mitochondrial", 
+                   "pyruvate carboxylase",
+                   "glyceraldehyde-3-phosphate dehydrogenase",
+                   "H+ exchange")
+```
+
+#### iii. Set 3: KO
+```{r, results='hide'}
+reactions_to_visualize = c("AKGMALtm", "ENO", "ACITL",
+                           "CSNATr", "MDHm", "LDH_L")
+reaction_names = c("AKG Transporter", 
+                   "Enolase", 
+                   "ATP Citrate Lyase",
+                   "Carnitine o-acetyltransferase",
+                   "Malate dehydrogenase")
+```
+
+#### iv. Set 4: KO
+```{r, results='hide'}
+reactions_to_visualize = c("PGCD", "PSERT", "TPI",
+                           "PCm", "GAPD", "LDH_L")
+reaction_names = c("phosphoglycerate dehydrogenase", 
+                   "phosphoserine transaminase", 
+                   "triose phosphate isomerase",
+                   "pyruvate carboxylase",
+                   "glyceraldehyde-3-phosphate dehydrogenase",
+                   "Lactate dehydrogenase")
+```
+
+#### v. Visualize mean-norm KO
+```{r}
+tmp = merged_meanko[, reactions_to_visualize]
+tmp[is.na(tmp)] = 0
+```
+
+```{r}
+p = list()
+p[[1]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[1], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+                
+
+p[[2]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[2]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[2], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[3]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[3]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[3], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[4]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[4]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[4], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+p[[5]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[5]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[5], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+```
+
+
+Create and visualize the final UMAP flux plot object.
+```{r, fig.width=24, fig.height=12, results='hide'}
+pC = scater::multiplot(pB, p[[1]], p[[2]], 
+                       p[[4]], p[[3]], p[[5]], cols=3)
+pC
+```
+
+#### v. Visualize Z-score KO
+```{r}
+tmp = merged_zko[, reactions_to_visualize]
+tmp[is.na(tmp)] = 0
+```
+
+```{r}
+p = list()
+p[[1]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[1], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+                
+
+p[[2]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[2]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[2], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[3]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[3]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[3], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[4]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[4]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[4], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+p[[5]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[5]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[5], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+```
+
+
+Create and visualize the final UMAP flux plot object.
+```{r, fig.width=24, fig.height=12, results='hide'}
+pC = scater::multiplot(pB, p[[1]], p[[2]], 
+                       p[[4]], p[[3]], p[[5]], cols=3)
+pC
+```
+
+## 4. Save the data
+First, we need to format the data, so that it matches the DGE Matrix, where rows are reactions and columns are cell IDs.
+```{r, results='hide'}
+fba = flux_data
+
+# Reformat
+fba = t(fba)
+fba = as.sparse(fba)
+```
+
+Now we need to make sure the expression matrix has the same cells as the fba matrix, and also ensure the `active.ident` and the `Time` datapoints we'll map to.
+```{r, results='hide'}
+# Get names and indices
+intersect_cells = intersect(colnames(a549@assays$RNA@counts), colnames(fba))
+cell_idx = which(colnames(a549@assays$RNA@counts) %in% intersect_cells)
+
+# Reformat data
+a549_subset = subset(a549, cells=intersect_cells)
+fba = fba[, intersect_cells]
+
+a549_subset[["FBA"]] = CreateAssayObject(counts=fba)
+saveRDS(a549_subset, file = "D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds")
+
+```
+
+Let's create a preprocessing pipeline for downstream analyses
+```{r, results='hide'}
+preprocess_flux = function(gene_obj, assay){
+  # Log normalize data
+  gene_obj = NormalizeData(gene_obj, 
+                           assay=assay,
+                           normalization.method='LogNormalize', 
+                           scale.factor=10000)
+  
+  # Scale data
+  gene_obj = ScaleData(gene_obj, 
+                       assay=assay)
+  return(gene_obj)
+}
+```
+
+Now let's perform the data preprocessing
+```{r, results='hide'}
+#a549_subset = preprocess_flux(a549_subset, assay="FBA")
+```
+
+## 5. Get Metabolic Markers
+We'll get metabolic markers based on subpopulations. This module did not yield any result
+```{r, results='hide'}
+a549_subset@active.ident = as.factor(a549_subset@meta.data$Time)
+subpop_reactions = FindAllMarkers(a549_subset,
+                                  assay="FBA",
+                                  only.pos=TRUE,
+                                  min.pct=0.25,
+                                  logfc.threshold=0.05,
+                                  test.use="MAST")
+#write.table(subpop_reactions, "clipboard", sep="\t")
+```
+
+```{r, results='hide'}
+#var_feats = FindVariableFeatures(object=a549_subset)
+DoHeatmap(object=a549_subset,
+          assay="FBA",
+          slot='counts',
+          label=FALSE,
+          draw.lines=TRUE,
+          lines.width=10,
+          theme(text=element_text(family='sans', size=16),
+                legend.text=element_text(size=16),
+                axis.title.x=element_text(size=20),
+                axis.title.y=element_text(size=20),
+                axis.text.x=element_text(size=16),
+                axis.text.y=element_text(size=16),
+                legend.title=element_text(size=20)))
+```
+
+## 6. Overlay metabolic fluxes 
+Now let's repeat for metabolic fluxes.
+
+### A. Load up and map the flux data
+```{r, results='hide'}
+flux_path = 'D:/Chandrasekaran/Projects/EMT/Analysis/i99/flux_i99.csv'
+flux_data = readr::read_csv(flux_path)
+
+a549_id_map = read_csv("D:/Chandrasekaran/Projects/EMT/Analysis/data/a549_colmap.csv")
+
+col_names = colnames(flux_data[, 4:ncol(flux_data)])
+col_names = stringr::str_replace(col_names, '_[^_]+$', '')
+col_names = stringr::str_replace(col_names, 'x', '')
+
+rxnmap = flux_data[1:3]
+flux_data[1:3] = NULL
+
+flux_data = t(flux_data)
+flux_data = as.data.frame(flux_data)
+
+rownames(flux_data) = a549_id_map$orig_id
+colnames(flux_data) = rxnmap$rxn_ids
+
+flux_data = abs(flux_data)
+```
+
+### B. Data Transformations
+#### i. Min-max scale
+First, let's perform a mean normalization. We'll specifically subtract the mean KO across all cells for a given reaction. Also ignore NA.
+```{r}
+#xmin = apply(flux_data, 2, FUN=min, na.rm = TRUE)
+#xmax = apply(flux_data, 2, FUN=max, na.rm = TRUE)
+
+xmin = min(flux_data, na.rm = TRUE)
+xmax = max(flux_data, na.rm = TRUE)
+mnorm_flux = (flux_data - xmin) / (xmax - xmin)
+```
+
+Let's visualize the mean-normalized distribution.
+```{r}
+library(reshape2)
+tmp = melt(mnorm_flux)
+
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=100) + 
+  scale_y_continuous(trans='log10') +
+  ggtitle("RECON1 scRNASeq Flux distribution") +
+  xlab("Reaction Flux Distribution") +
+  ylab("Frequency (log-scale)") +
+  theme_minimal()
+```
+
+#### ii. Z-score Transformation
+
+Alternatively, let's see the impact of a Z-score transformation.
+```{r}
+tmp = abs(mnorm_flux)
+zflux = (tmp - colMeans(tmp, na.rm=TRUE)) / apply(tmp, 2, sd, na.rm=TRUE)
+```
+
+Let's visualize the Z-score distirbution.
+```{r}
+library(reshape2)
+tmp = melt(zflux)
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=100) + 
+  scale_y_continuous(trans='log10') +
+  ggtitle("RECON1 scRNASeq KO distribution") +
+  xlab("Reaction KO Distribution") +
+  ylab("Frequency (log-scale)") +
+  theme_minimal()
+```
+
+### C. Merge with UMAP embedding
+This combines the reaction ko data with the UMAP embedding.
+```{r}
+umap_data = data.frame(a549@reductions$umap@cell.embeddings)
+```
+
+#### i. Mean Normalization
+```{r}
+merged_meanflux = merge(umap_data, mnorm_flux, by.x='row.names', by.y='row.names')
+rownames(merged_meanflux) = merged_meanflux$Row.names
+merged_meanflux = merged_meanflux[, -1]
+```
+
+#### ii. Z-score
+```{r}
+merged_zflux = merge(umap_data, zflux, by.x='row.names', by.y='row.names')
+rownames(merged_zflux) = merged_zflux$Row.names
+merged_zflux = merged_zflux[, -1]
+```
+
+### D. Visualize KO Data
+Let's intialize some variables we need to declare for the visualization
+
+#### i. Set 1: Flux
+```{r, results='hide'}
+reactions_to_visualize = c("ADSL1", "CYSTS", "PEPCKm",
+                           "ACITL", "CYSO", "DHFR")
+reaction_names = c("adenylosuccinate lyase", 
+                   "cystathionine beta-synthase", 
+                   "Phosphoenolpyruvate carboxykinase (GTP)",
+                   "ATP-Citrate lyase",
+                   "cysteine oxidase",
+                   "dihydrofolate reductase")
+```
+
+#### ii. Set 2: KO
+```{r}
+reactions_to_visualize = c("APAT2rm", "BALAtmr", "MMSAD3m",
+                           "PCm", "GAPD", "EX_h_e")
+reaction_names = c("3-Aminopropanoate:2-oxoglutarate aminotransferase (m)",
+                   "Beta-alanine reversible mitochondrial transport (diffusion)",
+                   "methylmalonate-semialdehyde dehydrogenase (malonic semialdehyde), mitochondrial", 
+                   "pyruvate carboxylase",
+                   "glyceraldehyde-3-phosphate dehydrogenase",
+                   "H+ exchange")
+```
+
+#### iii. Set 3: KO
+```{r, results='hide'}
+reactions_to_visualize = c("AKGMALtm", "ENO", "ACITL",
+                           "CSNATr", "MDHm", "LDH_L")
+reaction_names = c("AKG Transporter", 
+                   "Enolase", 
+                   "ATP Citrate Lyase",
+                   "Carnitine o-acetyltransferase",
+                   "Malate dehydrogenase")
+```
+
+#### iv. Set 4: KO
+```{r, results='hide'}
+reactions_to_visualize = c("PGCD", "PSERT", "TPI",
+                           "PCm", "GAPD", "LDH_L")
+reaction_names = c("phosphoglycerate dehydrogenase", 
+                   "phosphoserine transaminase", 
+                   "triose phosphate isomerase",
+                   "pyruvate carboxylase",
+                   "glyceraldehyde-3-phosphate dehydrogenase",
+                   "Lactate dehydrogenase")
+```
+
+#### v. Visualize mean-norm KO
+```{r}
+tmp = merged_meanflux[, reactions_to_visualize]
+tmp[is.na(tmp)] = 0
+```
+
+```{r}
+p = list()
+p[[1]] = ggplot(merged_meanflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[1], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = '#F29479', high='red', limits=c(0, max(tmp))) +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+                
+
+p[[2]] = ggplot(merged_meanflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[2]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[2], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = '#F29479', high='red', limits=c(0, max(tmp))) +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[3]] = ggplot(merged_meanflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[3]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[3], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = '#F29479', high='red', limits=c(0, max(tmp))) +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[4]] = ggplot(merged_meanflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[4]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[4], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = '#F29479', high='red', limits=c(0, max(tmp))) +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+p[[5]] = ggplot(merged_meanflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[5]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[5], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = '#F29479', high='red', limits=c(0, max(tmp))) +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+```
+
+
+Create and visualize the final UMAP flux plot object.
+```{r, fig.width=24, fig.height=12, results='hide'}
+pC = scater::multiplot(pB, p[[1]], p[[2]], 
+                       p[[4]], p[[3]], p[[5]], cols=3)
+pC
+```
+
+#### v. Visualize Z-score KO
+```{r}
+tmp = merged_zflux[, reactions_to_visualize]
+tmp[is.na(tmp)] = 0
+```
+
+```{r}
+p = list()
+p[[1]] = ggplot(merged_zflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[1], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = 'white', high='red') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+                
+
+p[[2]] = ggplot(merged_zflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[2]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[2], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = 'white', high='red') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[3]] = ggplot(merged_zflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[3]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[3], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = 'white', high='red') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans"))
+
+p[[4]] = ggplot(merged_zflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[4]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[4], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = 'white', high='red') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+p[[5]] = ggplot(merged_zflux, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[5]])) + 
+                geom_point(size=5) +
+                theme_minimal() +
+                labs(x="UMAP 1", 
+                     y="UMAP 2",
+                     title=reaction_names[5], 
+                     color="Flux") + 
+                scale_colour_gradient2(low="black", mid = 'white', high='red') +
+                theme(plot.title = element_text(size=26),
+                            legend.text=element_text(size=22),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+
+```
+
+
+Create and visualize the final UMAP flux plot object.
+```{r, fig.width=24, fig.height=12, results='hide'}
+pC = scater::multiplot(pB, p[[1]], p[[2]], 
+                       p[[4]], p[[3]], p[[5]], cols=3)
+pC
+```

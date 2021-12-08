@@ -1,0 +1,15 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Summary
+This notebook integrates results from FBA to a Seurat object.
+
+```{r}
+library(seurat)
+library(tidyverse)
+```
+
+
+

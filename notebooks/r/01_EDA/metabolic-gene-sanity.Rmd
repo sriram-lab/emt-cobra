@@ -1,0 +1,143 @@
+---
+title: "Examine top varying metabolic genes"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+```
+
+## Summary
+This notebook aims to determine whether or not metabolic genes are being over- or underrepresented in the Cook & Vanderhyden dataset
+
+```{r}
+library(Seurat)
+library(readxl)
+```
+
+## 1. Load Cook & Vanderhyden dataset
+First, let's load the Cook and Vanderhyden dataset. Assert that we're only dealing with TGF-B induced cells.
+```{r}
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds'
+a549 = readRDS(filepath)
+Idents(a549) = "Time"
+a549 = subset(a549, idents=c("0d", "8h", "1d", "3d", "7d"))
+```
+
+Let's also load the RECON1 mapping
+```{r}
+recon1map = "D:/Chandrasekaran/Projects/eGEM/Data/Reconstructions/RECON1/RECON1.xlsx"
+recon1map = readxl::read_excel(recon1map, sheet="Genes")
+```
+
+## 2. Examine number of metabolic genes in the top 3000 genes.
+We'll use the RECON1 mapping to get the intersection.
+
+```{r}
+scaled_data = a549@assays$RNA@scale.data
+```
+
+Get the intersection
+```{r}
+tmp = merge(scaled_data, recon1map, how='inner', by.x=0, by.y='Symbol')
+```
+
+There are 318 metabolic genes mapped using this method. What does the distribution look like?
+```{r}
+library(reshape2)
+library(ggplot2)
+tmp = melt(tmp)
+tmp$color = 'gray'
+tmp$color[tmp$value < lims[2]] = 'blue'
+tmp$color[tmp$value > lims[4]] = 'red'
+tmp$color = as.factor(tmp$color)
+
+lims = quantile(tmp$value)
+
+ggplot(tmp, aes(x=value, fill=color)) +
+  geom_histogram(bins=100, aes(fill=color)) +
+  xlim(-3, 3) + 
+  ggtitle("Scaled Cook & Vanderhyden metabolic genes distribution") +
+  xlab("Scaled expression value") + 
+  ylab("Frequency") + 
+  geom_vline(xintercept=lims[2]) +
+  geom_vline(xintercept=lims[4]) +
+  scale_color_manual(values = c("blue" = "blue",
+                                "gray"="gray",
+                                "red"="red")) 
+```
+
+Get number of up and down genes across cells.
+```{r}
+n_up_top3000 = sum(tmp$value > lims[4])
+n_dn_top3000 = sum(tmp$value < lims[2])
+```
+
+Strange that we get the same number of entries for both up and down.
+
+## 3. Examine number of all metabolic genes in the entire dataset.
+
+First, we preprocess the dataset exactly how they did it in Cook & Vanderhyden.
+```{r}
+filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds'
+a549 = readRDS(filepath)
+a549_scale_all = a549
+mito.features = grep(pattern="^MT-", 
+                      x=rownames(a549_scale_all), 
+                      value=TRUE)
+percent.mito = Matrix::colSums(GetAssayData(a549_scale_all, 
+                                            slot='counts')[mito.features, ]) / Matrix::colSums(GetAssayData(a549_scale_all, slot='counts'))
+
+a549_scale_all[['percent.mito']] = percent.mito
+a549_scale_all = subset(a549_scale_all, 
+                 subset=nFeature_RNA > 200 & 
+                   percent.mito < 0.09)
+a549_scale_all = NormalizeData(a549_scale_all)
+a549_scale_all = FindVariableFeatures(a549_scale_all, 
+                                      selection.method="vst", 
+                                      nfeatures=13239)
+```
+
+Next, we re-perform the entire analysis we did above.
+
+```{r}
+scaled_data = a549_scale_all@assays$RNA@scale.data
+```
+
+Get the intersection
+```{r}
+tmp = merge(scaled_data, recon1map, how='inner', by.x=0, by.y='Symbol')
+```
+
+There are 318 metabolic genes mapped using this method. What does the distribution look like?
+```{r}
+library(reshape2)
+library(ggplot2)
+tmp = melt(tmp)
+tmp$color = 'gray'
+tmp$color[tmp$value < lims[2]] = 'blue'
+tmp$color[tmp$value > lims[4]] = 'red'
+tmp$color = as.factor(tmp$color)
+
+lims = quantile(tmp$value)
+
+ggplot(tmp, aes(x=value, fill=color)) +
+  geom_histogram(bins=100, aes(fill=color)) +
+  xlim(-3, 3) + 
+  ggtitle("Scaled Cook & Vanderhyden metabolic genes distribution") +
+  xlab("Scaled expression value") + 
+  ylab("Frequency") + 
+  geom_vline(xintercept=lims[2]) +
+  geom_vline(xintercept=lims[4]) +
+  scale_color_manual(values = c("blue" = "blue",
+                                "gray"="gray",
+                                "red"="red")) 
+```
+
+Get number of up and down genes across cells.
+```{r}
+n_up_top3000 = sum(tmp$value > lims[4])
+n_dn_top3000 = sum(tmp$value < lims[2])
+```
+
+Based on the results, we don't have to recompute anything. Taking into consideration all genes just results in 1 additional upregulated gene compared to the old analysis.
