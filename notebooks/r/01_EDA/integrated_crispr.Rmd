@@ -8,10 +8,12 @@ This notebook explores the Integrated CRISPR-Cas9 dataset from Pacini, C., Demps
 
 The reason why we're interested in this dataset is because it has been corrected by copy number variation, has been batch corrected for each study and multiple variables, and has greater statistical power due to the combined dataset. 
 
-# 1. Load libraries
 ```{r}
 rm(list=ls())
+```
 
+# 1. Load libraries
+```{r}
 # General libraries
 library(tidyr)
 library(readr)
@@ -37,9 +39,8 @@ The dataset from this analysis can be downloaded from this FigShare url: https:/
 Note that the final batch correction method used to perform downstream analyses was ComBat + QN + PC1, as it was also used in the Pacini et al., 2021 paper for perform downstream analyses. Additionally, we used the CERES method as the preprocessing method. There are additional batch correction and data preprocessing methods that can be used in lieu of these choices if needed.
 
 ```{r}
-datapath = "D:/Data/CRISPR/Integrated2021/13252640/CERES_SQ_Combat_PC1_All_merge_F.Rds"
+datapath = "D:/Chandrasekaran/Projects/EMT/Data/CRISPR/BatchCorrected/13252640/CERES_SQ_Combat_PC1_All_merge_F.Rds"
 data = readRDS(datapath)
-#head(data, 1)
 ```
 
 # 3. Data mapping
@@ -60,7 +61,7 @@ The metadata is available in the CCLE data repository: https://portals.broadinst
   
 ```{r}
 # Dell
-metapath = 'D:/Data/Mappings/CCLE/sample_info.csv'
+metapath = 'D:/Chandrasekaran/Projects/EMT/Data/Meta/sample_info.csv'
 
 # Read in meta data
 metadata = read_csv(metapath)
@@ -114,7 +115,7 @@ First, let's map the data to RECON1, which uses Entrez IDs as the map.
 
 First load the RECON1 genes.
 ```{r}
-recon1_map = "D:/Data/Reconstructions/RECON1/RECON1.xlsx"
+recon1_map = "D:/Chandrasekaran/Projects/eGEM/Data/Reconstructions/RECON1/RECON1.xlsx"
 recon1_genes = readxl::read_excel(recon1_map, sheet="Genes")
 ```
 
@@ -175,6 +176,45 @@ ggplot(tmp, aes(x=value, fill=value)) +
   labs(x="CERES Score", 
        y="Frequency", 
        title="Batch normalized CERES score distribution (matched)")
+```
+
+# 5. Query a specific subset of CERES scores
+This section queries a specific subset of CERES scores. First, get genes.
+```{r}
+list_to_query = c("PC", "ASRGL1", "GOT1", "ACSL3", "Vmn2r37", "ACSL5", "ACSL1",
+                  "FTCD", "UGP2", "GAPDH", "GAPDHS", "GLS", "GLS2", "HK1",
+                  "HKDC1", "GCK", "HK2", "HK3", "HAL", "AQP9", "RPE", 
+                  "MDH1", "MDH1B", "UROC1", "HPD", "SLC25A13", "SLC25A12", "GOT2",
+                  "SLC16A1", "ACLY", "ACADM", "ACAD8", "SLC25A20", "CYP2E1",
+                  "ADK", "ACHY", "AHCYL1", "SLC25A11", "SLC1A6", "SLC1A1",
+                  "SLC1A3", "SLC1A2", "SLC1A7", "CAT", "CRAT", "CDO1", "RBKS",
+                  "ECHS1", "HADHA", "HADHB", "ENO1", "ENO3", "ENO2", "ELOVL4",
+                  "HSD17B4 ", "ACOX1", "ACAA1", "EHHADH", "FASN", "ALDOA",
+                  "ALDOB", "ALDOC", "FBP1", "FBP2", "FAH", "GLUL", "LGSN",
+                  "HGD", "HIBADH", "HMGCL", "HPRT1", "GSTZ1", "MDH2", "DBT",
+                  "BCKDHB", "BCKDHA", "DLD", "PRODH2", "PTDSS1", "SLC16A1", 
+                  "PNPLA4", "SLC25A10", "TALDO1", "TKT", "TKTL2", "TKTL1", 
+                  "TPI1", "TPIP2", "SLC6A14"
+                  )
+subset_df = match_data[rownames(match_data) %in% list_to_query, ]
+```
+
+Now, get NSCLC cell lines.
+```{r}
+nsclc_ccl = metadata[metadata$lineage_subtype == "NSCLC", ]
+nsclc_ccl = filter(nsclc_ccl, rowSums(is.na(nsclc_ccl)) != ncol(nsclc_ccl))
+```
+
+Filter the data for NSCLC cell lines only.
+```{r}
+subset_df2 = subset_df[, colnames(subset_df) %in% nsclc_ccl$DepMap_ID]
+```
+
+Get the median CS across all cell lines.
+```{r}
+final_nsclc_score = apply(subset_df2[, -1], 1, mean, na.rm=TRUE)
+final_nsclc_score = as.data.frame(final_nsclc_score)
+rownames(final_nsclc_score) = rownames(subset_df2)
 ```
 
 # Summary

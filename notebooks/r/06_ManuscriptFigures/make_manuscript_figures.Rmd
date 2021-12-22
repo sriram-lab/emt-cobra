@@ -1137,8 +1137,8 @@ rowAnno = rowAnnotation(rows = anno_text(tmp2$name,
                                          location=1))
   
 # Construct the heatmaps
-col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
-                     c("#E63946", "Gray", "#495057"))+
+col_fun = colorRamp2(c(min(as.matrix(tmp)), -0.005, 0, 0.03), 
+                     c("#E63946", "#F1959B", "Gray", "#3E3B39")) 
 h1 = Heatmap(row_names_side="left",
              early_data, 
              col=col_fun, 
@@ -1225,15 +1225,18 @@ data$name = paste0(data$`BiGG Reaction ID`,
 ### B. Subset the average data columns
 The data has already been averaged across all cells.
 ```{r}
+data = data[order(data[, "Std_All"], decreasing=TRUE), ]
 tmp = data[, c("Average_All",	"Average_Day0",
                "Average_Hour8",	"Average_Day1",
                "Average_Day3",	"Average_Day7")]
 tmp = tmp-1
+colnames(tmp) = c("Average", "Day 0", "8 Hrs", "Day 1", "Day 3", "Day 7")
+names(data)[names(data) == "Std_All"] = "S.D."
 ```
 
 ### C. Create an annotation heatmap showing the average standard deviation for each reaction across all cells
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
-hm = Heatmap(as.matrix(data[, "Std_All"]),
+hm = Heatmap(as.matrix(data[, "S.D."]),
              rect_gp = gpar(col = "black", 
                             lwd = 1),
              col = colorRamp2(c(0, 0.3), 
@@ -1242,15 +1245,15 @@ hm = Heatmap(as.matrix(data[, "Std_All"]),
              cluster_rows=FALSE,
              heatmap_legend_param=list(title="Average Std",
                                        color_bar="continuous"),
-             width = ncol(data[, "Std_All"])*unit(5, "mm"), 
-             height = nrow(data[, "Std_All"])*unit(5, "mm"))
+             width = ncol(data[, "S.D."])*unit(5, "mm"), 
+             height = nrow(data[, "S.D."])*unit(5, "mm"))
 ```
 
 ### D. Create the Heatmap with additional figures
 ```{r, fig.width=20, fig.height=12.5, fig.align='right', dpi=100}
 final_data = as.matrix(tmp)
-col_fun = colorRamp2(c(min(as.matrix(tmp)), 0, max(as.matrix(tmp))), 
-                       c("#E63946", "Gray", "#495057"))
+col_fun = colorRamp2(c(min(as.matrix(tmp)), -0.05, 0, 0.03), 
+                     c("#E63946", "#F1959B", "Gray", "#3E3B39")) 
 
 ht = Heatmap(row_labels=data$name,
              final_data, 

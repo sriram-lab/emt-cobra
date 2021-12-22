@@ -13,12 +13,14 @@ rm(list=ls())
 ## 1. Load Libraries
 ```{r, results='hide'}
 library(tidyverse)
+library(readxl)
 library(umap)
 library(Seurat)
 library(writexl)
 library(ggpubr)
 library(gridExtra)
 library(extrafont)
+library(tools)
 #loadfonts(device="win")
 ```
 
@@ -84,19 +86,21 @@ pB = DimPlot(a549,
         na.value = "grey50") + 
         labs(title="A549 Time-Course", 
              x="UMAP 1", 
-             y="UMAP 2") +
+             y="UMAP 2",
+             tag="A.",
+) +
         theme_minimal() +
-        theme(plot.title = element_text(size=26),
-              legend.text=element_text(size=22),
+        theme(plot.title = element_text(size=22),
+              plot.tag=element_text(size=26, face="bold"),
+              legend.text=element_text(size=10),
               axis.title.x=element_text(size=22),
               axis.title.y=element_text(size=22),
               axis.text.x=element_text(size=22),
               axis.text.y=element_text(size=22),
-              legend.position=c(0.05, 0.15),
+              legend.position=c(0.15, 0.15),
               legend.box="vertical",
               legend.margin=margin(),
-              text=element_text(family="sans")) +
-        guides(color=guide_legend(override.aes=list(size=2)))
+              text=element_text(family="sans")) 
 
 
 pB
@@ -126,15 +130,22 @@ rownames(ko_data) = a549_id_map$orig_id
 colnames(ko_data) = rxnmap$rxn_ids
 ```
 
-### B. Data Transformations
-
-#### i. Mean Normalization
-First, let's perform a mean normalization. We'll specifically subtract the mean KO across all cells for a given reaction. Also ignore NA.
+Now let's load up the control.
 ```{r}
-mnorm_ko = ko_data - colMeans(ko_data, na.rm=TRUE)
+xl_path = "D:/Chandrasekaran/Projects/EMT/Data/COBRA/Unconstrained i99 KO Grate.xlsx"
+cntr_grate = read_excel(xl_path, sheet="cntr_rxn_grate")
 ```
 
-Let's visualize the Z-score distirbution.
+### B. Data Transformations
+
+#### i. Control fold change Normalization
+First, let's perform a mean normalization. We'll specifically subtract the mean KO across all cells for a given reaction. Also ignore NA.
+```{r}
+tmp = cntr_grate[, 2]
+mnorm_ko = ((ko_data+1) / (t(tmp)+1))-1
+```
+
+Let's visualize the fold change distribution.
 ```{r}
 library(reshape2)
 tmp = melt(mnorm_ko)
@@ -151,8 +162,8 @@ ggplot(tmp, aes(x=value)) +
 
 Alternatively, let's see the impact of a Z-score transformation.
 ```{r}
-tmp = ko_data
-zko = (tmp - colMeans(tmp, na.rm=TRUE)) / apply(tmp, 2, sd, na.rm=TRUE)
+tmp = cntr_grate[, 2]
+zko = (ko_data - t(tmp)) / apply(ko_data, 2, sd, na.rm=TRUE)
 ```
 
 Let's visualize the Z-score distirbution.
@@ -189,7 +200,51 @@ merged_zko = merged_zko[, -1]
 ```
 
 ### D. Visualize KO Data
-Let's intialize some variables we need to declare for the visualization
+Let's intialize some variables we need to declare for the visualization.
+
+This code block does it by sorting the reactions based on standard deviation.
+```{r}
+col_sd = apply(mnorm_ko, 2, sd, na.rm=TRUE)
+sorted_sd = sort(col_sd, index.return=TRUE, decreasing=TRUE)
+tmp_rxns = mnorm_ko[, sorted_sd$ix]
+```
+
+Now merge with the UMAP coordinates.
+```{r}
+merged_meanko = merge(umap_data, tmp_rxns, by.x='row.names', by.y='row.names')
+rownames(merged_meanko) = merged_meanko$Row.names
+merged_meanko = merged_meanko[, -1]
+```
+
+Let's look at the top 100 most varied reactions
+```{r}
+#tmp2 = merged_meanko[, 900:1000]
+tmp2 = merged_meanko[, 1:100]
+tmp3 = data.frame(colnames(tmp2))
+reaction_names = rxnmap[rxnmap$rxn_ids %in% tmp3[3:nrow(tmp3), ], ]
+reaction_names = reaction_names$rxn_name
+```
+
+Okay, we're going to select 4 reactions from the top 100, plus enolase.
+```{r}
+reactions_to_visualize = c("FACOAL204i", "CSm", "ACCOACm", "ENMAN6g", "NNATn")
+reaction_names = rxnmap[rxnmap$rxn_ids %in% reactions_to_visualize, ]
+reaction_names = reaction_names$rxn_name
+#reaction_names[4] = "Enolase"
+#reaction_names[3] = "Nicotinamide-nucleotide adenylyltransferase"
+```
+
+```{r}
+reactions_to_visualize = c("AKGMALtm", "CSNATm", "ACITL", "ENMAN6g", "CSm")
+reaction_names = rxnmap[rxnmap$rxn_ids %in% reactions_to_visualize, ]
+reaction_names = reaction_names$rxn_name
+#reaction_names[4] = "Enolase"
+#reaction_names[3] = "Nicotinamide-nucleotide adenylyltransferase"
+```
+
+```{r}
+reaction_names
+```
 
 #### i. Set 1: Flux
 ```{r, results='hide'}
@@ -241,113 +296,152 @@ reaction_names = c("phosphoglycerate dehydrogenase",
 #### v. Visualize mean-norm KO
 ```{r}
 tmp = merged_meanko[, reactions_to_visualize]
-tmp[is.na(tmp)] = 0
+tmp[is.na(tmp)] = -1
+
+tmp2 = tmp
+tmp2[tmp > 0.3] = "Enhancing"
+tmp2[tmp > 0 & tmp < 0.3] = "Mildy enhancing"
+tmp2[tmp < 0] = "Sensitive"
+
+tmp2[is.na(tmp)] = 0
+tmp2[tmp == 0] = "Not Sensitive"
 ```
 
 ```{r}
 p = list()
-p[[1]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
+p[[1]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp2[, 1])) + 
                 geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[1], 
-                     color="Flux") + 
-                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
-                theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
-                            axis.title.x=element_text(size=22),
-                            axis.title.y=element_text(size=22),
-                            axis.text.x=element_text(size=22),
-                            axis.text.y=element_text(size=22),
-                            legend.position=c(0.05, 0.15),
-                            legend.box="vertical",
-                            legend.margin=margin(),
-                            text=element_text(family="sans")) 
+                     tag="B.",
+                     title=toTitleCase(as.character(rxnmap[rxnmap$rxn_ids %in% colnames(tmp2)[1], 'rxn_name'])), 
+                     color="Growth classification") + 
+                scale_colour_manual(values = c("Sensitive"="red", 
+                             "Not Sensitive"="gray",
+                             "Mildly enhancing"="#6D6A6A",
+                             "Enhancing"="black")) + 
+                #scale_colour_gradient2(low="red", mid='#F07470', high='black', na.value='gray', limits=c(min(tmp), 1), midpoint=0) +
+                theme(plot.title = element_text(size=22),
+                      plot.tag=element_text(size=26, face="bold"),
+                      legend.text=element_text(size=10),
+                      axis.title.x=element_text(size=22),
+                      axis.title.y=element_text(size=22),
+                      axis.text.x=element_text(size=22),
+                      axis.text.y=element_text(size=22),
+                      legend.position=c(0.15, 0.15),
+                      legend.box="vertical",
+                      legend.margin=margin(),
+                      text=element_text(family="sans"))  
                 
 
-p[[2]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[2]])) + 
+p[[2]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp2[, 2])) + 
                 geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[2], 
-                     color="Flux") + 
-                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
-                theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
-                            axis.title.x=element_text(size=22),
-                            axis.title.y=element_text(size=22),
-                            axis.text.x=element_text(size=22),
-                            axis.text.y=element_text(size=22),
-                            legend.position=c(0.05, 0.15),
-                            legend.box="vertical",
-                            legend.margin=margin(),
-                            text=element_text(family="sans"))
+                     tag="C.",
+                     title=toTitleCase(as.character(rxnmap[rxnmap$rxn_ids %in% colnames(tmp2)[2], 'rxn_name'])), 
+                     color="Growth classification") +  
+                scale_colour_manual(values = c("Sensitive"="red", 
+                             "Not Sensitive"="gray",
+                             "Mildly enhancing"="#6D6A6A",
+                             "Enhancing"="black")) + 
+                #scale_colour_gradient2(low="red", mid='#F07470', high='bl
+                #scale_colour_gradient2(low="red", mid='#F07470', high='black', na.value='gray', limits=c(min(tmp), 1), midpoint=0) +
+                theme(plot.title = element_text(size=22),
+                      plot.tag=element_text(size=26, face="bold"),
+                      legend.text=element_text(size=10),
+                      axis.title.x=element_text(size=22),
+                      axis.title.y=element_text(size=22),
+                      axis.text.x=element_text(size=22),
+                      axis.text.y=element_text(size=22),
+                      legend.position=c(0.15, 0.15),
+                      legend.box="vertical",
+                      legend.margin=margin(),
+                      text=element_text(family="sans")) 
 
-p[[3]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[3]])) + 
+p[[3]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp2[, 3])) + 
                 geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[3], 
-                     color="Flux") + 
-                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
-                theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
-                            axis.title.x=element_text(size=22),
-                            axis.title.y=element_text(size=22),
-                            axis.text.x=element_text(size=22),
-                            axis.text.y=element_text(size=22),
-                            legend.position=c(0.05, 0.15),
-                            legend.box="vertical",
-                            legend.margin=margin(),
-                            text=element_text(family="sans"))
+                     tag="D.",
+                     title=toTitleCase(as.character(rxnmap[rxnmap$rxn_ids %in% colnames(tmp2)[3], 'rxn_name'])), 
+                     color="Growth classification") + 
+                scale_colour_manual(values = c("Sensitive"="red", 
+                             "Not Sensitive"="gray",
+                             "Mildly enhancing"="#6D6A6A",
+                             "Enhancing"="black")) + 
+                #scale_colour_gradient2(low="red", mid='#F07470', high='black', na.value='gray', limits=c(min(tmp), 1), midpoint=0) +
+                theme(plot.title = element_text(size=22),
+                      plot.tag=element_text(size=26, face="bold"),
+                      legend.text=element_text(size=10),
+                      axis.title.x=element_text(size=22),
+                      axis.title.y=element_text(size=22),
+                      axis.text.x=element_text(size=22),
+                      axis.text.y=element_text(size=22),
+                      legend.position=c(0.15, 0.15),
+                      legend.box="vertical",
+                      legend.margin=margin(),
+                      text=element_text(family="sans"))  
 
-p[[4]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[4]])) + 
+p[[4]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp2[, 4])) + 
                 geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[4], 
-                     color="Flux") + 
-                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
-                theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
-                            axis.title.x=element_text(size=22),
-                            axis.title.y=element_text(size=22),
-                            axis.text.x=element_text(size=22),
-                            axis.text.y=element_text(size=22),
-                            legend.position=c(0.05, 0.15),
-                            legend.box="vertical",
-                            legend.margin=margin(),
-                            text=element_text(family="sans")) 
+                     tag="E.",
+                     title=toTitleCase(as.character(rxnmap[rxnmap$rxn_ids %in% colnames(tmp2)[4], 'rxn_name'])), 
+                     color="Growth classification") + 
+                scale_colour_manual(values = c("Sensitive"="red", 
+                             "Not Sensitive"="gray",
+                             "Mildly enhancing"="#6D6A6A",
+                             "Enhancing"="black")) + 
+                #scale_colour_gradient2(low="red", mid='#F07470', high='black', na.value='gray', limits=c(min(tmp), 1), midpoint=0) +
+                theme(plot.title = element_text(size=22),
+                      plot.tag=element_text(size=26, face="bold"),
+                      legend.text=element_text(size=10),
+                      axis.title.x=element_text(size=22),
+                      axis.title.y=element_text(size=22),
+                      axis.text.x=element_text(size=22),
+                      axis.text.y=element_text(size=22),
+                      legend.position=c(0.15, 0.15),
+                      legend.box="vertical",
+                      legend.margin=margin(),
+                      text=element_text(family="sans")) 
 
-p[[5]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[5]])) + 
+p[[5]] = ggplot(merged_meanko, aes(x=UMAP_1, y=UMAP_2, color=tmp2[, 5])) + 
                 geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[5], 
-                     color="Flux") + 
-                scale_colour_gradient2(low="red", mid = 'gray', high='black') +
-                theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
-                            axis.title.x=element_text(size=22),
-                            axis.title.y=element_text(size=22),
-                            axis.text.x=element_text(size=22),
-                            axis.text.y=element_text(size=22),
-                            legend.position=c(0.05, 0.15),
-                            legend.box="vertical",
-                            legend.margin=margin(),
-                            text=element_text(family="sans")) 
+                     tag="F.",
+                     title=toTitleCase(as.character(rxnmap[rxnmap$rxn_ids %in% colnames(tmp2)[5], 'rxn_name'])), 
+                     color="Growth classification") + 
+                scale_colour_manual(values = c("Sensitive"="red", 
+                             "Not Sensitive"="gray",
+                             "Mildly enhancing"="#6D6A6A",
+                             "Enhancing"="black")) + 
+                #scale_colour_gradient2(low="red", mid='#F07470', high='black', na.value='gray', limits=c(min(tmp), 1), midpoint=0) +
+                theme(plot.title = element_text(size=22),
+                      plot.tag=element_text(size=26, face="bold"),
+                      legend.text=element_text(size=10),
+                      axis.title.x=element_text(size=22),
+                      axis.title.y=element_text(size=22),
+                      axis.text.x=element_text(size=22),
+                      axis.text.y=element_text(size=22),
+                      legend.position=c(0.15, 0.15),
+                      legend.box="vertical",
+                      legend.margin=margin(),
+                      text=element_text(family="sans")) 
 
 ```
 
 
 Create and visualize the final UMAP flux plot object.
 ```{r, fig.width=24, fig.height=12, results='hide'}
-pC = scater::multiplot(pB, p[[1]], p[[2]], 
+pC = scater::multiplot(pB,     p[[1]], p[[2]], 
                        p[[4]], p[[3]], p[[5]], cols=3)
 pC
 ```
@@ -360,6 +454,7 @@ tmp[is.na(tmp)] = 0
 
 ```{r}
 p = list()
+
 p[[1]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[1]])) + 
                 geom_point(size=5) +
                 theme_minimal() +
@@ -369,7 +464,7 @@ p[[1]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vis
                      color="Flux") + 
                 scale_colour_gradient2(low="red", mid = 'gray', high='black') +
                 theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
+                            legend.text=element_text(size=10),
                             axis.title.x=element_text(size=22),
                             axis.title.y=element_text(size=22),
                             axis.text.x=element_text(size=22),
@@ -408,7 +503,7 @@ p[[3]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vis
                      color="Flux") + 
                 scale_colour_gradient2(low="red", mid = 'gray', high='black') +
                 theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
+                            legend.text=element_text(size=10),
                             axis.title.x=element_text(size=22),
                             axis.title.y=element_text(size=22),
                             axis.text.x=element_text(size=22),
@@ -416,7 +511,7 @@ p[[3]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vis
                             legend.position=c(0.05, 0.15),
                             legend.box="vertical",
                             legend.margin=margin(),
-                            text=element_text(family="sans"))
+                            text=element_text(family="sans")) 
 
 p[[4]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_visualize[4]])) + 
                 geom_point(size=5) +
@@ -427,7 +522,7 @@ p[[4]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vis
                      color="Flux") + 
                 scale_colour_gradient2(low="red", mid = 'gray', high='black') +
                 theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
+                            legend.text=element_text(size=10),
                             axis.title.x=element_text(size=22),
                             axis.title.y=element_text(size=22),
                             axis.text.x=element_text(size=22),
@@ -445,8 +540,8 @@ p[[5]] = ggplot(merged_zko, aes(x=UMAP_1, y=UMAP_2, color=tmp[, reactions_to_vis
                      title=reaction_names[5], 
                      color="Flux") + 
                 scale_colour_gradient2(low="red", mid = 'gray', high='black') +
-                theme(plot.title = element_text(size=26),
-                            legend.text=element_text(size=22),
+                theme(plot.title = element_text(size=22),
+                            legend.text=element_text(size=10),
                             axis.title.x=element_text(size=22),
                             axis.title.y=element_text(size=22),
                             axis.text.x=element_text(size=22),
