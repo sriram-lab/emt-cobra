@@ -20,7 +20,7 @@ library(writexl)
 library(ggpubr)
 library(gridExtra)
 library(extrafont)
-loadfonts(device="win")
+#loadfonts(device="win")
 ```
 
 ## 2. Load scRNASeq datasets
@@ -30,7 +30,7 @@ Next, we'll load the A549 dataset, which is the lung cancer cell line investigat
 filepath = 'D:/Chandrasekaran/Projects/EMT/Data/scRNASeq/a549_quantile.rds'
 a549 = readRDS(filepath)
 
-DefaultAssay(object = a549) <- "RNA"
+DefaultAssay(object=a549) = "RNA"
 ```
 
 now let's visualize the time-course
@@ -52,9 +52,11 @@ pB = DimPlot(a549,
         na.value = "grey50") + 
         labs(title="A549 Time-Course", 
              x="UMAP 1", 
-             y="UMAP 2") +
+             y="UMAP 2",
+             tag="A.") +
         theme_minimal() +
-        theme(plot.title = element_text(size=26),
+        theme(plot.tag=element_text(size=26, face="bold"),
+              plot.title = element_text(size=26),
               legend.text=element_text(size=22),
               axis.title.x=element_text(size=22),
               axis.title.y=element_text(size=22),
@@ -66,7 +68,6 @@ pB = DimPlot(a549,
               text=element_text(family="sans")) +
         guides(color=guide_legend(override.aes=list(size=2)))
 
-
 pB
 ```
 
@@ -74,70 +75,61 @@ pB
 ```{r}
 p1 = FeaturePlot(a549, features=c("CDH1", "VIM"), combine=TRUE)
 p1
-#fix.sc = scale_color_gradientn( colours = c("gray", "red"),  limits = c(1, 3))
-#p2 = lapply(p1, function (x) x + fix.sc)
-#CombinePlots(p2)
-
 ```
 ```{r}
 p = list()
-umap_embed = merge(as.data.frame(a549@reductions$umap@cell.embeddings), as.data.frame(a549@assays$RNA@scale.data))
-tmp = as.data.frame(a549@assays$RNA@scale.data)
-p[[1]] = ggplot(umap_embed, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[1]])) + 
-                geom_point(size=3, alpha=0.5) +
+x = t(as.data.frame(a549@assays$RNA@scale.data))
+y = as.data.frame(a549@reductions$umap@cell.embeddings)
+umap_embed = merge(x, y, by=0, all=TRUE)
+
+#tmp = as.data.frame(a549@assays$RNA@scale.data)
+p[[1]] = pB
+
+p[[2]] = ggplot(umap_embed, aes(x=UMAP_1, y=UMAP_2, color=VIM)) + 
+                geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[1], 
-                     color="Flux") + 
-                scale_color_gradient(low="gray", high=colors[1],
-                                     limits = c(0, 1.3)) +
-                theme(plot.title = element_text(size=10),
-                      legend.text=element_text(size=8),
-                      axis.title.x=element_text(size=10),
-                      axis.title.y=element_text(size=10),
-                      axis.text.x=element_text(size=8),
-                      axis.text.y=element_text(size=8),
-                      legend.box="vertical",
-                      legend.margin=margin())
+                     title="VIM", 
+                     color="Expression",
+                     tag="B.") + 
+                scale_color_gradient(low="gray", high="red",
+                                     limits = c(0, 5)) +
+                theme(plot.title = element_text(size=22),
+                            legend.text=element_text(size=14),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            #legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
 
-p[[2]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[2]])) + 
-                geom_point(size=3, alpha=0.5) +
+p[[3]] = ggplot(umap_embed, aes(x=UMAP_1, y=UMAP_2, color=CDH1)) + 
+                geom_point(size=5) +
                 theme_minimal() +
                 labs(x="UMAP 1", 
                      y="UMAP 2",
-                     title=reaction_names[2], 
-                     color="Flux") + 
-                scale_color_gradient(low="gray", high=colors[2],
-                                     limits = c(0,1.3)) +
-                theme(plot.title = element_text(size=10),
-                      legend.text=element_text(size=8),
-                      axis.title.x=element_text(size=10),
-                      axis.title.y=element_text(size=10),
-                      axis.text.x=element_text(size=8),
-                      axis.text.y=element_text(size=8),
-                      legend.box="vertical",
-                      legend.margin=margin())
+                     title="CDH1", 
+                     color="Expression",
+                     tag="C.") + 
+                scale_color_gradient(low="gray", high="red",
+                                     limits = c(0, 5)) +
+                theme(plot.title = element_text(size=22),
+                            legend.text=element_text(size=14),
+                            axis.title.x=element_text(size=22),
+                            axis.title.y=element_text(size=22),
+                            axis.text.x=element_text(size=22),
+                            axis.text.y=element_text(size=22),
+                            #legend.position=c(0.05, 0.15),
+                            legend.box="vertical",
+                            legend.margin=margin(),
+                            text=element_text(family="sans")) 
+```
 
-p[[3]] = ggplot(merged_umap, aes(x=UMAP_1, y=UMAP_2, color=merged_umap[, reactions_to_visualize[3]])) + 
-                geom_point(size=3, alpha=0.5) +
-                theme_minimal() +
-                labs(x="UMAP 1", 
-                     y="UMAP 2",
-                     title=reaction_names[3], 
-                     color="Flux") + 
-                scale_color_gradient(low="gray", high=colors[3],
-                                     limits = c(0,1.3)) +
-                theme(plot.title = element_text(size=10),
-                      legend.text=element_text(size=8),
-                      axis.title.x=element_text(size=10),
-                      axis.title.y=element_text(size=10),
-                      axis.text.x=element_text(size=8),
-                      axis.text.y=element_text(size=8),
-                      legend.box="vertical",
-                      legend.margin=margin())
-
-pC = scater::multiplot(p[[1]], p[[2]], p[[3]] cols=3)
+```{r, fig.width=8, fig.height=11, results='hide'}
+pC = scater::multiplot(p[[1]], p[[2]], p[[3]], cols=1)
 pC
 ```
 
