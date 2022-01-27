@@ -188,7 +188,10 @@ to_use = names(mnorm_ko) %in% c("GLCt1", "HEX1", "PGI", "PFK", "FBA", "GAPD", "P
 glycolysis_ko = mnorm_ko[, to_use]
 merged_meanko = cbind(time, glycolysis_ko)
 tmp = melt(merged_meanko, id=c('a549.meta.data.Time'))
-tmp2 = tmp[tmp$variable == "ENO", ]
+
+minmax <- function(x){(x-min(x))/(max(x)-min(x))}
+
+tmp$density = minmax(tmp$value)
 
 library(dplyr)
 library(tidyr)
@@ -196,12 +199,29 @@ library(ggplot2)
 
 tmp %>%
   ggplot(aes(x=value, color=a549.meta.data.Time, fill=a549.meta.data.Time)) +
-  geom_density(alpha=0.4) + 
+  geom_density(aes(y=..scaled.., alpha=0.4)) + 
   facet_wrap(~variable, ncol=4) + 
-  #scale_y_log10() 
-
   labs(x="KO Growth Score", y="Density")
 
+```
+
+```{r}
+set.seed(1234)
+df = data.frame(value =round(c(rnorm(200,
+                                      mean=100,
+                                      sd=7))))
+  
+# import libraries ggplot2
+library(ggplot2)  
+  
+# create density plot
+ggplot(df, aes(x=value)) + geom_density()
+```
+
+```{r}
+ggplot(tmp, aes(x=value, color=a549.meta.data.Time, fill=a549.meta.data.Time)) +
+geom_density(aes(y=..scaled.., alpha=0.4)) + 
+labs(x="KO Growth Score", y="Density")
 ```
 
 ### C. Merge with UMAP embedding
@@ -791,12 +811,16 @@ library(ggplot2)
 
 tmp %>%
   ggplot(aes(x=value, color=a549.meta.data.Time, fill=a549.meta.data.Time)) +
-  geom_density(alpha=0.4) + 
+  geom_density(aes(y=..scaled.., alpha=0.4)) + 
   facet_wrap(~variable, ncol=4) + 
-  #scale_y_log10() 
+  labs(x="Glycolysis flux profile (individual reactions)", y="Density")
 
-  labs(x="Flux profiles", y="Density")
+```
 
+```{r}
+ggplot(tmp, aes(x=value, color=a549.meta.data.Time, fill=a549.meta.data.Time)) +
+geom_density(aes(y=..scaled.., alpha=0.4)) + 
+labs(x="Glycolysis flux profile (all)", y="Density")
 ```
 
 ### C. Merge with UMAP embedding
