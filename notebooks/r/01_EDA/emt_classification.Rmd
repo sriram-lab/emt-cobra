@@ -1,59 +1,77 @@
 ---
-title: "Classify CCLE to E and M"
-output: html_notebook
+title: "Classify CCLE Cancer Cell Lines to Epithelial and Mesenchymal Using Known Gene Signatures"
+author: "Scott Campit"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: sandstone
+  pdf_document: default
 ---
 
-
+*CAUTION: this code block ensures that your local R environment is cleared of any working variables.*
 ```{r}
 rm(list=ls())
 ```
 
 ## Summary
-This notebook aims to classify CCLE cells to either be E or M, based on known EMT signatures.
+This notebook classifies CCLE cancer cell lines as Epithelial or Mesenchymal based on known EMT signatures from MSigDB and EMTome.
+
 ```{r}
 library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(reshape)
+library(yardstick)
 ```
 
 ## 1. Load EMT signatures
-There were 3 MSigDB curated up and down signatures I was able to get for hepatocytes (GOTZMANN), mammary (JECHLINGER), and breast (SARRIO) cancer cells. 
+There were 3 MSigDB curated up and down EMT signatures we were able to obtain. These EMT signatures were obtained from hepatocytes (GOTZMANN), mammary (JECHLINGER), and breast (SARRIO) cancer cells. 
 
-To get a high confidence list set, I wanted to get the intersection between these datasets for up and down genes. This is to infer the core set of genes used for EMT.
+To get a high confidence list set, we got the intersection between these signature lists for up and down genes. This was used to infer the core set of genes used for EMT.
+  * The more upregulated and downregulated genes there are, the more mesenchymal the cell line is (P > 0.5). These cells will be labeled as mesenchymal cells. 
+  * Otherwise if the number of up + downregulated genes is <= 50% of the total number of EMT markers (7 or less), it is labeled as epithelial  cells. 
 
-Specifically, the more upregulated and downregulated genes there are, the more mesenchymal the cell line is (P > 0.5). These cells will be labeled as M state cells. Otherwise if the number of up + downregulated genes is <= 50% of the total number of EMT markers (7 or less), it is labeled as E state cells. 
+**NOTE:** The EMTome used in this analysis is A549-specific and provides a gene list, but does not tell us anything about directionality of regulation. Therefore, we used this data set as a filter.
 
-Note: EMTome provides a gene list but does not tell us anything about directionality.
+**TO DOWNLOAD THE DATASET:** The dataset for this analysis can be found in this Zenodo repository. The final directory path should be assigned to the `path` variable in the code block below. Throughout the notebook, we'll assume that the data is two directories up in the parent directory.
 
 ### A. Load upregulated EMT genes
+These upregulated gene lists were obtained from MSigDB.
 ```{r}
-gotzmann_up = read.table('C:/Users/Scott/Desktop/emt_sigs/GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', 
+#path = "../../data/"
+path = "C:/Users/Scott/Desktop/data/"
+gotzmann_up = read.table(paste(path, 'GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
 
-jechlinger_up = read.table('C:/Users/Scott/Desktop/emt_sigs/JECHLINGER_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', 
+jechlinger_up = read.table(paste(path, 'JECHLINGER_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_UP.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
 
-sarrio_up = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENCHYMAL_TRANSITION_UP.txt', 
+sarrio_up = read.table(paste(path, 'SARRIO_EPITHELIAL_MESENCHYMAL_TRANSITION_UP.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
 ```
 
 ### B. Load downregulated EMT genes
+These downregulated gene lists were obtained from MSigDB.
+
 ```{r}
-gotzmann_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', 
+gotzmann_dn = read.table(paste(path, 'GOTZMANN_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
 
-jechlinger_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/JECHLINGER_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', 
+jechlinger_dn = read.table(paste(path, 'JECHLINGER_EPITHELIAL_TO_MESENCHYMAL_TRANSITION_DN.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
 
-sarrio_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENCHYMAL_TRANSITION_DN.txt', 
+sarrio_dn = read.table(paste(path, 'SARRIO_EPITHELIAL_MESENCHYMAL_TRANSITION_DN.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
@@ -62,7 +80,7 @@ sarrio_dn = read.table('C:/Users/Scott/Desktop/emt_sigs/SARRIO_EPITHELIAL_MESENC
 ### C. Load EMT Signature data (PMID30783512)
 This gene list was curated from EMTome.
 ```{r}
-Gordian = read.table('C:/Users/Scott/Desktop/emt_sigs/PMID30783512.txt', 
+Gordian = read.table(paste(path, 'PMID30783512.txt', sep=''), 
                          skip = 2, 
                          header = FALSE, 
                          sep ='\n')
@@ -70,7 +88,7 @@ Gordian = read.table('C:/Users/Scott/Desktop/emt_sigs/PMID30783512.txt',
 
 
 ## 2. Get intersection between gene sets
-Now lets get the intersection across datasets.
+To get a core set of EMT genes, we'll take the intersection between gene lists
 
 ### A. Intersection Across Up List
 ```{r}
@@ -82,12 +100,11 @@ emt_up = intersect(gotzmann_up, jechlinger_up, sarrio_up, Gordian)
 emt_dn = intersect(gotzmann_dn, jechlinger_dn, sarrio_dn, Gordian)
 ```
 
-Note that with the additional EMTome geneset, I get the same signatures.
 
-## 3. Load up the CCLE Expression dataset
-I'll load the CCLE Expression dataset. We'll also assess whether or not expression is statistically significant. 
+## 3. Load up the CCLE Transcriptomics dataset
+This section determines up- and downregulated genes from CCLE cancer cell lines using the transcriptomics dataset, normalized to TPM values. To determine up- and downregulation, we'll take the Z-score and two-sided p-values of the Z-scores. Up-regulation is defined as having a positive Z-score and a p-value < 0.05. Down-regulation is defined as having a negative Z-score and a p-value < 0.05.
 
-Here is the data README:
+Here is a description of the CCLE transcriptomics dataset from the original README:
 
 ```
 ### CCLE_expression.csv
@@ -100,13 +117,15 @@ RNAseq TPM gene expression data for just protein coding genes using RSEM. Log2 t
 - Columns: genes (HGNC symbol and Entrez ID)
 ```
 
-
+### A. Load Transcriptomics Data
+First, load the transcriptomics dataset.
 ```{r}
-tpm_data = "D:/Chandrasekaran/Projects/eGEM/Data/RNASeq/CCLE/CCLE_expression.xlsx"
-ccle_rnaseq_tpm = readxl::read_excel(tpm_data,
+ccle_rnaseq_tpm = readxl::read_excel(paste(path, 'CCLE_expression.xlsx', sep=''), 
                                      sheet="RSEM Symbol")
 ```
 
+### B. Calculate Z-score and P-value
+Next, we'll calculate the Z-score (`z_tmp`) and the two-sided p-value of the Z-scores (`p_tmp`).
 ```{r}
 ach_id = ccle_rnaseq_tpm[, 1]
 tmp = ccle_rnaseq_tpm[, -1]
@@ -115,23 +134,32 @@ z_tmp = scale(tmp, center=TRUE, scale=TRUE)
 p_tmp = 2*pnorm(abs(z_tmp), mean=0, sd=1, lower.tail=FALSE)
 ```
 
-```{r}
-library(reshape)
-hist(melt(z_tmp)$value, breaks=100)
+For QA, let's visualize the Z-score distribution and see if the normality assumption holds.
+```{r, fig.height=4, fig.width=6, fig.align='center'}
+ggplot(melt(z_tmp), aes(x=value)) + 
+  geom_histogram(bins=100) +
+  xlab("Z-score") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of CCLE TPM (Z-score)")
 ```
 
-```{r}
-hist(melt(p_tmp)$value, breaks=100)
+Further, let's see the distribution of P-values. 
+```{r, fig.height=4, fig.width=6, fig.align='center'}
+ggplot(melt(p_tmp), aes(x=value)) + 
+  geom_histogram(bins=100) +
+  xlab("P-values") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of CCLE TPM (P-values)")
 ```
-
-Show whether significant
+### C. Extract Up- and Downregulated EMT Signatures for each cancer cell line.
+First, we'll get the indicies of Z-scores that are positive / negative and where the corresponding p-value is < 0.05.
 ```{r}
 z_up_idx = z_tmp > 0
 z_dn_idx = z_tmp < 0
 z_mask = p_tmp < 0.05
 ```
 
-Mask with significance.
+If we use both the directionality and the significance masks, we will obtain a very sparse list.
 ```{r}
 z_up = z_tmp
 z_up[!(z_up_idx & z_mask)] = NaN
@@ -140,7 +168,7 @@ z_dn = z_tmp
 z_dn[!(z_dn_idx & z_mask)] = NaN
 ```
 
-Mask w/o significance
+Therefore, for downstream analyses, I only used the up and down directionality. 
 ```{r}
 z_up = z_tmp
 z_up[!(z_up_idx)] = NaN
@@ -150,7 +178,7 @@ z_dn[!(z_dn_idx)] = NaN
 
 ```
 
-
+Let's convert to a data frame for both sets of EMT signatures.
 ```{r}
 z_up = data.frame(z_up)
 z_up = subset(z_up, select=as.matrix(emt_up))
@@ -159,36 +187,40 @@ z_dn = data.frame(z_dn)
 z_dn = subset(z_dn, select=as.matrix(emt_dn))
 ```
 
+## 4. CCLE Cancer Cell Line Classification.
+We'll classify cells whether or not they are E or M using the number of up and downregulated genes. 
 
-## 4. Classify cell lines based on expression
-We'll classify cells whether or not they are E or M using the number of up and downregulated genes - specifically. If there is a tie, we'll assume that they are epithelial.
-
-First, get cells that are NSCLC specific and intersect with the CRISPR dataset.
+### A. Grab NSCLC Cell Lines and Map to EMT Signatures
+First, get cell lines that are NSCLC specific.
 ```{r}
-meta_path = "D:/Chandrasekaran/Projects/eGEM/Data/RNASeq/CCLE/sample_info.csv"
-meta_data = read.table(meta_path, sep=',', fill=TRUE, header=TRUE)
+meta_data = read.table(paste(path, "sample_info.csv", sep=''), 
+                       sep=',', 
+                       fill=TRUE, 
+                       header=TRUE)
 nsclc_meta = meta_data[meta_data$lineage_subtype=='NSCLC', ]
 ```
 
 Now map the z_up and z_dn based on the meta data.
 ```{r}
-tmp = intersect(ach_id$ACH_ID, nsclc_meta$DepMap_ID)
-tmp_idx = which(ach_id$ACH_ID %in% nsclc_meta$DepMap_ID)
+match = intersect(ach_id$ACH_ID, nsclc_meta$DepMap_ID)
+match_idx = which(ach_id$ACH_ID %in% nsclc_meta$DepMap_ID)
 ```
 
 Now let's get the intersecting data.
-
-Note that when I tried this analysis with significant genes only, the data was pretty sparse. Thus, I ran this analysis with non-significant p-values.
 ```{r}
-nsclc_achid = ach_id[tmp_idx, ]
-nsclc_meta = merge(nsclc_meta, nsclc_achid, by.x="DepMap_ID", by.y="ACH_ID")
-nsclc_zup = z_up[tmp_idx, ]
+nsclc_achid = ach_id[match_idx, ]
+nsclc_meta = merge(nsclc_meta, nsclc_achid, 
+                   by.x="DepMap_ID", by.y="ACH_ID"
+                  )
+
+nsclc_zup = z_up[match_idx, ]
 rownames(nsclc_zup) = as.matrix(nsclc_achid)
-nsclc_zdn = z_dn[tmp_idx, ]
+
+nsclc_zdn = z_dn[match_idx, ]
 rownames(nsclc_zdn) = as.matrix(nsclc_achid)
 ```
 
-Okay, there are 6 downregulated EMT markers and 8 upregulated EMT markers. If the number of up and downregulated markers is > 7, we'll label as M. Otherwise, it's E.
+We'll now create a variable called `cmb` that combines the up and down EMT signatures from NSCLC cancer cell lines.
 ```{r}
 cmb = cbind(nsclc_zup, nsclc_zdn)
 
@@ -196,65 +228,92 @@ cmb_idx = (cmb > 0 | cmb < 0)
 cmb_idx[is.na(cmb_idx)] = 0
 ```
 
-Get a sense of the distribution. It's definitely skewed towards E.
-```{r}
-hist(rowSums(cmb_idx))
+### B. Determine distribution of EMT Signature Differential Expresssion in NSCLC cell lines
+
+Let's get a sense of the number of EMT signatures captured. Recall that if the number of signatures high, that indicates those cell lines are leaning towards the mesenchymal state. Otherwise, if the number of EMT signatures differentially expressed is low, that means the cell line is closer towards the epithelial state. 
+
+Note that the total number of signatures is 14 (6 down, 8 up). We'll draw a line at 7, which is the midpoint.
+
+```{r, fig.height=4, fig.width=6, fig.align='center'}
+tmp = data.frame(rowSums(cmb_idx, na.rm=TRUE))
+colnames(tmp) = "value"
+
+ggplot(tmp, aes(x=value)) + 
+  geom_histogram(bins=13) +
+  xlab("Number of EMT signatures differentially expressed") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of differentially expressed EMT Signatures in NSCLC") +
+  geom_vline(xintercept=7)
 ```
-Now let's label the data.
+
+Many NSCLC cell lines don't really have a ton of differential expression for EMT signatures, but there are many that have lower levels (less than 7 EMT signatures).
+
+### C. Classify the NSCLC Cell Lines using quantile thresholds.
+
+Now let's label the data based on quantiles of the distribution of the counts for differentially expressed EMT signatures. 
+  * If the number of EMT signatures for a given cell line is less than the 25% threshold, it is labeled as Epithelial (E)
+  * If the number of EMT signatures for a given cell line is greater than the 75% threshold, it is labeled as Mesenchymal (M)
+  * If the number of EMT signatures for a given cell line is in between the 25% and 75% thresholds, it is labeled as Intermediate (I), and is dropped from further analyses.
+  
+Let's get the quantile thresholds for the number of significant EMT signatures.
 ```{r}
 cmb$numSig = rowSums(!is.na(cmb))
 quantile(cmb$numSig)
 ```
 
-Subset data based on quantiles
+Now we'll subset data based on quantiles determined above.
 ```{r}
+# By default, the cell state is set to "I"
 cmb$State = "I"
-cmb$State[cmb$numSig <=5] = "E"
-cmb$State[cmb$numSig >= 8] = "M"
+cmb$State[cmb$numSig <= 4] = "E"
+cmb$State[cmb$numSig >= 7] = "M"
+```
 
+### D. Label encode the EMT classes
+Now let's label encode the EMT classes.
+```{r}
 cmb$state_encoding = NA
+
+# M = 1; E = 0
 cmb$state_encoding[cmb$State == "E"] = 0
-cmb$state_encoding[cmb$State == "I"] = 1
+cmb$state_encoding[cmb$State == "I"] = 2
 cmb$state_encoding[cmb$State == "M"] = 1
 
-tmp = cmb[!is.na(cmb$state_encoding), ] 
-tmp = tmp[tmp$State != "I", ] 
+encoding = cmb[!is.na(cmb$state_encoding), ] 
+encoding = encoding[encoding$State != "I", ] 
 ```
 
-Let's see how this matches with primary/metastatic annotations
+The CCLE cancer cell lines also have annotations for whether they were obtained from a primary cancer site (P), or were metastatic (M). We'll compare how well the E/M classification corresponds to the P/M classification scheme.
 ```{r}
+# Get primary and metastasis annotation
 col2get = nsclc_meta[, c("DepMap_ID", "primary_or_metastasis")]
-tmp = merge(tmp, col2get, by.x=0, by.y="DepMap_ID")
+encoding = merge(encoding, col2get, by.x=0, by.y="DepMap_ID")
 
-#write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_nosig.csv")
-
-
-library(yardstick)
-tmp$pm_encoding = 0
-tmp$pm_encoding[tmp$primary_or_metastasis == "Metastasis"] = 1
-
-tmp$state_encoding = as.factor(tmp$state_encoding)
-tmp$pm_encoding = as.factor(tmp$pm_encoding)
-
-
-
-#cmb[cmb$primary_or_metastasis == "Primary", "primary_or_metastasis"] = "E"
-#cmb[cmb$primary_or_metastasis == "", "primary_or_metastasis"] = "E"
-#cmb[cmb$primary_or_metastasis == NA, "primary_or_metastasis"] = "M"
+# M = 1; P = 0
+encoding$pm_encoding = 0
+encoding$pm_encoding[encoding$primary_or_metastasis == "Metastasis"] = 1
 ```
 
+We'll do some quick preprocessing and convert the columns into the factor datatype.
 ```{r}
-cm = conf_mat(data = tmp, estimate=state_encoding, truth=pm_encoding)
+encoding$state_encoding = as.factor(encoding$state_encoding)
+encoding$pm_encoding = as.factor(encoding$pm_encoding)
+```
+
+## 5. Visualize the CCLE annotation (P/M) versus our EMT classification (E/M)
+The code below create a confusion matrix given the two encoding schemes.
+```{r}
+cm = conf_mat(data=encoding, 
+              estimate=state_encoding, truth=pm_encoding)
 cm
 ```
 
-```{r}
-library(ggplot2)
-
+Now let's visualize the confusion matrix. This panel will end up being Figure 6A in the manuscript.
+```{r, fig.height=4, fig.width=6, fig.align='center'}
 autoplot(cm, type = "heatmap") + 
-  scale_x_discrete(breaks=c("0","1"),
+  scale_x_discrete(breaks=c("0", "1"),
         labels=c("Primary", "Metastatic")) +
-  scale_y_discrete(breaks=c("0","1"),
+  scale_y_discrete(breaks=c("0", "1"),
         labels=c("Epithelial", "Mesenchymal")) + 
   xlab("CCLE Annotation") +
   ylab("EMT Marker Label") +
@@ -265,67 +324,10 @@ autoplot(cm, type = "heatmap") +
         axis.title.y=element_text(size=16),
         axis.text.x=element_text(size=16),
         axis.text.y=element_text(size=16),
-        #legend.position=c(0.05, 0.15),
         legend.box="vertical",
         legend.margin=margin(),
         text=element_text(family="sans"))
 ```
 
-Save the data
-```{r}
-write.csv(tmp, "filtered_EMT_Marker_annot.csv")
-```
-
-Okay, let's repeat this with significant genes and just set the threshold to be 0.
-```{r}
-z_up = z_tmp
-z_up[!(z_up_idx & z_mask)] = NaN
-
-z_dn = z_tmp
-z_dn[!(z_dn_idx & z_mask)] = NaN
-
-z_up = data.frame(z_up)
-z_up = subset(z_up, select=as.matrix(emt_up))
-
-z_dn = data.frame(z_dn)
-z_dn = subset(z_dn, select=as.matrix(emt_dn))
-
-nsclc_zup = z_up[tmp_idx, ]
-rownames(nsclc_zup) = as.matrix(nsclc_achid)
-nsclc_zdn = z_dn[tmp_idx, ]
-rownames(nsclc_zdn) = as.matrix(nsclc_achid)
-
-cmb = cbind(nsclc_zup, nsclc_zdn)
-
-cmb_idx = (cmb > 0 | cmb < 0)
-cmb_idx[is.na(cmb_idx)] = 0
-
-cmb$State = "E"
-cmb$State[rowSums(cmb_idx) > 0] = "M"
-cmb$state_encoding = 0
-cmb$state_encoding[cmb$State == "M"] = 1
-
-col2get = nsclc_meta[, c("DepMap_ID", "primary_or_metastasis")]
-cmb = merge(cmb, col2get, by.x=0, by.y="DepMap_ID")
-
-cmb$pm_encoding = 0
-cmb$pm_encoding[cmb$primary_or_metastasis == "Metastasis"] = 1
-
-cmb$state_encoding = as.factor(cmb$state_encoding)
-cmb$pm_encoding = as.factor(cmb$pm_encoding)
-
-cm = conf_mat(data = cmb, estimate=state_encoding, truth=pm_encoding)
-
-
-autoplot(cm, type = "heatmap") + 
-  scale_x_discrete(breaks=c("0","1"),
-        labels=c("Primary", "Metastatic")) +
-  scale_y_discrete(breaks=c("0","1"),
-        labels=c("Epithelial", "Mesenchymal")) + 
-  xlab("CCLE Annotation") +
-  ylab("EMT Marker Label (at least 1 sig M marker)") +
-  scale_fill_gradient(low="white", high="#D00000")
-
-#write_csv(x=cmb, file="D:/Chandrasekaran/Projects/EMT/Analysis/EMT_Clf/emt_annot_sig.csv")
-
-```
+## Takeaways from the EMT classification exercise
+The takeaway from this analysis is that while there is some agreement between primary:epithelial annotations and metastatic:mesenchymal annotations, there is not a high correlate between E/M and P/M.
