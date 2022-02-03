@@ -328,6 +328,13 @@ autoplot(cm, type = "heatmap") +
         legend.margin=margin(),
         text=element_text(family="sans"))
 ```
+Finally, we'll need the mapping between NSCLC cancer cell lines and the new annotation. 1 denotes M state for both cases. 0 denotes epithelial or primary states.
+```{r}
+encoding_to_save = encoding[, c("Row.names", "state_encoding", "pm_encoding")]
+colnames(encoding_to_save) = c("ACHID", "EM_State", "PM_State")
+write.csv(encoding_to_save, paste(path, 'EM_PM_Annotation.csv', sep=''))
+```
+
 
 ## Takeaways from the EMT classification exercise
 The takeaway from this analysis is that while there is some agreement between primary:epithelial annotations and metastatic:mesenchymal annotations, there is not a high correlate between E/M and P/M.
