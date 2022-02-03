@@ -40,7 +40,10 @@ Contributions to make this analysis better, more robust, and easier to follow ar
   6. Open a pull request
 
 ## License
-Distributed under the GNU License. See `LICENSE` for more information.
+Released via GPL GNU License . See `LICENSE` for more information.
 
+&copy; 2022 The Regents of the University of Michigan
 ## Contact
-For questions regarding the code deposited in this repository, please reach out to Scott Campit via email at: scampit [at] umich [dot] edu or via Twitter at [at] secampit.
+Chandrasekaran Research Group - https://systemsbiologylab.org/
+
+Contact: csriram@umich.edu
