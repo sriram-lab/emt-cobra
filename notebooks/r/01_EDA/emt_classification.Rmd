@@ -23,6 +23,7 @@ library(readxl)
 library(ggplot2)
 library(reshape)
 library(yardstick)
+library(pROC)
 ```
 
 ## 1. Load EMT signatures
@@ -333,6 +334,19 @@ Finally, we'll need the mapping between NSCLC cancer cell lines and the new anno
 encoding_to_save = encoding[, c("Row.names", "state_encoding", "pm_encoding")]
 colnames(encoding_to_save) = c("ACHID", "EM_State", "PM_State")
 write.csv(encoding_to_save, paste(path, 'EM_PM_Annotation.csv', sep=''))
+```
+
+We'll now construct the ROC object.
+```{r, fig.height=5, fig.width=5}
+rocobj = roc(as.numeric(encoding_to_save$PM_State), as.numeric(encoding_to_save$EM_State))
+auc = round(auc(as.numeric(encoding_to_save$PM_State),as.numeric(encoding_to_save$EM_State)),4)
+
+ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+  theme_minimal() + 
+  ggtitle(paste0("Prim/Met versus Epi/Mes AUC = ", auc)) + 
+  geom_segment(aes(x = 1, xend = 0, y = 0, yend = 1), color="black", linetype="dashed") + 
+  xlab('Specificity') +
+  ylab('Sensitivity')
 ```
 
 
