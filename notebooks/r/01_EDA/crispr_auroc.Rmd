@@ -1,0 +1,604 @@
+---
+title: "Calculate AUROC for CERES Score Prediction and COBRA Growth Scores "
+author: "Scott Campit"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: sandstone
+  pdf_document: default
+---
+
+*CAUTION: this code block ensures that your local R environment is cleared of any working variables.*
+```{r}
+rm(list=ls())
+```
+
+## Summary
+This notebook calculates the AUROC between CERES Scores and the COBRA Growth Scores. 
+
+We'll specifically do this for predicting three outputs:
+  * Epithelial (E) State
+  * Mesenchymal (M) State
+  * E / M Ratio
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(pROC)
+```
+
+## 1. Load Data
+
+We have the following datasets to load:
+  * Batch-corrected CERES Scores
+  * Cancer Cell Line Encyclopedia (CCLE) Metadata
+  * RECON1 Knockout Data
+  * RECON1 Flux Data
+  * The IDs for the top 50 reaction knockouts with the highest priority scores 
+  * EM/PM annotations generated from `emt_classification.Rmd`
+  * RECON1 Reaction to Gene Map
+
+### A. Load Batch-Corrected CERES Scores  
+```{r}
+#path = "../../data/"
+path = "C:/Users/Scott/Desktop/data/"
+ceres = as.data.frame(readRDS(file=paste(path, 'CERES_SQ_Combat_PC1_All_merge_F.RDS', 
+                sep='')))
+head(ceres, 3)
+```
+
+### B. CCLE Metadata
+```{r}
+meta_data = read.table(paste(path, "sample_info.csv", sep=''), 
+                       sep=',', 
+                       fill=TRUE, 
+                       header=TRUE)
+head(meta_data, 3)
+```
+
+### C. RECON1 Knockout Data 
+```{r}
+ko_col = as.character(readxl::read_excel(paste(path, 'SI.xlsx', sep=''), 
+                sheet="S. Table 3",
+                skip=1,
+                n_max=1,
+                col_names=FALSE))
+ko = readxl::read_excel(paste(path, 'SI.xlsx', sep=''), 
+                sheet="S. Table 3",
+                skip=2,
+                col_names=ko_col)
+head(ko, 3)
+```
+
+### D. RECON1 Flux Data
+```{r}
+flux_col = as.character(readxl::read_excel(paste(path, 'SI.xlsx', sep=''), 
+                sheet="S. Table 2",
+                skip=1,
+                n_max=1,
+                col_names=FALSE))
+flux = readxl::read_excel(paste(path, 'SI.xlsx', sep=''), 
+                          skip=2,
+                          sheet="S. Table 2",
+                          col_names=flux_col)
+head(flux, 3)
+```
+
+### E. IDs from Top 50 Reaction Knockouts
+```{r}
+Top50KO = read.table(paste(path, "Top50_KO_Predictions.csv", sep=''), 
+                       sep=',', 
+                       fill=TRUE, 
+                       header=TRUE)
+head(Top50KO, 3)
+```
+
+### F. EM/PM Annotations
+```{r}
+empm = read.table(paste(path, "EM_PM_Annotation.csv", sep=''), 
+                       sep=',', 
+                       fill=TRUE, 
+                       header=TRUE)
+head(empm, 3)
+```
+
+### G. RECON1 Gene to Reaction Map
+```{r}
+recon1_map = read.table(paste(path, "RECON1_Rxn2Gene.csv", sep=''), 
+                       sep=',', 
+                       fill=TRUE, 
+                       header=TRUE)
+head(recon1_map, 3)
+```
+
+## 2. Preprocess and map datasets
+We now need to do the following mapping:
+  1. Map DepMap CERES Scores to CCLE
+  2. Map the mapped data to the E/M annotations
+  3. Subset RECON1 Genes
+  4. Get the annotation (Primary / Metastatic; Epithelial / Mesenchymal)
+  5. If there is a subset of genes to query, filter the dataframe
+  6. Calculate the E / M or P / M ratio, which is defined as the normalized score for Primary or Epithelial states over the normalized score for the Metastatic or the Mesenchymal state.
+  
+The calculation for the normalized score for each gene across multiple cancer cell lines in a given state is defined as the mean over the standard deviation. 
+  
+$$
+score = \frac{\mu_{cond}}{\sigma_{cond}}
+$$
+The calculation for the P / M or E / M ratio is the ratio between the normalized scores.
+
+$$
+ratio = \frac{score_{(P, E)}}{score_{M}}
+$$
+
+### A. Subset RECON1 Genes
+```{r}
+matched_genes = ceres[rownames(ceres) %in% recon1_map$Symbol, ]
+```
+
+### B. Get P / M or E / M annotations
+We'll do the following to denote whether or not a gene is sensitive:
+  * For each gene:
+    * If the CERES Score < 0, we'll label the gene as 1 for sensitive
+    * Otherwise, we'll label the gene as 0 for not-sensitive
+  * Genes sensitivity label will be aggregated across cell lines by a majority vote rule. 
+    * If the majority is sensitive (1), the final label will be 1. Else, it will be 0.
+
+```{r}
+nsclc = matched_genes[, colnames(matched_genes) %in% empm$ACHID]
+empm = empm[empm$ACHID %in% colnames(nsclc), ]
+```
+
+### C. Binarize Genes/States using majority vote
+We need to binarize the data. We'll create two functions: one that gets the row-wise mode (for the majority voting scheme), and one that binarizes the data based on whether or not the score is greater than or less than 0.
+```{r}
+Mode = function(x) {
+  unique_x = unique(x)
+  unique_x[which.max(tabulate(match(x, unique_x)))]
+}
+
+binarize = function(df, col_boolean, func) {
+  new_df = df[, col_boolean == 0]
+  new_df[new_df > 0] = 0 
+  new_df[new_df < 0] = 1 
+  new_df = data.frame(apply(X=new_df, MARGIN=1, FUN=func))
+  return (new_df)
+}
+```
+
+#### i. CERES Score Binarization
+Now let's do it for all states.
+```{r}
+epithelial = binarize(nsclc, empm$EM_State == 0, Mode)
+mesenchymal = binarize(nsclc, empm$EM_State == 1, Mode)
+primary = binarize(nsclc, empm$PM_State == 0, Mode)
+metastatic = binarize(nsclc, empm$PM_State == 1, Mode)
+```
+
+#### ii. Growth Score Binarization
+Now we need to convert the growth score into a binarized representation.  We'll group together E (early) and M (late) growth scores from the different experiments and get the mode.
+
+```{r}
+early = ko[, c("GSE17708_0.5hrs", "Garcia_0.8hrs", "GSE147405_8hrs")] - 1
+early[early >= 0] = 0
+early[early < 0] = 1
+early = as.data.frame(apply(X=early, MARGIN=1, FUN=Mode))
+early = cbind(ko$`Reaction Name`, early)
+early = merge(recon1_map, early, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(early)[ncol(early)] = "is_sensitive"
+early = early %>%
+  group_by(Symbol) %>%
+  summarise(is_sensitive=Mode(is_sensitive))
+
+late = ko[, c("GSE17518_72hrs", "GSE17708_72hrs", "Keshamouni_72hrs", "Garcia_48hrs", "GSE147405_72hrs")] - 1
+late[late >= 0] = 0
+late[late < 0] = 1
+late = as.data.frame(apply(X=late, MARGIN=1, FUN=Mode))
+late = cbind(ko$`Reaction Name`, late)
+late = merge(recon1_map, late, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(late)[ncol(late)] = "is_sensitive"
+late = late %>%
+  group_by(Symbol) %>%
+  summarise(is_sensitive=Mode(is_sensitive))
+```
+
+### D. Get intersection between the two datasets
+
+#### i. Growth Scores
+Now let's get the intersection between the two sets of data
+```{r}
+early = subset(early, early$Symbol %in% rownames(epithelial))
+late = subset(late, late$Symbol %in% rownames(epithelial))
+```
+
+#### ii. CERES Scores
+```{r}
+epithelial = subset(epithelial, rownames(epithelial) %in% early$Symbol)
+mesenchymal = subset(mesenchymal, rownames(mesenchymal) %in% early$Symbol)
+primary = subset(primary, rownames(primary) %in% early$Symbol)
+metastatic = subset(metastatic, rownames(metastatic) %in% early$Symbol)
+```
+
+## 3. Visualize individual states ROC Curves
+
+### A. Define a function to make ROC curves
+```{r}
+create_roc_curve = function(ceres, growth, title_name){
+  colnames(ceres)[ncol(ceres)] = "is_sensitive"
+  rocobj = roc(as.numeric(growth$is_sensitive), as.numeric(ceres$is_sensitive))
+  auc = round(auc(as.numeric(growth$is_sensitive), as.numeric(ceres$is_sensitive)),4)
+  p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+    theme_minimal() + 
+    ggtitle(paste0(title_name, " AUC = ", auc)) + 
+    geom_segment(aes(x = 1, xend = 0, 
+                     y = 0, yend = 1), 
+                     color="black", 
+                     linetype="dashed") + 
+    xlab('Specificity') +
+    ylab('Sensitivity')
+  return(p)
+}
+```
+
+### B. Create ROC Curves for each state.
+```{r, fig.height=5, fig.width=5}
+p1 = create_roc_curve(epithelial, early, "Epithelial CERES v COBRA")
+p2 = create_roc_curve(primary, early, "Primary CERES v COBRA")
+p3 = create_roc_curve(mesenchymal, late, "Mesenchymal CERES v COBRA")
+p4 = create_roc_curve(metastatic, late, "Metastatic CERES v COBRA")
+
+grid.arrange(p1, p2, p3, p4, nrow=2, ncol=2)
+```
+
+## 4. Calculate the E / M or P / M ratio
+For the E / M or P / M ratio, there is a more complex logic at play. The larger the ratio, the larger the magnitude of the score in E/P versus M. 
+
+Additionally, we need to consider the directionality of the score:
+  * If the score is negative in M and positive in E/P, that means the gene is more essential in M versus E/P. Thus, the sign will be coerced to assume a negative value.
+  * If the score is negative in E/P and positive in M, that means the gene is more essential in E/P versus M. Thus, the sign will be coerced to assume a positive value.
+  * If the score is negative or positive in both states:
+    * We're not really interested in the positive states, so that ratio will be coerced to a positive value.
+    * If the scores are both negative, the score will be coerced to a negative value.
+    
+
+### A. Median Aggregation
+#### i. P/M Ratio
+First, let's calculate the P/M ratios using a median aggregation method
+```{r}
+primary = data.frame(apply(nsclc[, empm$PM_State == 0], 1, function(x) median(na.omit(x))))
+metastatic = data.frame(apply(nsclc[, empm$PM_State == 1], 1, function(x) median(na.omit(x))))
+pm = primary / metastatic
+
+pm_df = cbind(primary, metastatic, pm)
+colnames(pm_df) = c("Primary", "Metastatic", "P/M")
+pm_df['_is_sensitive'] = 0
+
+for (i in 1:nrow(pm_df)) {
+  row = pm_df[i, ]
+  if (row$Primary & row$Metastatic < 0) {
+    if (row$Metastatic < row$Primary){
+      pm_df[i, '_is_sensitive'] = 1
+    }
+  } else if (row$Metastatic < 0 & row$Primary > 0) {
+    pm_df[i, '_is_sensitive'] = 1
+  }
+}
+
+```
+
+#### ii. E/M Ratio
+Next, let's calculate the E/M ratios using a median aggregation method
+```{r}
+epithelial = data.frame(apply(nsclc[, empm$EM_State == 0], 1, function(x) median(na.omit(x))))
+mesenchymal = data.frame(apply(nsclc[, empm$EM_State == 1], 1, function(x) median(na.omit(x))))
+
+em = epithelial / mesenchymal
+
+em_df = cbind(epithelial, mesenchymal, em)
+colnames(em_df) = c("Epithelial", "Mesenchymal", "E/M")
+em_df['_is_sensitive'] = 0
+
+for (i in 1:nrow(em_df)) {
+  row = em_df[i, ]
+  if (row$Epithelial & row$Mesenchymal < 0) {
+    if (row$Mesenchymal < row$Epithelial){
+      em_df[i, '_is_sensitive'] = 1
+    }
+  } else if (row$Mesenchymal < 0 & row$Epithelial > 0) {
+    em_df[i, '_is_sensitive'] = 1
+  }
+}
+```
+
+#### iii. Growth Score Ratio
+Let's now calculate the growth score ratio.
+```{r}
+early = data.frame(apply(ko[, c("GSE17708_0.5hrs", "Garcia_0.8hrs", "GSE147405_8hrs")] - 1, 1, function(x) median(na.omit(x))))
+early = cbind(ko$`Reaction Name`, early)
+early = merge(recon1_map, early, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(early)[ncol(early)] = "gs"
+early = early %>%
+  group_by(Symbol) %>%
+  summarise(gs=median(gs))
+
+late = data.frame(apply(ko[, c("GSE17518_72hrs", "GSE17708_72hrs", "Keshamouni_72hrs", "Garcia_48hrs", "GSE147405_72hrs")] - 1, 1, function(x) median(na.omit(x))))
+late = cbind(ko$`Reaction Name`, late)
+late = merge(recon1_map, late, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(late)[ncol(late)] = "gs"
+late = late %>%
+  group_by(Symbol) %>%
+  summarise(gs=median(gs))
+
+el = (early$gs+1) / (late$gs+1)
+el = data.frame(el)
+rownames(el) = early$Symbol
+
+el_df = cbind(early, late, el)
+el_df$Symbol = NULL
+el_df$Symbol = NULL
+colnames(el_df) = c("Early", "Late", "E/L")
+el_df['_is_sensitive'] = 0
+
+for (i in 1:nrow(el_df)) {
+  row = el_df[i, ]
+  if (row$Early & row$Late < 0) {
+    if (row$Late < row$Early){
+      el_df[i, '_is_sensitive'] = 1
+    }
+  } else if (row$Late < 0 & row$Early > 0) {
+    em_df[i, '_is_sensitive'] = 1
+  }
+}
+```
+
+### B. Gene intersection
+Now let's get the intersection between the two sets of data
+```{r}
+el_df = subset(el_df, rownames(el_df) %in% rownames(em_df))
+em_df = subset(em_df, rownames(em_df) %in% rownames(el_df))
+pm_df = subset(pm_df, rownames(pm_df) %in% rownames(el_df))
+```
+
+### C. Generate ROC Curves
+First, re-define the function.
+```{r}
+rm(create_roc_curve)
+create_roc_curve = function(ceres, growth, title_name){
+  rocobj = roc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive'])))
+  auc = round(auc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive']))), 4)
+  p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+    theme_minimal() + 
+    ggtitle(paste0(title_name, " AUC = ", auc)) + 
+    geom_segment(aes(x = 1, xend = 0, 
+                     y = 0, yend = 1), 
+                     color="black", 
+                     linetype="dashed") + 
+    xlab('Specificity') +
+    ylab('Sensitivity')
+  return(p)
+}
+```
+
+Then plot the curves.
+```{r, fig.height=5, fig.width=10}
+p1 = create_roc_curve(el_df, em_df, "E/M CERES v COBRA")
+p2 = create_roc_curve(el_df, pm_df, "P/M CERES v COBRA")
+
+grid.arrange(p1, p2, nrow=1, ncol=2)
+```
+### B. Mean Aggregation
+First, let's calculate the P/M ratios
+```{r}
+primary = data.frame(apply(nsclc[, empm$PM_State == 0], 1, function(x) mean(na.omit(x))))
+metastatic = data.frame(apply(nsclc[, empm$PM_State == 1], 1, function(x) mean(na.omit(x))))
+pm = primary / metastatic
+
+pm_df = cbind(primary, metastatic, pm)
+colnames(pm_df) = c("Primary", "Metastatic", "P/M")
+pm_df['_is_sensitive'] = 0
+
+for (i in 1:nrow(pm_df)) {
+  row = pm_df[i, ]
+  if (row$Primary & row$Metastatic < 0) {
+    if (row$Metastatic < row$Primary){
+      pm_df[i, '_is_sensitive'] = 1
+    }
+  } else if (row$Metastatic < 0 & row$Primary > 0) {
+    pm_df[i, '_is_sensitive'] = 1
+  }
+}
+
+```
+
+Next, let's calculate the E/M ratios
+```{r}
+epithelial = data.frame(apply(nsclc[, empm$EM_State == 0], 1, function(x) mean(na.omit(x))))
+mesenchymal = data.frame(apply(nsclc[, empm$EM_State == 1], 1, function(x) mean(na.omit(x))))
+
+em = epithelial / mesenchymal
+
+em_df = cbind(epithelial, mesenchymal, em)
+colnames(em_df) = c("Epithelial", "Mesenchymal", "E/M")
+em_df['_is_sensitive'] = 0
+
+for (i in 1:nrow(em_df)) {
+  row = em_df[i, ]
+  if (row$Epithelial & row$Mesenchymal < 0) {
+    if (row$Mesenchymal < row$Epithelial){
+      em_df[i, '_is_sensitive'] = 1
+    }
+  } else if (row$Mesenchymal < 0 & row$Epithelial > 0) {
+    em_df[i, '_is_sensitive'] = 1
+  }
+}
+```
+
+Let's now calculate the growth score ratio.
+```{r}
+early = data.frame(apply(ko[, c("GSE17708_0.5hrs", "Garcia_0.8hrs", "GSE147405_8hrs")] - 1, 1, function(x) mean(na.omit(x))))
+early = cbind(ko$`Reaction Name`, early)
+early = merge(recon1_map, early, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(early)[ncol(early)] = "gs"
+early = early %>%
+  group_by(Symbol) %>%
+  summarise(gs=mean(gs))
+
+late = data.frame(apply(ko[, c("GSE17518_72hrs", "GSE17708_72hrs", "Keshamouni_72hrs", "Garcia_48hrs", "GSE147405_72hrs")] - 1, 1, function(x) mean(na.omit(x))))
+late = cbind(ko$`Reaction Name`, late)
+late = merge(recon1_map, late, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(late)[ncol(late)] = "gs"
+late = late %>%
+  group_by(Symbol) %>%
+  summarise(gs=mean(gs))
+
+el = (early$gs+1) / (late$gs+1)
+el = data.frame(el)
+rownames(el) = early$Symbol
+
+el_df = cbind(early, late, el)
+el_df$Symbol = NULL
+el_df$Symbol = NULL
+colnames(el_df) = c("Early", "Late", "E/L")
+el_df['_is_sensitive'] = 0
+
+for (i in 1:nrow(el_df)) {
+  row = el_df[i, ]
+  if (row$Early & row$Late < 0) {
+    if (row$Late < row$Early){
+      el_df[i, '_is_sensitive'] = 1
+    }
+  } else if (row$Late < 0 & row$Early > 0) {
+    em_df[i, '_is_sensitive'] = 1
+  }
+}
+```
+
+Now let's get the intersection between the two sets of data
+```{r}
+el_df = subset(el_df, rownames(el_df) %in% rownames(em_df))
+```
+
+```{r}
+em_df = subset(em_df, rownames(em_df) %in% rownames(el_df))
+pm_df = subset(pm_df, rownames(pm_df) %in% rownames(el_df))
+```
+
+```{r}
+rm(create_roc_curve)
+create_roc_curve = function(ceres, growth, title_name){
+  rocobj = roc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive'])))
+  auc = round(auc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive']))), 4)
+  p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+    theme_minimal() + 
+    ggtitle(paste0(title_name, " AUC = ", auc)) + 
+    geom_segment(aes(x = 1, xend = 0, 
+                     y = 0, yend = 1), 
+                     color="black", 
+                     linetype="dashed") + 
+    xlab('Specificity') +
+    ylab('Sensitivity')
+  return(p)
+}
+```
+
+```{r, fig.height=5, fig.width=10}
+p1 = create_roc_curve(el_df, em_df, "E/M CERES v COBRA")
+p2 = create_roc_curve(el_df, pm_df, "P/M CERES v COBRA")
+
+grid.arrange(p1, p2, nrow=1, ncol=2)
+```
+
+### C. Absolute Ratio Aggregation
+First, let's calculate the P/M ratios
+```{r}
+primary = data.frame(apply(nsclc[, empm$PM_State == 0], 1, function(x) mean(na.omit(x))))
+metastatic = data.frame(apply(nsclc[, empm$PM_State == 1], 1, function(x) mean(na.omit(x))))
+pm = abs(primary / metastatic)
+
+pm_df = cbind(primary, metastatic, pm)
+colnames(pm_df) = c("Primary", "Metastatic", "P/M")
+pm_df['_is_sensitive'] = 0
+pm_df[pm_df["P/M"] > 1, '_is_sensitive'] = 1
+
+```
+
+Next, let's calculate the E/M ratios
+```{r}
+epithelial = data.frame(apply(nsclc[, empm$EM_State == 0], 1, function(x) mean(na.omit(x))))
+mesenchymal = data.frame(apply(nsclc[, empm$EM_State == 1], 1, function(x) mean(na.omit(x))))
+
+em = abs(epithelial / mesenchymal)
+
+em_df = cbind(epithelial, mesenchymal, em)
+colnames(em_df) = c("Epithelial", "Mesenchymal", "E/M")
+em_df['_is_sensitive'] = 0
+em_df[em_df["E/M"] < 1, '_is_sensitive'] = 1
+```
+
+Let's now calculate the growth score ratio.
+```{r}
+early = data.frame(apply(ko[, c("GSE17708_0.5hrs", "Garcia_0.8hrs", "GSE147405_8hrs")] - 1, 1, function(x) mean(na.omit(x))))
+early = cbind(ko$`Reaction Name`, early)
+early = merge(recon1_map, early, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(early)[ncol(early)] = "gs"
+early = early %>%
+  group_by(Symbol) %>%
+  summarise(gs=mean(gs))
+
+late = data.frame(apply(ko[, c("GSE17518_72hrs", "GSE17708_72hrs", "Keshamouni_72hrs", "Garcia_48hrs", "GSE147405_72hrs")] - 1, 1, function(x) mean(na.omit(x))))
+late = cbind(ko$`Reaction Name`, late)
+late = merge(recon1_map, late, by.x='Reaction', by.y='ko$`Reaction Name`')
+colnames(late)[ncol(late)] = "gs"
+late = late %>%
+  group_by(Symbol) %>%
+  summarise(gs=mean(gs))
+
+el = abs((early$gs+1) / (late$gs+1))
+el = data.frame(el)
+rownames(el) = early$Symbol
+
+el_df = cbind(early, late, el)
+el_df$Symbol = NULL
+el_df$Symbol = NULL
+colnames(el_df) = c("Early", "Late", "E/L")
+el_df['_is_sensitive'] = 0
+el_df[el_df["E/L"] < 1, '_is_sensitive'] = 1
+```
+
+Now let's get the intersection between the two sets of data
+```{r}
+el_df = subset(el_df, rownames(el_df) %in% rownames(em_df))
+```
+
+```{r}
+em_df = subset(em_df, rownames(em_df) %in% rownames(el_df))
+pm_df = subset(pm_df, rownames(pm_df) %in% rownames(el_df))
+```
+
+```{r}
+rm(create_roc_curve)
+create_roc_curve = function(ceres, growth, title_name){
+  rocobj = roc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive'])))
+  auc = round(auc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive']))), 4)
+  p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+    theme_minimal() + 
+    ggtitle(paste0(title_name, " AUC = ", auc)) + 
+    geom_segment(aes(x = 1, xend = 0, 
+                     y = 0, yend = 1), 
+                     color="black", 
+                     linetype="dashed") + 
+    xlab('Specificity') +
+    ylab('Sensitivity')
+  return(p)
+}
+```
+
+```{r, fig.height=5, fig.width=10}
+p1 = create_roc_curve(el_df, em_df, "E/M CERES v COBRA")
+p2 = create_roc_curve(el_df, pm_df, "P/M CERES v COBRA")
+
+grid.arrange(p1, p2, nrow=1, ncol=2)
+```
