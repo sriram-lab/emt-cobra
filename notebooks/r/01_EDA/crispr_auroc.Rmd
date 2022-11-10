@@ -1,6 +1,5 @@
 ---
 title: "Calculate AUROC for CERES Score Prediction and COBRA Growth Scores "
-author: "Scott Campit"
 output: 
   html_document:
     toc: true
@@ -271,11 +270,30 @@ First, let's calculate the P/M ratios using a median aggregation method
 primary = data.frame(apply(nsclc[, empm$PM_State == 0], 1, function(x) median(na.omit(x))))
 metastatic = data.frame(apply(nsclc[, empm$PM_State == 1], 1, function(x) median(na.omit(x))))
 pm = primary / metastatic
+```
 
+```{r}
 pm_df = cbind(primary, metastatic, pm)
-colnames(pm_df) = c("Primary", "Metastatic", "P/M")
+colnames(pm_df) = c("Primary", "Metastatic", "PoM")
 pm_df['_is_sensitive'] = 0
+```
 
+```{r, fig.width=10, fig.height=5}
+A = ggplot(pm_df, aes(x=PoM)) + 
+  geom_histogram(bins=100) +
+  labs(x="P/M Scores", y="Frequency", tag="A")
+
+B = ggplot(pm_df, aes(x="P/M",  y=PoM)) + 
+  geom_boxplot() +
+  labs(x="Groups", y="P/M Scores", tag="B")
+
+grid.arrange(A, B, nrow=1, ncol=2)
+```
+
+
+```{r}
+pm_quantiles = quantile(pm_df$PoM)
+pm_df = pm_df[which(pm_df$PoM<pm_quantiles[2] | pm_df$PoM > pm_quantiles[4]), ]
 for (i in 1:nrow(pm_df)) {
   row = pm_df[i, ]
   if (row$Primary & row$Metastatic < 0) {
@@ -298,8 +316,11 @@ mesenchymal = data.frame(apply(nsclc[, empm$EM_State == 1], 1, function(x) media
 em = epithelial / mesenchymal
 
 em_df = cbind(epithelial, mesenchymal, em)
-colnames(em_df) = c("Epithelial", "Mesenchymal", "E/M")
+colnames(em_df) = c("Epithelial", "Mesenchymal", "EoM")
 em_df['_is_sensitive'] = 0
+
+em_quantiles = quantile(em_df$EoM)
+em_df = em_df[which(em_df$EoM<em_quantiles[2] | em_df$EoM > em_quantiles[4]), ]
 
 for (i in 1:nrow(em_df)) {
   row = em_df[i, ]
@@ -315,6 +336,9 @@ for (i in 1:nrow(em_df)) {
 
 #### iii. Growth Score Ratio
 Let's now calculate the growth score ratio.
+
+TODO: REPEAT FOR INDV EXPTS + SUB
+
 ```{r}
 early = data.frame(apply(ko[, c("GSE17708_0.5hrs", "Garcia_0.8hrs", "GSE147405_8hrs")] - 1, 1, function(x) median(na.omit(x))))
 early = cbind(ko$`Reaction Name`, early)
@@ -339,36 +363,42 @@ rownames(el) = early$Symbol
 el_df = cbind(early, late, el)
 el_df$Symbol = NULL
 el_df$Symbol = NULL
-colnames(el_df) = c("Early", "Late", "E/L")
-el_df['_is_sensitive'] = 0
+colnames(el_df) = c("Early", "Late", "EoL")
+#el_df['_is_sensitive'] = 0
 
-for (i in 1:nrow(el_df)) {
-  row = el_df[i, ]
-  if (row$Early & row$Late < 0) {
-    if (row$Late < row$Early){
-      el_df[i, '_is_sensitive'] = 1
-    }
-  } else if (row$Late < 0 & row$Early > 0) {
-    em_df[i, '_is_sensitive'] = 1
-  }
-}
+el_quantiles = quantile(el_df$EoL)
+el_df = el_df[which(el_df$EoL<el_quantiles[2] | el_df$EoL > el_quantiles[4]), ]
+
+#for (i in 1:nrow(el_df)) {
+#  row = el_df[i, ]
+#  if (row$Early & row$Late < 0) {
+#    if (row$Late < row$Early){
+#      el_df[i, '_is_sensitive'] = 1
+#    }
+#  } else if (row$Late < 0 & row$Early > 0) {
+#    em_df[i, '_is_sensitive'] = 1
+#  }
+#}
 ```
 
 ### B. Gene intersection
 Now let's get the intersection between the two sets of data
 ```{r}
-el_df = subset(el_df, rownames(el_df) %in% rownames(em_df))
-em_df = subset(em_df, rownames(em_df) %in% rownames(el_df))
-pm_df = subset(pm_df, rownames(pm_df) %in% rownames(el_df))
+el_df_1 = subset(el_df, rownames(el_df) %in% rownames(em_df))
+el_df_2 = subset(el_df, rownames(el_df) %in% rownames(pm_df))
+
+em_df = subset(em_df, rownames(em_df) %in% rownames(el_df_1))
+pm_df = subset(pm_df, rownames(pm_df) %in% rownames(el_df_2))
 ```
 
 ### C. Generate ROC Curves
 First, re-define the function.
+
 ```{r}
 rm(create_roc_curve)
 create_roc_curve = function(ceres, growth, title_name){
-  rocobj = roc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive'])))
-  auc = round(auc(as.numeric(unlist(growth['_is_sensitive'])), as.numeric(unlist(ceres['_is_sensitive']))), 4)
+  rocobj = roc(as.numeric(unlist(growth['EoL'])), as.numeric(unlist(ceres['_is_sensitive'])))
+  auc = round(auc(as.numeric(unlist(growth['EoL'])), as.numeric(unlist(ceres['_is_sensitive']))), 4)
   p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
     theme_minimal() + 
     ggtitle(paste0(title_name, " AUC = ", auc)) + 
@@ -382,13 +412,42 @@ create_roc_curve = function(ceres, growth, title_name){
 }
 ```
 
+```{r}
+rocobj = roc(as.numeric(unlist(el_df_1['EoL'])), as.numeric(unlist(em_df['_is_sensitive'])))
+auc = round(auc(as.numeric(unlist(el_df_1['EoL'])), as.numeric(unlist(em_df['_is_sensitive']))), 4)
+p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+    theme_minimal() + 
+    ggtitle(paste0("E/M CERES v COBRA", " AUC = ", auc)) + 
+    geom_segment(aes(x = 1, xend = 0, 
+                     y = 0, yend = 1), 
+                     color="black", 
+                     linetype="dashed") + 
+    xlab('Specificity') +
+    ylab('Sensitivity')
+p
+
+rocobj = roc(as.numeric(unlist(el_df_2['EoL'])), as.numeric(unlist(pm_df['_is_sensitive'])))
+auc = round(auc(as.numeric(unlist(el_df_2['EoL'])), as.numeric(unlist(pm_df['_is_sensitive']))), 4)
+p = ggroc(rocobj, colour = "red", linetype = 1, size = 1) + 
+    theme_minimal() + 
+    ggtitle(paste0("E/M CERES v COBRA", " AUC = ", auc)) + 
+    geom_segment(aes(x = 1, xend = 0, 
+                     y = 0, yend = 1), 
+                     color="black", 
+                     linetype="dashed") + 
+    xlab('Specificity') +
+    ylab('Sensitivity')
+p
+```
+
 Then plot the curves.
 ```{r, fig.height=5, fig.width=10}
-p1 = create_roc_curve(el_df, em_df, "E/M CERES v COBRA")
-p2 = create_roc_curve(el_df, pm_df, "P/M CERES v COBRA")
+p1 = create_roc_curve(el_df_1, em_df, "E/M CERES v COBRA")
+p2 = create_roc_curve(el_df_2, pm_df, "P/M CERES v COBRA")
 
 grid.arrange(p1, p2, nrow=1, ncol=2)
 ```
+
 ### B. Mean Aggregation
 First, let's calculate the P/M ratios
 ```{r}

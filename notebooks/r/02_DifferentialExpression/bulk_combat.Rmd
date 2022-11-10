@@ -1,0 +1,417 @@
+---
+title: "Batch Correction"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+```
+
+## Summary
+This notebook performs batch correction for the bulk transcriptomics and proteomics EMT datasets.
+```{r}
+library("reshape2")
+library("readxl")
+library("readr")
+library("tidyverse")
+library("ggplot2")
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+
+#BiocManager::install("MultiBaC")
+library('MultiBaC')
+library('biomaRt')
+library('GEOquery')
+
+```
+
+
+## 1. Load Data
+
+### A. GSE17708
+First load the data.
+```{r}
+path = "D:/Chandrasekaran/Projects/EMT/Data/RNASeq/GSE17708/GSE17708_Keshamouni_TGFB1_logs.xls"
+gse17708 = read_excel(path, sheet='FC')
+colnames(gse17708)[4] = 'entrezgene'
+```
+
+Now we'll aggregate by Entrez ID.
+```{r}
+cols_to_aggregate = colnames(gse17708)[6:length(colnames(gse17708))]
+
+gse17708 = aggregate(gse17708[, c("0.5 vs 0", "1 vs 0", "2 vs 0", "4 vs 0", "8 vs 0", "16 vs 0", "24 vs 0", "72 vs 0")], 
+          by=list(gse17708$entrezgene), 
+          FUN=mean, 
+          na.rm=TRUE)
+
+gse17708 = gse17708[!grepl("///", gse17708$Group.1),]
+gse17708 = gse17708[!grepl("0", gse17708$Group.1),]
+gse17708 = gse17708[!grepl("---", gse17708$Group.1),]
+gse17708 = gse17708[!grepl("NULL",gse17708$Group.1),]
+```
+
+Finally, transform the fold change data with log2 operation.
+```{r}
+ids = gse17708$Group.1
+gse17708[, c("0.5 vs 0", "1 vs 0", "2 vs 0", "4 vs 0", "8 vs 0", "16 vs 0", "24 vs 0", "72 vs 0")] = 
+  log2(gse17708[, c("0.5 vs 0", "1 vs 0", "2 vs 0", "4 vs 0", "8 vs 0", "16 vs 0", "24 vs 0", "72 vs 0")])
+gse17708 = rbind(ids,gse17708 )
+```
+
+Let's visualize the distribution.
+```{r}
+tmp = melt(gse17708, id=c("Group.1"))
+tmp = tmp[-1,]
+tmp$value = as.numeric(tmp$value)
+
+tmp = tmp[!tmp$Group.1 == "1", ]
+ggplot(tmp, aes(x=value, fill=variable)) + geom_histogram(bins=100)
+```
+
+### B. GSE17518
+```{r}
+path = "D:/Chandrasekaran/Projects/EMT/Data/RNASeq/GSE17518/GSE17518_DGE.xlsx"
+gse17518 = read_excel(path, sheet='Sheet 1')
+gse17518 = aggregate(gse17518[, c('logFC')], 
+                     by=list(gse17518$ENTREZID), 
+                     FUN=mean, 
+                     na.rm=TRUE)
+
+gse17518 = gse17518[!grepl("///", gse17518$Group.1),]
+gse17518 = gse17518[!grepl("0",   gse17518$Group.1),]
+gse17518 = gse17518[!grepl("---", gse17518$Group.1),]
+gse17518 = gse17518[!grepl("NULL",gse17518$Group.1),]
+
+ggplot(gse17518, aes(x=logFC)) + geom_histogram(bins=100)
+```
+
+### C. Garcia
+```{r}
+path = "D:/Chandrasekaran/Projects/EMT/Data/Proteomics/Garcia/raw/time-course-EMT.xlsx"
+garcia = read_excel(path, sheet='Sheet1')
+```
+
+Map mouse data to human.
+
+NOTE: THE ENSEMBL DATABASE WAS NOT WORKING AT THE TIME OF THIS ANALYSIS. SEE CODEBLOCK BELOW FOR A WORKAROUND.
+```{r}
+# Make a function that maps genes using two reference databases
+#convertGeneList = function(gene_obj, db1, db2){
+#  # convertGeneList converts MGI symbols to human identifiers.
+#  # INPUTS:
+#  #   * gene_obj: a Seurat object
+#  #   * db1: A biomart database. This function is specific to the mouse database.
+#  #   * db2: A biomart database. This function is specific to the human database.
+#  # OUTPUT:
+#  #   * mapped_gene_obj: A dataframe with the mapped gene object.   
+#  orthologs = getLDS(attributes=c("mgi_symbol"), 
+#                     filters="mgi_symbol", 
+#                     values=gene_obj$`Gene Symbol`, 
+#                     mart=db2, 
+#                     attributesL=c("hgnc_symbol", 
+#                                   "entrezgene_id", 
+#                                   "ensembl_gene_id"), 
+#                     martL=db1, 
+#                     uniqueRows=TRUE
+#                     )
+#  
+#  mapped_gene_obj = merge(orthologs, 
+#                          gene_obj, 
+#                          by.x='MGI.symbol', 
+#                          by.y='Gene Symbol')
+#  return(mapped_gene_obj)
+#}
+```
+
+Let's try it using biomaRt.
+```{r}
+#mart = useEnsembl("ensembl", "mmusculus_gene_ensembl", mirror = "useast")
+#human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+#mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+#geneObj = data.frame(garcia$`Majority Gene name`)
+#colnames(geneObj) = "Gene Symbol"
+
+#mapped_gene_obj = convertGeneList(geneObj, human, mouse)
+```
+
+There's sometimes an issue with Ensembl servers in biomaRt. We can perform some incomplete mapping using this file from MGI. 
+
+The map was obtained from this URI: `informatics.jax.org/downloads/reports/HMD_HumanPhenotype.rpt`.
+```{r}
+mouse2HumanMap = read.csv("D:/Chandrasekaran/Projects/EMT/Data/RNASeq/HMD_HumanPhenotype.rpt.txt", sep='\t', header=FALSE)[1:4]
+```
+
+Now map the `Garcia` dataset.
+```{r}
+intersected_genes = intersect(garcia$`Majority Gene name`, mouse2HumanMap$V3)
+mouse2HumanMap = mouse2HumanMap[mouse2HumanMap$V3 %in% intersected_genes, ]
+mouse2HumanMap = mouse2HumanMap[, c("V2", "V3")]
+
+garcia = garcia[garcia$`Majority Gene name` %in% intersected_genes, ]
+garcia = garcia[, c(3, 7:length(colnames(garcia)))]
+
+merged = merge(x=mouse2HumanMap, y=garcia, by.x='V3', by.y='Majority Gene name', how='inner')
+
+merged = aggregate(merged[, c('LFC 5 min/0 min', 'LFC 60 min/0min', 'LFC 1 day/0 min', 'LFC 2 days/0 min')], 
+                     by=list(merged$V2), 
+                     FUN=mean, 
+                     na.rm=TRUE)
+
+merged = merged[!grepl("///", merged$Group.1),]
+merged = merged[!grepl("0",   merged$Group.1),]
+merged = merged[!grepl("---", merged$Group.1),]
+merged = merged[!grepl("NULL",merged$Group.1),]
+
+```
+
+```{r}
+tmp = melt(merged, id=c("Group.1"))
+tmp$value = as.numeric(tmp$value)
+ggplot(tmp, aes(x=value, fill=variable)) + geom_histogram(bins=100)
+```
+
+### D. Keshamouni
+```{r}
+path = "D:/Chandrasekaran/Projects/EMT/Data/Proteomics/Keshamouni/raw/Proteomics2010.xlsx"
+keshamouni = read_excel(path, sheet='Protein List')
+```
+
+We have the Ensembl IDs. Let's map to Entrez.
+```{r}
+mart = biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL",
+                         dataset = "hsapiens_gene_ensembl",
+                         host = "http://www.ensembl.org")
+
+genes = getBM(filters = "ensembl_gene_id",
+               attributes = c("ensembl_gene_id","entrezgene_id"),
+               values = keshamouni$ENSEMBL, 
+               mart = mart)
+
+keshamouni = merge(x=genes, y=keshamouni, by.x='ensembl_gene_id', by.y='ENSEMBL', how='inner')
+keshamouni = keshamouni[, c("entrezgene_id", "Log2 ratio", "Ttest")]
+```
+
+Remove rows that contain a highly deviant data point (> 5 sigma).
+```{r}
+keshamouni = aggregate(keshamouni[, c('Log2 ratio')], 
+                     by=list(keshamouni$entrezgene_id), 
+                     FUN=mean, 
+                     na.rm=TRUE)
+
+threshold = 5
+
+keshamouni = keshamouni[!keshamouni$x < -threshold, ] 
+keshamouni = keshamouni[!keshamouni$x > threshold, ]
+```
+
+
+```{r}
+keshamouni = keshamouni[!grepl("///", keshamouni$Group.1),]
+keshamouni = keshamouni[!grepl("0",   keshamouni$Group.1),]
+keshamouni = keshamouni[!grepl("NULL",keshamouni$Group.1),]
+keshamouni = keshamouni[!grepl("---", keshamouni$Group.1),]
+
+ggplot(keshamouni, aes(x=x)) + geom_histogram(bins=100)
+
+```
+
+## 2A. Merge all data using intersection
+This strategy gets the genes that intersect across all datasets.
+```{r}
+all_entrez = Reduce(intersect, list(as.matrix(gse17708$Group.1), 
+                                    as.matrix(gse17518$Group.1), 
+                                    as.matrix(merged$Group.1), 
+                                    as.matrix(keshamouni$Group.1)
+                                    )
+)
+all_entrez = unique(all_entrez)
+```
+
+```{r}
+gse17708   = gse17708[gse17708$Group.1     %in% all_entrez, ]
+colnames(gse17708) = c('ID', 
+                       'GSE17708_Early', 
+                       'GSE17708_1_hr', 
+                       'GSE17708_2_hr', 
+                       'GSE17708_4_hr', 
+                       'GSE17708_8_hr', 
+                       'GSE17708_16_hr', 
+                       'GSE17708_24_hr', 
+                       'GSE17708_End')
+gse17708$ID = as.factor(gse17708$ID)
+
+gse17518   = gse17518[gse17518$Group.1     %in% all_entrez, ]
+colnames(gse17518) = c('ID', 'GSE17518_End')
+gse17518$ID = as.factor(gse17518$ID)
+
+
+merged     = merged[merged$Group.1         %in% all_entrez, ]
+colnames(merged) = c('ID', 'Garcia_Early', 'Garcia_1_hr', 'Garcia_24_hr', 'Garcia_End')
+merged$ID = as.factor(merged$ID)
+
+keshamouni = keshamouni[keshamouni$Group.1 %in% all_entrez, ]
+colnames(keshamouni) = c('ID', 'Keshamouni_End')
+keshamouni$ID = as.factor(keshamouni$ID)
+```
+
+## 2B. Merge all data using union
+An alternative strategy is to take the union of the data and perform data imputation
+
+```{r}
+colnames(gse17708) = c('ID', 
+                       'GSE17708_Early', 
+                       'GSE17708_1_hr', 
+                       'GSE17708_2_hr', 
+                       'GSE17708_4_hr', 
+                       'GSE17708_8_hr', 
+                       'GSE17708_16_hr', 
+                       'GSE17708_24_hr', 
+                       'GSE17708_End')
+gse17708 = gse17708[-1,]
+gse17708$ID = as.factor(gse17708$ID)
+
+colnames(gse17518) = c('ID', 'GSE17518_End')
+gse17518$ID = as.factor(gse17518$ID)
+
+colnames(merged) = c('ID', 'Garcia_Early', 'Garcia_1_hr', 'Garcia_24_hr', 'Garcia_End')
+merged$ID = as.factor(merged$ID)
+
+colnames(keshamouni) = c('ID', 'Keshamouni_End')
+keshamouni$ID = as.factor(keshamouni$ID)
+```
+
+## 3. Batch correction
+Note that the analysis was performed in alignment with this tutorial: http://jtleek.com/genstats/inst/doc/02_13_batch-effects.html
+
+### A. Data preparation
+Merge all by common ID
+```{r}
+all_data = list(gse17708, gse17518, merged, keshamouni) %>% reduce(full_join, by = "ID")
+```
+
+Construct the pheno data mapping.
+```{r}
+sample = c("GSE17708_Early", "GSE17708_1_hr", "GSE17708_2_hr", "GSE17708_4_hr", "GSE17708_8_hr", "GSE17708_16_hr", "GSE17708_24_hr", "GSE17708_End",
+                "GSE17518_End", 
+                "Garcia_Early",  "Garcia_1_hr", "Garcia_24_hr", "Garcia_End",
+                "Keshamouni_End")
+expt =  c("GSE17708", "GSE17708", "GSE17708", "GSE17708", "GSE17708", "GSE17708", "GSE17708", "GSE17708",
+                "GSE17518", 
+                "Garcia",  "Garcia", "Garcia", "Garcia",
+                "Keshamouni")
+timeCourse = c("Early", "1hr", "2hr", "4hr", "8hr", "16hr", "24hr", "End", 
+              "End",
+               "Early", "1hr", "24hr", "End",
+               "End")
+omicsType = c("RNA", "RNA", "RNA", "RNA", "RNA", "RNA", "RNA", "RNA", 
+              "RNA", 
+              "Protein", "Protein", "Protein", "Protein", 
+              "Protein")
+```
+
+This formats the expression data.
+```{r}
+ids = all_data$ID
+all_data = subset(all_data, select=-c(ID))
+row.names(all_data) = as.factor(ids)
+all_data[is.na(all_data)] = 0
+```
+
+Construct the pheno data object.
+```{r}
+p = data.frame(
+  row.names=sample,
+  expt=expt,
+  time=timeCourse,
+  omics=omicsType
+)
+
+metadata = data.frame(labelDescriptions=c("time", "experiments", "omics"))
+pdata = AnnotatedDataFrame(data=p, varMetadata=metadata)
+```
+
+Now we'll begin constructing the expression set for limma voom and ComBat.
+```{r}
+library(sva)
+library(Biobase)
+```
+
+Ensure the data is numeric.
+```{r}
+all_data = sapply(all_data, as.numeric)
+```
+
+Construct the expression set and related variables.
+```{r}
+data = ExpressionSet(assayData=as.matrix(all_data), phenoData=pdata)
+
+pheno = pData(data)
+edata = exprs(data)
+```
+
+### B. Use linear model to adjust for batch effects
+This uses the time, omics, and experiment variables.
+```{r}
+mod = model.matrix(~as.factor(time) + as.factor(omics) + as.factor(expt), data=pheno)
+fit = lm.fit(mod, t(edata))
+hist(fit$coefficients[2,],col=2,breaks=100)
+```
+
+### C. Use ComBat to adjust for batch effects
+This approach uses ComBat instead of a linear model (limma-voom)
+```{r}
+batch = pheno$expt
+modcombat = model.matrix(~1, data=pheno)
+modtime = model.matrix(~time, data=pheno)
+combat_edata = ComBat(dat=edata, batch=batch, mod=modcombat, par.prior=TRUE, prior.plots=FALSE)
+```
+
+Now fit the linear model.
+```{r}
+combat_fit = lm.fit(modtime, t(combat_edata))
+hist(combat_fit$coefficients[2,],col=2,breaks=100)
+```
+It looks like ComBat de-noised the dataset to some degree. Let's compare the linear adjustment and ComBat.
+```{r}
+plot(
+      fit$coefficients[2,], combat_fit$coefficients[2,],
+      col=2,
+      xlab="Linear Model", ylab="Combat", 
+      xlim=c(-5,5), ylim=c(-5,5)
+     )
+abline(c(0,1),col=1,lwd=3)
+```
+They're very similar.
+
+### D. Surrogate Variable Analysis
+This is another method that tries to automatically discover the batch effect.
+```{r}
+library("limma")
+library("reshape2")
+library("ggplot2")
+mod = model.matrix(~as.factor(expt), data=pheno)
+mod0 = model.matrix(~1, data=pheno)
+
+sva1 = sva(edata, mod, mod0)
+pValuesBatch = f.pvalue(edata, mod, mod0)
+qValuesBatch = data.frame(p.adjust(pValuesBatch, method="BH"))
+```
+
+```{r}
+sva1$sv
+cov = cbind(sva1$sv[, 1:sva1$n.sv])
+norm_values = removeBatchEffect(edata, covariates=cov)
+tmp = melt(norm_values)
+tmp$value = as.numeric(tmp$value)
+ggplot(tmp, aes(x=value, fill=Var2)) + geom_histogram(bins=100)
+```
+
+```{r}
+pvalue = data.frame(2*pnorm(abs(norm_values), lower.tail=FALSE))
+row.names(pvalue) = ids
+row.names(norm_values) = ids
+colnames(pvalue) = colnames(norm_values)
+write.csv(norm_values, "C:/Users/Scott/Desktop/ComBat_EMT_fitted.csv")
+write.csv(pvalue, "C:/Users/Scott/Desktop/ComBat_EMT_pvalue.csv")
+```
