@@ -15,7 +15,7 @@ function weight = calculateWeight(zscore, pvalue, epsilon)
     end
 
     if pvalue > 0.05
-        weight = weight + 1;
+        weight = weight + 0.05;
     end
     
     weight = weight + epsilon; 
