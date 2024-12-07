@@ -1,14 +1,14 @@
-# Constraint-based modeling identifies cell-state specific metabolic vulnerabilities during the epithelial to mesenchymal transition  
+# Genome-scale modeling identifies dynamic metabolic vulnerabilities during the epithelial to mesenchymal transition   
 
 ## Summary
 
-This repository contains the code from the paper Constraint-based modeling identifies cell-state specific metabolic vulnerabilities during the epithelial to mesenchymal transition by Campit, S.E., Keshamouni, V.G., and Chandrasekaran, S. 
+This repository contains the code from the paper Genome-scale modeling identifies dynamic metabolic vulnerabilities during the epithelial to mesenchymal transition by Bhowmick, R., Campit, S.E., Katkam, S.K., Keshamouni, V.G., and Chandrasekaran, S. 
 
 **Key analyses contained in notebooks:**
 
-  1. Data preprocessing for transcriptomics, proteomics, single-cell transcriptomics, CERES Score data, and other =omics datasets.
+  1. Data preprocessing for transcriptomics, proteomics, single-cell transcriptomics, CERES Score data, and other omics datasets.
   2. Constraint-based metabolic reconstruction and analysis code for simulating metabolic fluxes and growth resulting from gene and reaction knockout. 
-  3. Statistical analyses for assessing differences between groups. 
+  3. Statistical analyses for assessing differences between groups.
   
 ## Programming languages used in this analysis
 
